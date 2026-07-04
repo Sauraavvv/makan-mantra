@@ -24,3 +24,6 @@ def get_database():
 
 def get_state_pages_collection():
     return get_database()["state_pages"]
+
+def get_state_overview_collection():
+    return get_database()["state_overview"]

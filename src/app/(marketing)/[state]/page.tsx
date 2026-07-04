@@ -1,248 +1,539 @@
-"use client";
-import { use, useMemo, useState } from "react";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { ChevronRight, Home, MapPin, Filter, ChevronLeft } from "lucide-react";
+import {
+  ArrowUpRight,
+  Building2,
+  ChevronRight,
+  GraduationCap,
+  Home,
+  Landmark,
+  MapPin,
+  Plane,
+  Route as RouteIcon,
+  Ship,
+  ShoppingBag,
+  Stethoscope,
+  Trees,
+  TrendingUp,
+} from "lucide-react";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
-import { PropertyCard } from "@/components/site/property-card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { generateProperties, POPULAR_AREAS } from "@/lib/properties";
+import { DistrictCarousel } from "@/components/site/district-carousel";
+import { StateMap } from "@/components/map/StateMap";
+import { stateCardImage } from "@/lib/state-images";
 
-const PER_PAGE = 12;
-const BHKS = [1, 2, 3, 4] as const;
-const TYPES = ["All", "Flat", "Plot", "Villa", "Builder Floor", "Office Space", "Shop/Showroom"];
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export default function StatePage({ params }: { params: Promise<{ state: string }> }) {
-  const { state } = use(params);
-  const stateName = decodeURIComponent(state).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  const all = useMemo(() => generateProperties(stateName, 36), [stateName]);
+type StateOverview = {
+  slug: string;
+  route_slug: string;
+  route_path: string;
+  state_name: string;
+  state_type: string;
+  country: string;
+  location?: {
+    coordinates?: {
+      latitude?: number;
+      longitude?: number;
+    } | null;
+  };
+  seo: {
+    meta_title?: string;
+    meta_description?: string;
+    page_title?: string;
+    page_description?: string;
+  };
+  overview: Record<string, unknown>;
+  connectivity: Record<string, unknown>;
+  social_infrastructure: Record<string, unknown>;
+  lifestyle_environment: Record<string, unknown>;
+  investment_angle: Record<string, unknown>;
+  faq: Array<{ question?: string; answer?: string }>;
+};
 
-  const [listing, setListing] = useState<"all" | "sale" | "rent">("all");
-  const [type, setType] = useState("All");
-  const [budget, setBudget] = useState<number[]>([1000]);
-  const [bhk, setBhk] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
+type DistanceRow = {
+  city?: string;
+  metro?: string;
+  state?: string;
+  distance_km?: string | number;
+  travel_time?: string;
+  mode?: string;
+};
 
-  const filtered = useMemo(
-    () => all.filter((p) => {
-      if (listing !== "all" && p.listing !== listing) return false;
-      if (type !== "All" && p.type !== type) return false;
-      if (bhk !== null && (bhk === 4 ? p.bhk < 4 : p.bhk !== bhk)) return false;
-      if (p.listing === "sale" && p.priceValue > budget[0]) return false;
-      return true;
-    }),
-    [all, listing, type, bhk, budget],
-  );
+function asText(value: unknown) {
+  if (value === null || value === undefined || value === "") return "Not available";
+  return String(value);
+}
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const currentPage = Math.min(page, pageCount);
-  const shown = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
-  const avgPrice = all.length > 0 ? Math.round(all.reduce((a, b) => a + b.priceValue, 0) / all.length) : 0;
-  const cityCount = new Set(all.map((p) => p.city)).size;
-  const areas = POPULAR_AREAS[stateName] ?? POPULAR_AREAS["Maharashtra"];
-  const budgetLabel =
-    budget[0] >= 1000 ? "₹10 Cr+" : budget[0] >= 100 ? `₹${(budget[0] / 100).toFixed(1)} Cr` : `₹${budget[0]} L`;
+function asArray(value: unknown) {
+  return Array.isArray(value) ? value.filter(Boolean).map(String) : [];
+}
+
+function asObjectArray(value: unknown): DistanceRow[] {
+  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") as DistanceRow[] : [];
+}
+
+function asParagraphs(value: string | undefined) {
+  return (value || "").split(/\n{2,}/).filter(Boolean);
+}
+
+function takeItems(value: unknown, limit = 5) {
+  return asArray(value).slice(0, limit);
+}
+
+function joinItems(value: unknown, limit = 4) {
+  const items = takeItems(value, limit);
+  if (items.length === 0) return "Not available";
+  return items.join(" · ");
+}
+
+function modeIcon(mode: string) {
+  if (/sea|ship|ferry/i.test(mode)) return <Ship className="h-3.5 w-3.5" strokeWidth={1.5} />;
+  return <Plane className="h-3.5 w-3.5" strokeWidth={1.5} />;
+}
+
+async function getStateOverview(routeSlug: string): Promise<StateOverview | null> {
+  try {
+    const res = await fetch(`${API}/state-overview/${routeSlug}`, {
+      next: { revalidate: 3600 },
+    });
+
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ state: string }> }): Promise<Metadata> {
+  const { state } = await params;
+  const page = await getStateOverview(state);
+
+  if (!page) return { title: "State Overview Not Found" };
+
+  return {
+    title: page.seo.meta_title || page.seo.page_title,
+    description: page.seo.meta_description || page.seo.page_description,
+  };
+}
+
+export default async function StatePage({ params }: { params: Promise<{ state: string }> }) {
+  const { state } = await params;
+  const data = await getStateOverview(state);
+
+  if (!data) notFound();
+
+  const { overview, connectivity, investment_angle, lifestyle_environment, social_infrastructure, faq } = data;
+  const stateName = data.state_name;
+  const heroImage = stateCardImage(stateName);
+  const coordinates = data.location?.coordinates;
+  const mapCoordinates =
+    typeof coordinates?.latitude === "number" && typeof coordinates?.longitude === "number"
+      ? { latitude: coordinates.latitude, longitude: coordinates.longitude }
+      : null;
+  const districts = asArray(overview.districts);
+  const majorCities = asArray(overview.major_cities);
+  const languages = asArray(overview.official_languages);
+  const distanceRows = [
+    ...asObjectArray(connectivity.distance_from_major_metros),
+    ...asObjectArray(connectivity.distance_from_other_major_cities),
+  ].slice(0, 6);
+  const pageDescription = asParagraphs(data.seo.page_description);
+  const overviewDetail = [
+    overview.urbanisation_pattern,
+    overview.urbanization_pattern,
+    overview.development_context,
+    pageDescription[1],
+  ].find((value) => value);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="min-h-screen bg-secondary text-foreground selection:bg-primary/15">
       <Header />
 
       <nav className="border-b border-border bg-card/40">
         <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
-          <li><Link href="/" className="flex items-center gap-1 hover:text-foreground"><Home className="h-3.5 w-3.5" /> India</Link></li>
+          <li>
+            <Link href="/" className="flex items-center gap-1 hover:text-foreground">
+              <Home className="h-3.5 w-3.5" /> India
+            </Link>
+          </li>
           <ChevronRight className="h-3.5 w-3.5" />
           <li className="font-medium text-foreground">{stateName}</li>
         </ol>
       </nav>
 
-      <section className="border-b border-border bg-gradient-to-br from-primary/5 via-background to-saffron/5">
-        <div className="mx-auto max-w-7xl px-4 py-8 md:py-12">
-          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-            Properties in <span className="text-primary">{stateName}</span>
-          </h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            Discover verified residential and commercial properties across {stateName}.
-          </p>
-          <div className="mt-6 grid grid-cols-3 gap-3 md:max-w-xl">
-            {[
-              { label: "Properties", value: all.length.toLocaleString("en-IN") },
-              { label: "Avg Price", value: `₹${avgPrice} L` },
-              { label: "Cities", value: String(cityCount) },
-            ].map(({ label, value }) => (
-              <div key={label} className="rounded-lg border border-border bg-card px-4 py-3">
-                <div className="text-lg font-bold md:text-xl">{value}</div>
-                <div className="text-xs text-muted-foreground">{label}</div>
-              </div>
-            ))}
+      <header
+        className="border-b border-border bg-cover bg-center text-white"
+        style={{
+          backgroundImage: `linear-gradient(90deg, rgba(10, 32, 54, 0.88), rgba(10, 32, 54, 0.62), rgba(10, 32, 54, 0.28)), url('${heroImage}')`,
+        }}
+      >
+        <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 md:pb-24 md:pt-8">
+          <div className="max-w-[68ch]">
+            <h1 className="mb-8 max-w-4xl text-4xl font-bold leading-tight tracking-tight md:text-6xl lg:text-7xl">
+              {stateName}
+            </h1>
+            <p className="mb-12 max-w-[58ch] text-lg leading-relaxed text-white/82 md:text-xl">
+              {pageDescription[0] || data.seo.meta_description || asText(overview.where_it_is)}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/20 md:grid-cols-4">
+            <StatPlate label="Capital" value={asText(overview.capital)} />
+            <StatPlate label="Population Density" value={`${asText(overview.population_density_per_sq_km)} / sq km`} />
+            <StatPlate label="Languages" value={languages.length > 0 ? languages.join(", ") : "Not available"} />
+            <StatPlate label="Area" value={asText(overview.area_sq_km)} />
           </div>
         </div>
-      </section>
+      </header>
 
-      {/* Filter bar */}
-      <div className="sticky top-16 z-30 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-3 md:gap-3">
-          <Select value={type} onValueChange={(v) => setType(v ?? "All")}>
-            <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-          </Select>
-
-          <div className="flex overflow-hidden rounded-md border border-border">
-            {(["all", "sale", "rent"] as const).map((l) => (
-              <button key={l} onClick={() => setListing(l)}
-                className={`px-3 py-1.5 text-sm capitalize transition-colors ${listing === l ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}>
-                {l === "all" ? "All" : l}
-              </button>
-            ))}
-          </div>
-
-          <div className="hidden min-w-[220px] items-center gap-3 rounded-md border border-border px-3 py-1.5 md:flex">
-            <span className="text-xs font-medium text-muted-foreground">Budget</span>
-            <Slider
-              value={budget}
-              onValueChange={(value) => setBudget(Array.isArray(value) ? [...value] : [value])}
-              min={5}
-              max={1000}
-              step={5}
-              className="w-32"
-            />
-            <span className="text-xs font-semibold">{budgetLabel}</span>
-          </div>
-
-          <div className="flex gap-1">
-            {BHKS.map((n) => (
-              <button key={n} onClick={() => setBhk(bhk === n ? null : n)}
-                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${bhk === n ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-accent"}`}>
-                {n === 4 ? "4BHK+" : `${n}BHK`}
-              </button>
-            ))}
-          </div>
-
-          <Sheet>
-            <SheetTrigger
-              className="ml-auto inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              <Filter className="h-4 w-4" /> More Filters
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader><SheetTitle>More Filters</SheetTitle></SheetHeader>
-              <div className="mt-6 space-y-6 text-sm">
-                {[
-                  { title: "Furnishing", opts: ["Any", "Unfurnished", "Semi", "Fully"] },
-                  { title: "Amenities", opts: ["Parking", "Gym", "Pool", "Lift", "Power Backup"] },
-                  { title: "Age of Property", opts: ["New", "< 5 yrs", "5-10 yrs", "10+ yrs"] },
-                ].map(({ title, opts }) => (
-                  <div key={title}>
-                    <div className="mb-2 font-medium">{title}</div>
-                    <div className="flex flex-wrap gap-2">
-                      {opts.map((o) => <button key={o} className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent">{o}</button>)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </SheetContent>
-          </Sheet>
+      <div className="sticky top-16 z-30 border-b border-border bg-background/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center gap-6 overflow-x-auto px-4 py-3">
+          {[
+            ["Overview", "#overview"],
+            ["Districts", "#districts"],
+            ["Logistics", "#connectivity"],
+            ["Market", "#investment"],
+            ["Environment", "#lifestyle"],
+            ["Living", "#social"],
+          ].map(([label, href]) => (
+            <a key={href} href={href} className="shrink-0 text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
+              {label}
+            </a>
+          ))}
         </div>
       </div>
 
-      <main className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-6 lg:grid-cols-[1fr_320px]">
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing <span className="font-semibold text-foreground">{shown.length}</span> of {filtered.length} properties
-            </p>
-            <Select defaultValue="relevance">
-              <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="relevance">Sort: Relevance</SelectItem>
-                <SelectItem value="low">Price: Low to High</SelectItem>
-                <SelectItem value="high">Price: High to Low</SelectItem>
-                <SelectItem value="new">Newest first</SelectItem>
-              </SelectContent>
-            </Select>
+      <section id="overview" className="bg-secondary px-4 py-4 md:py-5">
+        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-7 shadow-sm md:px-5 md:py-8">
+          <div className="mb-6 max-w-3xl">
+            <h2 className="text-3xl font-bold leading-tight md:text-4xl">State Overview</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{asText(overview.where_it_is)}</p>
           </div>
 
-          {shown.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border p-12 text-center text-muted-foreground">No properties match your filters.</div>
-          ) : (
-            <div className="grid gap-5 sm:grid-cols-2">
-              {shown.map((p) => <PropertyCard key={p.id} p={p} />)}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            <div className="rounded-2xl border border-border bg-card/60 p-5 md:p-6 lg:col-span-7">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Landmark className="h-5 w-5" strokeWidth={1.8} />
+                </span>
+                <h3 className="text-xl font-semibold">Urban & Administrative Profile</h3>
+              </div>
+              <div className="space-y-4 leading-relaxed text-muted-foreground">
+                <p>{asText(overview.development_stage)}</p>
+                {overviewDetail ? <p>{asText(overviewDetail)}</p> : null}
+              </div>
             </div>
-          )}
 
-          {/* Pagination */}
-          <nav className="mt-8 flex items-center justify-center gap-1">
-            <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="gap-1">
-              <ChevronLeft className="h-4 w-4" /> Previous
-            </Button>
-            {Array.from({ length: Math.min(pageCount, 5) }, (_, i) => i + 1).map((n) => (
-              <button key={n} onClick={() => setPage(n)}
-                className={`h-9 w-9 rounded-md text-sm ${n === currentPage ? "bg-primary text-primary-foreground" : "border border-border hover:bg-accent"}`}>
-                {n}
-              </button>
-            ))}
-            {pageCount > 5 && <span className="px-2 text-muted-foreground">...</span>}
-            <Button variant="outline" size="sm" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} className="gap-1">
-              Next <ChevronRight className="h-4 w-4" />
-            </Button>
-          </nav>
-        </section>
-
-        <aside className="space-y-5 lg:sticky lg:top-40 lg:self-start">
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-primary/15 via-accent to-saffron/15 grid place-items-center">
-              <div className="flex flex-col items-center gap-2 text-center">
-                <div className="grid h-12 w-12 place-items-center rounded-full shadow-lg" style={{ backgroundColor: "var(--saffron)", color: "var(--saffron-foreground)" }}>
-                  <MapPin className="h-6 w-6" />
+            <div className="rounded-2xl border border-border bg-background p-5 shadow-sm md:p-6 lg:col-span-5">
+              <div className="grid gap-5">
+                <div>
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <MapPin className="h-4.5 w-4.5" strokeWidth={1.8} />
+                    </span>
+                    <h3 className="font-semibold">Major Locations</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {majorCities.slice(0, 8).map((city) => (
+                      <span key={city} className="rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-sm font-medium">
+                        {city}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="text-sm font-medium">{stateName}</div>
-                <div className="text-xs text-muted-foreground">Map coming soon</div>
+
+                <div className="border-t border-border pt-5">
+                  <div className="mb-3 flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Building2 className="h-4.5 w-4.5" strokeWidth={1.8} />
+                  </span>
+                    <h3 className="font-semibold">Economic Identity</h3>
+                  </div>
+                  <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                    {takeItems(overview.economic_identity, 3).map((item) => (
+                      <li key={item} className="flex gap-3">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="mb-3 text-sm font-semibold">Popular Areas in {stateName}</h3>
-            <ul className="divide-y divide-border text-sm">
-              {areas.map((a) => (
-                <li key={a} className="flex items-center justify-between py-2">
-                  <span className="flex items-center gap-2 text-foreground/80"><MapPin className="h-3.5 w-3.5 text-primary" /> {a}</span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </li>
-              ))}
-            </ul>
+      {districts.length > 0 && (
+        <section id="districts" className="bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-8 shadow-sm md:px-5 md:py-10">
+            <DistrictCarousel districts={districts} stateName={stateName} />
           </div>
+        </section>
+      )}
 
-          <div className="grid aspect-[4/3] place-items-center rounded-xl border border-dashed border-border bg-gradient-to-br from-saffron/10 to-primary/10 p-6 text-center">
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Advertisement</div>
-              <div className="mt-2 text-sm text-muted-foreground">Your ad could reach thousands of home buyers here.</div>
+      <section id="connectivity" className="bg-secondary px-4 py-4 md:py-5">
+        <div className="mx-auto max-w-7xl rounded-[28px] bg-[#0A2036] px-3 py-6 text-white shadow-sm md:px-5 md:py-7">
+          <div className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-stretch">
+            <div className="rounded-2xl border border-white/15 bg-white/[0.08] p-4 shadow-sm md:p-5 lg:col-span-7">
+              <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
+                Logistics & Access
+              </h2>
+              <p className="leading-relaxed text-white/75">{asText(connectivity.connectivity_strength)}</p>
+            </div>
+            <div className="overflow-hidden rounded-2xl lg:col-span-5">
+              <StateMap stateName={stateName} coordinates={mapCoordinates} />
             </div>
           </div>
-        </aside>
-      </main>
 
-      <section className="border-t border-border bg-card/40">
-        <div className="mx-auto max-w-7xl px-4 py-10">
-          <h2 className="text-2xl font-bold">About Properties in {stateName}</h2>
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            {stateName} is one of India&apos;s most sought-after real estate markets. Whether you&apos;re looking for a 2 BHK flat, a villa, or an office space, Makan Mantraa brings verified listings from trusted agents and builders directly to your screen.
-          </p>
-          <div className="mt-6">
-            <h3 className="mb-3 text-sm font-semibold">Popular searches</h3>
+          {distanceRows.length > 0 && (
+            <div className="rounded-2xl border border-white/15 bg-white/[0.08] p-4 shadow-sm md:p-5">
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-white/65">
+                Regional Distances
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-white/15">
+                      {["Transit Hub", "Destination", "Distance", "Typical Mode"].map((heading) => (
+                        <th key={heading} className="py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {distanceRows.map((row, index) => {
+                      const destination = row.metro || row.city || row.state || "Destination";
+                      const mode = asText(row.mode);
+                      return (
+                        <tr key={`${destination}-${row.distance_km}-${index}`}>
+                          <td className="py-3 font-medium">{asText(overview.capital)}</td>
+                          <td className="py-3">{destination}</td>
+                          <td className="py-3 tabular-nums">{asText(row.distance_km)}</td>
+                          <td className="py-3">
+                            <span className="inline-flex items-center gap-2 text-sm text-white/70">
+                              <span className="grid h-6 w-6 place-items-center rounded-full bg-white/10 ring-1 ring-white/15">
+                                {modeIcon(mode)}
+                              </span>
+                              {mode} · {asText(row.travel_time)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <InfraPlate icon={RouteIcon} title="Highway Spine" body={joinItems(connectivity.major_highways, 8)} />
+            <InfraPlate icon={Landmark} title="Airports / Ports" body={`${joinItems(connectivity.international_airports, 2)} · ${joinItems(connectivity.ports_if_any, 2)}`} />
+            <InfraPlate icon={MapPin} title="Rail & Bus Hubs" body={`${joinItems(connectivity.major_railway_junctions, 3)} · ${joinItems(connectivity.major_bus_terminals, 3)}`} />
+          </div>
+
+        </div>
+      </section>
+
+      <section id="investment" className="bg-secondary px-4 py-4 md:py-5">
+        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-6 shadow-sm md:px-5 md:py-7">
+          <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:p-5">
+            <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
+              Real Estate Dynamics
+            </h2>
+            <p className="max-w-[66ch] leading-relaxed text-muted-foreground">
+              {asText(investment_angle.market_position)}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <MarketCard
+              icon={TrendingUp}
+              tag="Growth Drivers"
+              title="Structural Momentum"
+              items={takeItems(investment_angle.key_growth_drivers, 5)}
+            />
+            <MarketCard
+              icon={Building2}
+              tag="Premium Segments"
+              title="Where Value Concentrates"
+              items={takeItems(investment_angle.premium_segments, 5)}
+            />
+            <MarketCard
+              icon={ArrowUpRight}
+              tag="Investment Risks"
+              title="What to Underwrite"
+              items={takeItems(investment_angle.investment_risks, 5)}
+            />
+          </div>
+
+          <div className="mt-4 flex flex-col items-start gap-4 rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:flex-row md:items-center md:justify-between md:p-5">
+            <div>
+              <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
+                Who buys here
+              </span>
+              <p className="max-w-[58ch] text-xl font-semibold text-foreground">
+                {joinItems(investment_angle.who_buys_here, 8)}
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {[`2 BHK Flats in ${stateName}`, `3 BHK Villas`, `Plots for Sale`, `Rent in ${stateName}`, `New Projects`, `PG in ${stateName}`].map((t) => (
-                <Badge key={t} variant="secondary" className="cursor-pointer hover:bg-accent">{t}</Badge>
+              {takeItems(investment_angle.affordable_segments, 4).map((segment) => (
+                <span key={segment} className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
+                  {segment}
+                </span>
               ))}
             </div>
           </div>
         </div>
       </section>
 
+      <section id="lifestyle" className="bg-secondary px-4 py-4 md:py-5">
+        <div className="mx-auto max-w-7xl rounded-[28px] bg-[#0A2036] px-3 py-6 text-white shadow-sm md:px-5 md:py-7">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="rounded-2xl border border-white/15 p-4 md:p-5">
+              <h2 className="mb-4 max-w-[18ch] text-4xl font-bold leading-tight md:text-5xl">
+                Lifestyle shaped by place, pace and landscape.
+              </h2>
+              <p className="max-w-[58ch] text-lg leading-relaxed text-white/75">
+                {asText(lifestyle_environment.overall_lifestyle_feel)}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <DarkList title="Natural landmarks" icon={Trees} items={takeItems(lifestyle_environment.natural_landmarks, 6)} />
+              <DarkList title="Forests, hills & coast" icon={MapPin} items={takeItems(lifestyle_environment.forests_hills_coast, 6)} />
+              <div className="rounded-2xl border border-white/15 p-4 sm:col-span-2">
+                <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                  Traffic & Air Quality
+                </span>
+                <p className="text-sm leading-relaxed text-white/75">
+                  {asText(lifestyle_environment.traffic_and_congestion)} {asText(lifestyle_environment.air_quality)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="social" className="bg-secondary px-4 py-4 md:py-5">
+        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-6 shadow-sm md:px-5 md:py-7">
+          <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:p-5">
+            <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
+              Social Infrastructure
+            </h2>
+            <p className="max-w-[64ch] leading-relaxed text-muted-foreground">
+              {asText(social_infrastructure.markets_and_essentials_summary)}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <SocialPlate icon={GraduationCap} label="Education" items={takeItems(social_infrastructure.major_educational_institutions, 7)} />
+            <SocialPlate icon={Stethoscope} label="Healthcare" items={takeItems(social_infrastructure.major_hospitals, 7)} />
+            <SocialPlate icon={ShoppingBag} label="Markets" items={takeItems(social_infrastructure.major_markets, 7)} />
+          </div>
+        </div>
+      </section>
+
+      {faq.length > 0 && (
+        <section className="bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-6 shadow-sm md:px-5 md:py-7">
+            <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:p-5">
+              <h2 className="text-3xl font-bold">FAQs</h2>
+            </div>
+            <div className="divide-y divide-border rounded-2xl border border-border bg-card/70 px-4 shadow-sm md:px-5">
+              {faq.map((item) => (
+                <details key={item.question} className="group py-3">
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
+                    <span className="text-sm font-medium text-foreground">{item.question}</span>
+                    <span className="mt-0.5 shrink-0 text-primary transition-transform group-open:rotate-45">+</span>
+                  </summary>
+                  <p className="mt-2 max-w-5xl text-sm leading-relaxed text-muted-foreground">{item.answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <Footer />
+    </div>
+  );
+}
+
+function StatPlate({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-background p-5 md:p-6">
+      <span className="mb-2 block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+      <span className="block text-lg font-semibold leading-tight text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function InfraPlate({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-white/15 bg-white/[0.08] p-4 shadow-sm">
+      <div className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white">
+        <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+      </div>
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.16em]">{title}</h4>
+      <p className="text-sm leading-relaxed text-white/70">{body}</p>
+    </div>
+  );
+}
+
+function MarketCard({ icon: Icon, tag, title, items }: { icon: LucideIcon; tag: string; title: string; items: string[] }) {
+  return (
+    <div className="group relative flex flex-col rounded-2xl border border-border bg-card/70 p-4 shadow-sm transition-colors hover:border-primary/40 md:p-5">
+      <Icon className="mb-4 h-5 w-5 text-primary" strokeWidth={1.5} />
+      <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">{tag}</span>
+      <h3 className="mb-4 text-xl font-semibold">{title}</h3>
+      <ul className="space-y-2 text-sm text-muted-foreground">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2.5">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function DarkList({ title, icon: Icon, items }: { title: string; icon: LucideIcon; items: string[] }) {
+  return (
+    <div className="rounded-2xl border border-white/15 p-4">
+      <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">{title}</span>
+      <ul className="space-y-2 text-sm">
+        {items.map((item) => (
+          <li key={item} className="flex items-center gap-2 text-white/85">
+            <Icon className="h-3.5 w-3.5 shrink-0 text-white/70" strokeWidth={1.5} />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SocialPlate({ icon: Icon, label, items }: { icon: LucideIcon; label: string; items: string[] }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">{label}</span>
+        <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+      </div>
+      <ul className="space-y-2">
+        {items.map((item, index) => (
+          <li key={item} className={`pb-2 text-sm text-foreground ${index < items.length - 1 ? "border-b border-border" : ""}`}>
+            {item}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

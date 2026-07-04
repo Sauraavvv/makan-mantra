@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { Badge } from "@/components/ui/badge";
+import { stateExploreHref } from "@/lib/state-routes";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -52,7 +53,7 @@ export default async function LocationSlugPage({ params }: { params: Promise<{ s
           </li>
           <ChevronRight className="h-3.5 w-3.5" />
           <li>
-            <Link href={`/${stateSlug}`} className="hover:text-foreground">{stateName}</Link>
+            <Link href={stateExploreHref(stateName)} className="hover:text-foreground">{stateName}</Link>
           </li>
           <ChevronRight className="h-3.5 w-3.5" />
           <li className="font-medium text-foreground">{page.seo.on_page_title}</li>

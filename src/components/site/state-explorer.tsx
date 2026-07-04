@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { stateExploreHref } from "@/lib/state-routes";
+import { stateCardImage } from "@/lib/state-images";
 
 const INITIAL_VISIBLE = 14;
 
@@ -190,10 +192,6 @@ const STATE_CARDS = [
   },
 ];
 
-function stateHref(state: string) {
-  return `/${state.toLowerCase().replace(/\s+/g, "-")}`;
-}
-
 export function StateExplorer() {
   const [expanded, setExpanded] = useState(false);
   const visibleStates = expanded ? STATE_CARDS : STATE_CARDS.slice(0, INITIAL_VISIBLE);
@@ -205,18 +203,19 @@ export function StateExplorer() {
         {visibleStates.map((state) => (
           <Link
             key={state.name}
-            href={stateHref(state.name)}
+            href={stateExploreHref(state.name)}
             className="group relative min-h-[250px] overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
           >
             <div
               className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-              style={{ backgroundImage: `url(${state.image})` }}
+              style={{ backgroundImage: `url(${stateCardImage(state.name) || state.image})` }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/5" />
             <div className="relative flex h-full min-h-[250px] flex-col justify-end p-4 text-white">
               <h3 className="text-2xl font-bold leading-tight tracking-tight">{state.name}</h3>
-              <p className="mt-1 text-sm font-medium text-white/85">{state.properties}</p>
-              <p className="mt-2 line-clamp-1 text-xs text-white/70">{state.details}</p>
+              <p className="mt-2 line-clamp-2 text-sm font-medium leading-snug text-white/85">
+                {state.details}
+              </p>
               <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-white/90 opacity-0 transition-opacity group-hover:opacity-100">
                 Explore <ArrowRight className="h-3.5 w-3.5" />
               </div>

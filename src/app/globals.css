@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -140,5 +141,54 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .state-map-marker {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px 999px 999px 0;
+    background: var(--saffron);
+    box-shadow: 0 10px 25px oklch(0 0 0 / 35%);
+    transform: rotate(-45deg);
+    border: 3px solid white;
+  }
+
+  .state-map-marker > div {
+    position: absolute;
+    inset: 8px;
+    border-radius: 999px;
+    background: var(--saffron-foreground);
+  }
+
+  .leaflet-container {
+    height: 100%;
+    width: 100%;
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+
+  .state-map-canvas {
+    min-height: 260px;
+    isolation: isolate;
+  }
+
+  .state-map-canvas .leaflet-tile {
+    max-width: none !important;
+  }
+
+  .leaflet-control-attribution {
+    border-radius: 6px 0 0 0;
+    background: oklch(1 0 0 / 88%) !important;
+    font-size: 10px;
   }
 }

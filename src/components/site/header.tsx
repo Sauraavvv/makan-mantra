@@ -2,12 +2,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Building, Building2, BedDouble, ChevronDown, Home, MapPin, Menu, Moon, Plus, Search, Sun } from "lucide-react";
+import { BedDouble, ChevronDown, Home, MapPin, Menu, Plus, Search } from "lucide-react";
+import { AnimatedThemeToggler } from "@/registry/magicui/animated-theme-toggler";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "@/hooks/use-theme";
 import { useLocation } from "@/context/location-context";
+import { stateExploreHref } from "@/lib/state-routes";
 
 const STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chandigarh",
@@ -19,8 +21,8 @@ const STATES = [
 ];
 
 const NAV = [
-  { label: "Buy", href: "/maharashtra", icon: Home },
-  { label: "Rent", href: "/maharashtra?listing=rent", icon: BedDouble },
+  { label: "Buy", href: stateExploreHref("Maharashtra"), icon: Home },
+  { label: "Rent", href: `${stateExploreHref("Maharashtra")}?listing=rent`, icon: BedDouble },
 ];
 
 export function Header() {
@@ -166,9 +168,10 @@ export function Header() {
           ))}
         </nav>
 
-        <Button onClick={toggle} variant="ghost" size="icon" aria-label="Toggle theme" className="shrink-0 rounded-full text-white hover:bg-white/10 hover:text-white">
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
+        <AnimatedThemeToggler
+          theme={theme}
+          onThemeChange={(t) => t !== theme && toggle()}
+        />
 
         <Button
           className="hidden h-9 shrink-0 gap-1 rounded-full bg-saffron px-4 text-sm font-semibold text-saffron-foreground hover:bg-saffron/90 sm:inline-flex"

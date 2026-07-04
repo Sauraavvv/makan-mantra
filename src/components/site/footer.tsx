@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { stateExploreHref } from "@/lib/state-routes";
 
 export function Footer() {
   return (
@@ -19,9 +20,9 @@ export function Footer() {
         <FooterCol
           title="Popular"
           links={[
-            ["Flats in Mumbai", "/maharashtra"],
-            ["Flats in Pune", "/maharashtra"],
-            ["Villas in Bangalore", "/karnataka"],
+            ["Flats in Mumbai", stateExploreHref("Maharashtra")],
+            ["Flats in Pune", stateExploreHref("Maharashtra")],
+            ["Villas in Bangalore", stateExploreHref("Karnataka")],
           ]}
         />
       </div>

@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mongodb import connect_db, close_db
-from routers import state_pages
+from routers import state_overview, state_pages
 
 
 @asynccontextmanager
@@ -22,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(state_pages.router)
+app.include_router(state_overview.router)
 
 
 @app.get("/health")

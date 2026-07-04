@@ -21,6 +21,7 @@ import { Footer } from "@/components/site/footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { generateProperties } from "@/lib/properties";
+import { stateExploreHref } from "@/lib/state-routes";
 
 export default function PropertyDetailPage({ params }: { params: Promise<{ id: string; slug: string }> }) {
   const { id } = use(params);
@@ -43,7 +44,7 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
           </li>
           <ChevronRight className="h-3.5 w-3.5" />
           <li>
-            <Link href={`/${property.state.toLowerCase().replace(/\s+/g, "-")}`} className="hover:text-foreground">
+            <Link href={stateExploreHref(property.state)} className="hover:text-foreground">
               {property.state}
             </Link>
           </li>
