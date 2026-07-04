@@ -4,6 +4,20 @@ import { useEffect } from "react";
 import { ShieldCheck } from "lucide-react";
 import { useLocation } from "@/context/location-context";
 
+const ISO_TO_STATE: Record<string, string> = {
+  "IN-AP": "Andhra Pradesh", "IN-AR": "Arunachal Pradesh", "IN-AS": "Assam",
+  "IN-BR": "Bihar", "IN-CT": "Chhattisgarh", "IN-GA": "Goa", "IN-GJ": "Gujarat",
+  "IN-HR": "Haryana", "IN-HP": "Himachal Pradesh", "IN-JH": "Jharkhand",
+  "IN-KA": "Karnataka", "IN-KL": "Kerala", "IN-MP": "Madhya Pradesh",
+  "IN-MH": "Maharashtra", "IN-MN": "Manipur", "IN-ML": "Meghalaya",
+  "IN-MZ": "Mizoram", "IN-NL": "Nagaland", "IN-OR": "Odisha", "IN-PB": "Punjab",
+  "IN-RJ": "Rajasthan", "IN-SK": "Sikkim", "IN-TN": "Tamil Nadu",
+  "IN-TG": "Telangana", "IN-TR": "Tripura", "IN-UP": "Uttar Pradesh",
+  "IN-UT": "Uttarakhand", "IN-WB": "West Bengal", "IN-CH": "Chandigarh",
+  "IN-DL": "Delhi", "IN-JK": "Jammu and Kashmir", "IN-LA": "Ladakh",
+  "IN-PY": "Puducherry",
+};
+
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   try {
     const res = await fetch(
@@ -11,7 +25,17 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
       { headers: { "Accept-Language": "en" } }
     );
     const data = await res.json();
-    return data?.address?.state ?? data?.address?.region ?? null;
+    const addr = data?.address;
+    if (!addr) return null;
+
+    // most states return address.state directly
+    if (addr.state) return addr.state;
+
+    // union territories (Delhi, Chandigarh etc.) only have ISO code
+    const isoCode = addr["ISO3166-2-lvl4"] as string | undefined;
+    if (isoCode && ISO_TO_STATE[isoCode]) return ISO_TO_STATE[isoCode];
+
+    return null;
   } catch {
     return null;
   }
