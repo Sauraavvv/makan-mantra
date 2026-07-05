@@ -11,7 +11,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 async function getStatePage(slug: string) {
   try {
-    const res = await fetch(`${API}/state-pages/${slug}`, {
+    const res = await fetch(`${API}/location-pages/${slug}`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return null;

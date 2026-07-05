@@ -1,5 +1,5 @@
 """
-Import state_pages.json into MongoDB Atlas.
+Import state_pages.json into MongoDB Atlas location_pages collection.
 Usage:  python3 import_state_pages_mongo.py
 Reads MONGODB_URL from backend/.env (or env var).
 """
@@ -37,7 +37,7 @@ async def import_data():
     print(f"Loaded {len(docs)} records from JSON")
 
     client = AsyncIOMotorClient(MONGODB_URL)
-    col = client["makan_mantraa"]["state_pages"]
+    col = client["makan_mantraa"]["location_pages"]
 
     inserted = 0
     skipped = 0

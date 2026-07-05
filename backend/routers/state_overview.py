@@ -13,15 +13,26 @@ def clean_doc(doc: dict) -> dict:
     return doc
 
 
+SLUG_ALIASES: dict[str, str] = {
+    "dadra-and-nagar-haveli": "dadra-and-nagar-haveli-and-daman-and-diu",
+    "dadra-nagar-haveli": "dadra-and-nagar-haveli-and-daman-and-diu",
+    "daman-and-diu": "dadra-and-nagar-haveli-and-daman-and-diu",
+    "jammu-kashmir": "jammu-and-kashmir",
+    "jammu-&-kashmir": "jammu-and-kashmir",
+}
+
+
 @router.get("/{slug}", response_model=StateOverviewResponse)
 async def get_state_overview(slug: str):
     col = get_state_overview_collection()
     state_slug = slug.removeprefix("explore-")
+    canonical = SLUG_ALIASES.get(state_slug, state_slug)
     doc = await col.find_one(
         {
             "$or": [
                 {"slug": slug},
                 {"slug": state_slug},
+                {"slug": canonical},
                 {"route_slug": slug},
             ],
             "is_active": {"$ne": False},

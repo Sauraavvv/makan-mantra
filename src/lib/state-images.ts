@@ -1,6 +1,7 @@
 import { stateSlug } from "@/lib/state-routes";
 
 const STATE_IMAGE_BY_SLUG: Record<string, string> = {
+  "andaman-and-nicobar-islands": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&auto=format&fit=crop",
   delhi: "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=900&auto=format&fit=crop",
   maharashtra: "https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=900&auto=format&fit=crop",
   karnataka: "https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=900&auto=format&fit=crop",
@@ -14,6 +15,11 @@ const STATE_IMAGE_BY_SLUG: Record<string, string> = {
   rajasthan: "https://images.unsplash.com/photo-1599661046827-dacff0c0f09a?w=900&auto=format&fit=crop",
   kerala: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=900&auto=format&fit=crop",
   punjab: "https://images.unsplash.com/photo-1609947017136-9daf32a5eb16?w=900&auto=format&fit=crop",
+  chandigarh: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=900&auto=format&fit=crop",
+  "dadra-and-nagar-haveli-and-daman-and-diu": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=900&auto=format&fit=crop",
+  ladakh: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=900&auto=format&fit=crop",
+  lakshadweep: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&auto=format&fit=crop",
+  puducherry: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=900&auto=format&fit=crop",
   "madhya-pradesh": "https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?w=900&auto=format&fit=crop",
   "andhra-pradesh": "https://images.unsplash.com/photo-1627894483216-2138af692e32?w=900&auto=format&fit=crop",
   "arunachal-pradesh": "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=900&auto=format&fit=crop",
@@ -22,6 +28,7 @@ const STATE_IMAGE_BY_SLUG: Record<string, string> = {
   chhattisgarh: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop",
   "himachal-pradesh": "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=900&auto=format&fit=crop",
   jharkhand: "https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=900&auto=format&fit=crop",
+  "jammu-and-kashmir": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=900&auto=format&fit=crop",
   "jammu-kashmir": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=900&auto=format&fit=crop",
   manipur: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop",
   meghalaya: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=900&auto=format&fit=crop",

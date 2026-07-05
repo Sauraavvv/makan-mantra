@@ -52,7 +52,7 @@ export default function Home() {
               {[
                 ["1.2M+", "Listings"],
                 ["500+", "Cities"],
-                ["30", "States"],
+                ["36", "States"],
               ].map(([value, label]) => (
                 <div key={label}>
                   <div className="text-sm font-bold text-primary md:text-base">{value}</div>

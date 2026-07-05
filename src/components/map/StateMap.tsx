@@ -33,6 +33,8 @@ export function StateMap({
 
     const currentPoint = point;
     let cancelled = false;
+    let frameId = 0;
+    let timeoutId = 0;
 
     async function mountMap() {
       const L = await import("leaflet");
@@ -48,42 +50,41 @@ export function StateMap({
         scrollWheelZoom: false,
       }).setView([currentPoint.lat, currentPoint.lng], zoom);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap",
         maxZoom: 19,
-      }).addTo(map);
+      });
+      tileLayer.on("tileerror", () => {
+        // Tile requests can fail transiently; keep the map shell usable.
+      });
+      tileLayer.addTo(map);
 
       L.control.attribution({ prefix: false, position: "bottomright" }).addTo(map);
-
-      L.marker([currentPoint.lat, currentPoint.lng], {
-        icon: L.divIcon({
-          className: "",
-          html: '<div class="state-map-marker"><div></div></div>',
-          iconSize: [34, 34],
-          iconAnchor: [17, 34],
-        }),
-      }).addTo(map);
 
       mapRef.current = map;
 
       const refreshMapSize = () => {
-        map.invalidateSize();
-        map.setView([currentPoint.lat, currentPoint.lng], zoom, { animate: false });
+        if (cancelled || mapRef.current !== map || !mapNodeRef.current?.isConnected) {
+          return;
+        }
+
+        try {
+          map.invalidateSize({ animate: false });
+        } catch {
+          // Leaflet can throw if a resize lands during teardown in dev refresh.
+        }
       };
 
-      requestAnimationFrame(refreshMapSize);
-      window.setTimeout(refreshMapSize, 250);
-
-      const resizeObserver = new ResizeObserver(refreshMapSize);
-      resizeObserver.observe(mapNodeRef.current);
-
-      map.once("unload", () => resizeObserver.disconnect());
+      frameId = requestAnimationFrame(refreshMapSize);
+      timeoutId = window.setTimeout(refreshMapSize, 250);
     }
 
     void mountMap();
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -126,7 +127,14 @@ export function StateMap({
           <ExternalLink className="h-4 w-4" />
         </a>
       </div>
-      <div ref={mapNodeRef} className="state-map-canvas h-[260px] w-full bg-muted" />
+      <div className="relative">
+        <div ref={mapNodeRef} className="state-map-canvas h-[260px] w-full bg-muted" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-[500] -translate-x-1/2 -translate-y-full">
+          <div className="state-map-marker">
+            <div />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

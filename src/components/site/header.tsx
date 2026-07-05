@@ -3,20 +3,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BedDouble, ChevronDown, Home, MapPin, Menu, Plus, Search } from "lucide-react";
-import { AnimatedThemeToggler } from "@/registry/magicui/animated-theme-toggler";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useTheme } from "@/hooks/use-theme";
 import { useLocation } from "@/context/location-context";
 import { stateExploreHref } from "@/lib/state-routes";
 
 const STATES = [
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chandigarh",
-  "Chhattisgarh", "Delhi", "Goa", "Gujarat", "Haryana", "Himachal Pradesh",
-  "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
+  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh",
+  "Assam", "Bihar", "Chandigarh", "Chhattisgarh",
+  "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Goa", "Gujarat",
+  "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand",
+  "Karnataka", "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh",
   "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland",
-  "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+  "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
   "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
 ];
 
@@ -26,7 +26,6 @@ const NAV = [
 ];
 
 export function Header() {
-  const { theme, toggle } = useTheme();
   const { meta, setStateByName } = useLocation();
   const pathname = usePathname();
   const isHome = pathname === "/";
@@ -167,11 +166,6 @@ export function Header() {
             </Link>
           ))}
         </nav>
-
-        <AnimatedThemeToggler
-          theme={theme}
-          onThemeChange={(t) => t !== theme && toggle()}
-        />
 
         <Button
           className="hidden h-9 shrink-0 gap-1 rounded-full bg-saffron px-4 text-sm font-semibold text-saffron-foreground hover:bg-saffron/90 sm:inline-flex"

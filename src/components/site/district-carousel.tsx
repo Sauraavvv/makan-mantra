@@ -1,9 +1,16 @@
 "use client";
 
 import { useRef } from "react";
+import Link from "next/link";
 import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { stateExploreHref, stateSlug } from "@/lib/state-routes";
 
-export function DistrictCarousel({ districts, stateName }: { districts: string[]; stateName: string }) {
+type DistrictItem = {
+  name: string;
+  slug?: string;
+};
+
+export function DistrictCarousel({ districts, stateName }: { districts: DistrictItem[]; stateName: string }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: "left" | "right") => {
@@ -48,15 +55,17 @@ export function DistrictCarousel({ districts, stateName }: { districts: string[]
       </div>
 
       <div ref={scrollerRef} className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-3 no-scrollbar">
-        {districts.map((district) => (
-          <DistrictCard key={district} district={district} />
+        {districts.map((district, index) => (
+          <DistrictCard key={`${district.slug || district.name}-${index}`} district={district} stateName={stateName} />
         ))}
       </div>
     </div>
   );
 }
 
-function DistrictCard({ district }: { district: string }) {
+function DistrictCard({ district, stateName }: { district: DistrictItem; stateName: string }) {
+  const href = district.slug ? stateExploreHref(district.slug) : stateExploreHref(`${district.name}-${stateSlug(stateName)}`);
+
   return (
     <article className="w-[180px] shrink-0 rounded-[18px] border border-border bg-background p-2 text-foreground shadow-sm md:w-[calc((100%-3rem)/5)]">
       <div
@@ -70,12 +79,12 @@ function DistrictCard({ district }: { district: string }) {
         <span className="mb-2 inline-flex rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
           District
         </span>
-        <h3 className="line-clamp-2 min-h-[40px] text-base font-semibold leading-tight tracking-tight">{district}</h3>
+        <h3 className="line-clamp-2 min-h-[40px] text-base font-semibold leading-tight tracking-tight">{district.name}</h3>
         <div className="mt-1">
-          <button className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary">
+          <Link href={href} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary">
             Explore
             <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.8} />
-          </button>
+          </Link>
         </div>
       </div>
     </article>

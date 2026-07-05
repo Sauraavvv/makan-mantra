@@ -190,6 +190,42 @@ const STATE_CARDS = [
     details: "Dehradun, Haridwar, Nainital",
     image: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=900&auto=format&fit=crop",
   },
+  {
+    name: "Andaman and Nicobar Islands",
+    properties: "4,000+ Properties",
+    details: "Sri Vijaya Puram, Havelock, Neil Island",
+    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&auto=format&fit=crop",
+  },
+  {
+    name: "Chandigarh",
+    properties: "9,000+ Properties",
+    details: "Chandigarh, Manimajra, Sector 17",
+    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=900&auto=format&fit=crop",
+  },
+  {
+    name: "Dadra and Nagar Haveli and Daman and Diu",
+    properties: "4,500+ Properties",
+    details: "Daman, Silvassa, Diu",
+    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=900&auto=format&fit=crop",
+  },
+  {
+    name: "Ladakh",
+    properties: "3,000+ Properties",
+    details: "Leh, Kargil, Nubra",
+    image: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=900&auto=format&fit=crop",
+  },
+  {
+    name: "Lakshadweep",
+    properties: "2,500+ Properties",
+    details: "Kavaratti, Agatti, Minicoy",
+    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&auto=format&fit=crop",
+  },
+  {
+    name: "Puducherry",
+    properties: "8,000+ Properties",
+    details: "Puducherry, Karaikal, Mahe",
+    image: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=900&auto=format&fit=crop",
+  },
 ];
 
 export function StateExplorer() {

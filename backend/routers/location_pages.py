@@ -1,9 +1,16 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
-from mongodb import get_state_pages_collection
+import re
+from mongodb import get_location_pages_collection
 from state_model import StateModelResponse
 
-router = APIRouter(prefix="/state-pages", tags=["state-pages"])
+router = APIRouter(prefix="/location-pages", tags=["location-pages"])
+
+DADRA_DAMAN_STATE_ALIASES = {
+    "dadra and nagar haveli and daman and diu",
+    "dadra and nagar haveli",
+    "daman and diu",
+}
 
 
 def clean_doc(doc: dict) -> dict:
@@ -11,9 +18,28 @@ def clean_doc(doc: dict) -> dict:
     return doc
 
 
+def state_filter(state: str) -> dict:
+    state_name = state.strip()
+    aliases = [state_name]
+
+    if state_name.lower() in DADRA_DAMAN_STATE_ALIASES:
+        aliases = [
+            "Dadra and Nagar Haveli and Daman and Diu",
+            "Dadra and Nagar Haveli",
+            "Daman and Diu",
+        ]
+
+    return {
+        "$or": [
+            {"location.state": {"$regex": f"^{re.escape(alias)}$", "$options": "i"}}
+            for alias in aliases
+        ]
+    }
+
+
 @router.get("/{slug}", response_model=StateModelResponse)
-async def get_state_page(slug: str):
-    col = get_state_pages_collection()
+async def get_location_page(slug: str):
+    col = get_location_pages_collection()
     doc = await col.find_one({"slug": slug, "is_active": {"$ne": False}})
     if not doc:
         raise HTTPException(status_code=404, detail="Page not found")
@@ -21,17 +47,17 @@ async def get_state_page(slug: str):
 
 
 @router.get("/", response_model=List[StateModelResponse])
-async def list_state_pages(
+async def list_location_pages(
     state: Optional[str] = None,
     property_type: Optional[str] = None,
     listing_type: Optional[str] = None,
     limit: int = 50,
 ):
-    col = get_state_pages_collection()
+    col = get_location_pages_collection()
     query: dict = {"is_active": {"$ne": False}}
 
     if state:
-        query["location.state"] = {"$regex": f"^{state}$", "$options": "i"}
+        query.update(state_filter(state))
     if property_type:
         query["property_type"] = property_type
     if listing_type:

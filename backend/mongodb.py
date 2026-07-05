@@ -1,5 +1,6 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
+import certifi
 import os
 
 load_dotenv()
@@ -10,7 +11,7 @@ client: AsyncIOMotorClient = None
 
 async def connect_db():
     global client
-    client = AsyncIOMotorClient(MONGODB_URL)
+    client = AsyncIOMotorClient(MONGODB_URL, tlsCAFile=certifi.where())
     print("MongoDB connected")
 
 async def close_db():
@@ -22,8 +23,11 @@ async def close_db():
 def get_database():
     return client["makan_mantraa"]
 
-def get_state_pages_collection():
+def get_location_pages_collection():
     return get_database()["state_pages"]
 
 def get_state_overview_collection():
     return get_database()["state_overview"]
+
+def get_district_overview_collection():
+    return get_database()["district_overview"]
