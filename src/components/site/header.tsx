@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useLocation } from "@/context/location-context";
+import { DotPattern } from "@/registry/magicui/dot-pattern";
 import { stateExploreHref, stateSlug } from "@/lib/state-routes";
 
 const STATES = [
@@ -411,12 +412,13 @@ function LoginModal({
           <X className="h-4 w-4" />
         </button>
 
-        <section className="hidden bg-[#0A2036] p-10 text-white lg:flex lg:min-h-[560px] lg:flex-col lg:justify-between">
-          <div className="text-2xl font-bold">
+        <section className="relative hidden overflow-hidden bg-[#0A2036] p-10 text-white lg:flex lg:min-h-[560px] lg:flex-col lg:justify-between">
+          <DotPattern width={12} height={12} className="[mask-image:radial-gradient(360px_circle_at_center,white,transparent)]" />
+          <div className="relative z-10 text-2xl font-bold">
             Makan <span className="text-saffron">Mantraa</span>
           </div>
 
-          <div className="max-w-md">
+          <div className="relative z-10 max-w-md">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-white/85">
               <ShieldCheck className="h-4 w-4 text-saffron" />
               {isVerify ? "Email verification" : isRegister ? "Verified account access" : "Secure owner and buyer access"}
@@ -437,7 +439,7 @@ function LoginModal({
             </p>
           </div>
 
-          <p className="text-sm text-white/55">Trusted property access across India.</p>
+          <p className="relative z-10 text-sm text-white/55">Trusted property access across India.</p>
         </section>
 
         <section className="overflow-y-auto p-6 sm:p-8 lg:p-10">
