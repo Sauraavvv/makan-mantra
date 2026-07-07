@@ -28,15 +28,75 @@ const NAV = [
 ];
 
 const TOP_STATES = [
-  "Maharashtra",
-  "Delhi",
-  "Karnataka",
-  "Haryana",
-  "Telangana",
-  "Tamil Nadu",
-  "Gujarat",
-  "Uttar Pradesh",
+  "Maharashtra", "Kerala", "Karnataka", "Haryana", "Telangana",
+  "Tamil Nadu", "Gujarat", "Uttar Pradesh", "Rajasthan",
 ];
+
+const STATES_WITH_ICONS = new Set([
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+]);
+
+const TOP_STATES_SET = new Set(TOP_STATES);
+const REST_STATES = STATES.filter((s) => !TOP_STATES_SET.has(s));
+const REST_WITH_ICONS = REST_STATES.filter((s) => STATES_WITH_ICONS.has(s));
+const NO_ICON_STATES = STATES.filter((s) => !STATES_WITH_ICONS.has(s));
+
+const STATE_ABBR: Record<string, string> = {
+  "Andaman and Nicobar Islands": "AN",
+  "Chandigarh": "CH",
+  "Delhi": "DL",
+  "Jammu and Kashmir": "JK",
+  "Ladakh": "LA",
+  "Lakshadweep": "LD",
+  "Puducherry": "PY",
+};
+
+function stateIconSrc(name: string): string | null {
+  if (!STATES_WITH_ICONS.has(name)) return null;
+  return `/states/${name.replace(/ /g, "_")}.png`;
+}
+
+function stateAbbr(name: string): string {
+  return STATE_ABBR[name] ?? name.slice(0, 2).toUpperCase();
+}
+
+function StateCard({
+  state,
+  selected,
+  onClick,
+}: {
+  state: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const icon = stateIconSrc(state);
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center gap-1 rounded-xl p-1 text-center transition-all duration-150 hover:scale-105 hover:brightness-95 hover:shadow-md ${
+        selected ? "ring-2 ring-saffron/50" : ""
+      }`}
+      style={{ backgroundColor: "#F4F4F4" }}
+    >
+      {icon ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={icon} alt={state} width={78} height={78} className="h-[78px] w-[78px] object-contain" />
+      ) : (
+        <div
+          className={`flex h-20 w-20 items-center justify-center rounded-full text-base font-bold ${
+            selected ? "bg-saffron/20 text-saffron" : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {stateAbbr(state)}
+        </div>
+      )}
+    </button>
+  );
+}
 
 const PROPERTY_GROUPS = {
   sale: [
@@ -77,6 +137,11 @@ export function Header() {
   const [authInitial, setAuthInitial] = useState<{ mode: AuthMode; email?: string; devOtp?: string }>({ mode: "login" });
   const [search, setSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!dropdownOpen) setSearch("");
+  }, [dropdownOpen]);
 
   const filtered = STATES.filter((s) =>
     s.toLowerCase().includes(search.toLowerCase())
@@ -157,8 +222,16 @@ export function Header() {
         <div
           ref={dropdownRef}
           className="relative shrink-0"
-          onMouseEnter={() => setDropdownOpen(true)}
-          onMouseLeave={() => { setDropdownOpen(false); setSearch(""); }}
+          onMouseEnter={() => {
+            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+            setDropdownOpen(true);
+          }}
+          onMouseLeave={() => {
+            closeTimerRef.current = setTimeout(() => {
+              setDropdownOpen(false);
+              setSearch("");
+            }, 150);
+          }}
         >
           <button
             onClick={() => { setDropdownOpen((o) => !o); setSearch(""); }}
@@ -170,47 +243,93 @@ export function Header() {
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-0 top-full z-50 mt-3 w-[min(calc(100vw-2rem),16rem)] overflow-hidden rounded-xl border border-border bg-popover text-foreground shadow-2xl">
+            <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 mt-3 w-[min(calc(100vw-2rem),26rem)] overflow-hidden rounded-xl border border-border bg-popover text-foreground shadow-2xl">
+              {/* Search */}
               <div className="bg-muted p-2">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
-                  autoFocus
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search state"
+                    autoFocus
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search state or UT…"
                     className="h-9 w-full rounded-lg bg-background pl-10 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                />
+                  />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 border-b border-border px-2.5 py-2">
-                <span className="truncate text-xs font-semibold">Selected: {meta.label}</span>
-                  <button
-                    onClick={() => { setStateByName(null); setDropdownOpen(false); }}
+              {/* Selected + All India */}
+              <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
+                <span className="truncate text-xs font-semibold text-muted-foreground">
+                  Selected: <span className="text-foreground">{meta.label}</span>
+                </span>
+                <button
+                  onClick={() => { setStateByName(null); setDropdownOpen(false); }}
                   className="shrink-0 text-xs font-medium text-primary hover:underline"
-                  >
-                    All India
-                  </button>
+                >
+                  All India
+                </button>
               </div>
 
-              <div className="max-h-72 overflow-y-auto p-1.5">
-                {filtered.map((state) => (
-                  <button
-                    key={state}
-                    onClick={() => { setStateByName(state); setDropdownOpen(false); setSearch(""); }}
-                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent ${meta.label === state ? "bg-saffron/10 font-semibold text-saffron" : "text-foreground"}`}
-                  >
-                    <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${meta.label === state ? "bg-saffron/15 text-saffron" : "bg-muted text-muted-foreground"}`}>
-                      <MapPin className="h-3.5 w-3.5" />
-                    </span>
-                    <span>{state}</span>
-                  </button>
-                ))}
-                {filtered.length === 0 && (
-                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">No states found</div>
-                )}
-              </div>
+              {search ? (
+                /* List mode when searching */
+                <div className="max-h-72 overflow-y-auto p-1.5">
+                  {filtered.map((state) => {
+                    const icon = stateIconSrc(state);
+                    const selected = meta.label === state;
+                    return (
+                      <button
+                        key={state}
+                        onClick={() => { setStateByName(state); setDropdownOpen(false); }}
+                        className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent ${selected ? "bg-saffron/10 font-semibold text-saffron" : "text-foreground"}`}
+                      >
+                        {icon ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={icon} alt={state} width={24} height={24} className="h-6 w-6 shrink-0 object-contain" />
+                        ) : (
+                          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${selected ? "bg-saffron/20 text-saffron" : "bg-muted text-muted-foreground"}`}>
+                            {stateAbbr(state)}
+                          </div>
+                        )}
+                        <span>{state}</span>
+                      </button>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <div className="px-3 py-6 text-center text-sm text-muted-foreground">No states found</div>
+                  )}
+                </div>
+              ) : (
+                /* Grid mode */
+                <div className="flex flex-col" style={{ backgroundColor: "#F4F4F4" }}>
+                  {/* Scrollable icon grid */}
+                  <div className="max-h-64 overflow-y-auto p-1 pt-2">
+                    <div className="grid grid-cols-4 gap-0.5">
+                      {[...TOP_STATES, ...REST_WITH_ICONS].map((state) => (
+                        <StateCard
+                          key={state}
+                          state={state}
+                          selected={meta.label === state}
+                          onClick={() => { setStateByName(state); setDropdownOpen(false); }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Fixed no-icon states list */}
+                  <div className="border-t border-border bg-popover px-1 pb-1 pt-1.5">
+                    {NO_ICON_STATES.map((state) => (
+                      <button
+                        key={state}
+                        onClick={() => { setStateByName(state); setDropdownOpen(false); }}
+                        className={`flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent ${meta.label === state ? "font-semibold text-saffron" : "text-foreground"}`}
+                      >
+                        {state}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
