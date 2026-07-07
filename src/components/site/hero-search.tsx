@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, History, Search } from "lucide-react";
+import { ChevronDown, History, Mic, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "@/context/location-context";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 
 const RECENT_KEY = "mm-recent-searches";
 
@@ -46,6 +47,9 @@ export function HeroSearch() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Buy");
   const [query, setQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+
+  const { isSupported: micSupported, status: micStatus, toggle: toggleMic } =
+    useSpeechRecognition((text) => setQuery(text));
 
   const category = CATEGORY_BY_TAB[activeTab];
   const placeholder = useMemo(() => {
@@ -121,9 +125,23 @@ export function HeroSearch() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={placeholder}
+              placeholder={micStatus === "listening" ? "Listening…" : placeholder}
               className="h-9 border-0 px-0 text-sm shadow-none focus-visible:ring-0"
             />
+            {micSupported && (
+              <button
+                type="button"
+                onClick={toggleMic}
+                aria-label={micStatus === "listening" ? "Stop listening" : "Voice search"}
+                className={`ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${
+                  micStatus === "listening"
+                    ? "animate-pulse bg-red-500 text-white"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           <div className="flex h-12 items-center px-3">

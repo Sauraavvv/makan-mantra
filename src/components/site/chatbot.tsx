@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Heart,
   MapPin,
+  Mic,
   Minus,
   Plus,
   Search,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -152,6 +154,8 @@ export function Chatbot() {
   const [convState, setConvState] = useState<State>({ step: "greeting" });
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { isSupported: micSupported, status: micStatus, toggle: toggleMic } =
+    useSpeechRecognition((text) => setInput(text));
   const bubbleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentCity = convState.city || "India";
   const recentChats = messages
@@ -376,9 +380,23 @@ export function Chatbot() {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                      placeholder="Ask for 2 BHK for rent in Faridabad"
+                      placeholder={micStatus === "listening" ? "Listening…" : "Ask for 2 BHK for rent in Faridabad"}
                       className="h-11 min-w-0 flex-1 bg-transparent px-2 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 sm:text-base"
                     />
+                    {micSupported && (
+                      <button
+                        type="button"
+                        onClick={toggleMic}
+                        aria-label={micStatus === "listening" ? "Stop listening" : "Voice input"}
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                          micStatus === "listening"
+                            ? "animate-pulse bg-red-500 text-white"
+                            : "text-slate-400 hover:text-slate-600"
+                        }`}
+                      >
+                        <Mic className="h-5 w-5" />
+                      </button>
+                    )}
                     <button
                       onClick={handleSend}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-saffron text-white transition hover:bg-saffron/90"
