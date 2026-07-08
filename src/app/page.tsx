@@ -24,6 +24,7 @@ export default function Home() {
           alt="Modern residential buildings in India"
           fill
           priority
+          quality={100}
           className="object-cover"
           sizes="100vw"
         />

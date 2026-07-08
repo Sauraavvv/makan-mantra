@@ -303,7 +303,7 @@ export function Header() {
                 /* Grid mode */
                 <div className="flex flex-col" style={{ backgroundColor: "#F4F4F4" }}>
                   {/* Scrollable icon grid */}
-                  <div className="max-h-64 overflow-y-auto p-1 pt-2">
+                  <div className="max-h-[276px] overflow-y-auto p-1 pt-2 pb-2">
                     <div className="grid grid-cols-4 gap-0.5">
                       {[...TOP_STATES, ...REST_WITH_ICONS].map((state) => (
                         <StateCard

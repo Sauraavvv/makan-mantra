@@ -299,34 +299,34 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     <div className="min-h-screen bg-secondary text-foreground selection:bg-primary/15">
       <Header />
 
-      <nav className="border-b border-border bg-card/40">
-        <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
-          <li>
-            <Link href="/" className="flex items-center gap-1 hover:text-foreground">
-              <Home className="h-3.5 w-3.5" /> India
-            </Link>
-          </li>
-          <ChevronRight className="h-3.5 w-3.5" />
-          {isDistrictPage && (
-            <>
-              <li>
-                <Link href={stateExploreHref(parentStateName)} className="font-medium hover:text-foreground">
-                  {parentStateName}
-                </Link>
-              </li>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </>
-          )}
-          <li className="font-medium text-foreground">{displayName}</li>
-        </ol>
-      </nav>
-
       <header
         className="border-b border-border bg-cover bg-center text-white"
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(10, 32, 54, 0.88), rgba(10, 32, 54, 0.62), rgba(10, 32, 54, 0.28)), url('${heroImage}')`,
         }}
       >
+        <nav className="relative z-10 border-b border-white/10 bg-black/30">
+          <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-white/70">
+            <li>
+              <Link href="/" className="flex items-center gap-1 hover:text-white">
+                <Home className="h-3.5 w-3.5" /> India
+              </Link>
+            </li>
+            <ChevronRight className="h-3.5 w-3.5" />
+            {isDistrictPage && (
+              <>
+                <li>
+                  <Link href={stateExploreHref(parentStateName)} className="font-medium hover:text-white">
+                    {parentStateName}
+                  </Link>
+                </li>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </>
+            )}
+            <li className="font-medium text-white">{displayName}</li>
+          </ol>
+        </nav>
+
         <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 md:pb-24 md:pt-8">
           <div className="max-w-[68ch]">
             <h1 className="mb-8 max-w-4xl text-4xl font-bold leading-tight tracking-tight md:text-6xl lg:text-7xl">
