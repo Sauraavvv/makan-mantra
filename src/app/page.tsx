@@ -42,25 +42,11 @@ export default function Home() {
       {/* Browse by state */}
       <section className="bg-secondary px-4 py-4 md:py-5">
         <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-8 shadow-sm md:px-5 md:py-10">
-          <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold md:text-3xl">Explore properties by state</h2>
-              <p className="mt-1 text-muted-foreground">
-                Start with India&apos;s busiest real estate markets, then browse every state.
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-3 rounded-xl border border-border bg-card px-4 py-3 text-center shadow-sm">
-              {[
-                ["1.2M+", "Listings"],
-                ["500+", "Cities"],
-                ["36", "States"],
-              ].map(([value, label]) => (
-                <div key={label}>
-                  <div className="text-sm font-bold text-primary md:text-base">{value}</div>
-                  <div className="text-[11px] text-muted-foreground">{label}</div>
-                </div>
-              ))}
-            </div>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold md:text-3xl">Explore properties by state</h2>
+            <p className="mt-1 text-muted-foreground">
+              Start with India&apos;s busiest real estate markets, then browse every state.
+            </p>
           </div>
 
           <StateExplorer />
