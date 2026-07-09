@@ -6,7 +6,6 @@ const STATE_LABEL_BY_SLUG: Record<string, string> = {
   bihar: "Bihar",
   chandigarh: "Chandigarh",
   chhattisgarh: "Chhattisgarh",
-  "dadra-and-nagar-haveli-and-daman-and-diu": "Dadra and Nagar Haveli and Daman and Diu",
   delhi: "Delhi",
   goa: "Goa",
   gujarat: "Gujarat",
@@ -38,11 +37,6 @@ const STATE_LABEL_BY_SLUG: Record<string, string> = {
   "west-bengal": "West Bengal",
 };
 
-const CANONICAL_EXPLORE_STATE_BY_SLUG: Record<string, string> = {
-  "dadra-and-nagar-haveli": "Dadra and Nagar Haveli and Daman and Diu",
-  "daman-and-diu": "Dadra and Nagar Haveli and Daman and Diu",
-};
-
 export function stateSlug(state: string) {
   return state
     .toLowerCase()
@@ -53,10 +47,6 @@ export function stateSlug(state: string) {
 
 export function stateExploreHref(state: string) {
   return `/explore-${stateSlug(state)}`;
-}
-
-export function canonicalExploreStateName(state: string) {
-  return CANONICAL_EXPLORE_STATE_BY_SLUG[stateSlug(state)] || state;
 }
 
 export function stateNameFromRouteSegment(segment: string) {

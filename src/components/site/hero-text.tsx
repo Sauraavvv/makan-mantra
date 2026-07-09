@@ -16,7 +16,7 @@ const ISO_TO_STATE: Record<string, string> = {
   "IN-UT": "Uttarakhand", "IN-WB": "West Bengal", "IN-CH": "Chandigarh",
   "IN-DL": "Delhi", "IN-JK": "Jammu and Kashmir", "IN-LA": "Ladakh",
   "IN-PY": "Puducherry", "IN-AN": "Andaman and Nicobar Islands",
-  "IN-DH": "Dadra and Nagar Haveli and Daman and Diu", "IN-LD": "Lakshadweep",
+  "IN-LD": "Lakshadweep",
 };
 
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {

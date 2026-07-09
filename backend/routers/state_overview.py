@@ -14,9 +14,6 @@ def clean_doc(doc: dict) -> dict:
 
 
 SLUG_ALIASES: dict[str, str] = {
-    "dadra-and-nagar-haveli": "dadra-and-nagar-haveli-and-daman-and-diu",
-    "dadra-nagar-haveli": "dadra-and-nagar-haveli-and-daman-and-diu",
-    "daman-and-diu": "dadra-and-nagar-haveli-and-daman-and-diu",
     "jammu-kashmir": "jammu-and-kashmir",
     "jammu-&-kashmir": "jammu-and-kashmir",
 }

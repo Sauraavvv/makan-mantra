@@ -93,7 +93,6 @@ export const STATES: StateData[] = [
   { ...flat(5, 5, 1), name: "Ladakh" },
   { ...flat(6, 4, 1), name: "Chandigarh" },
   { ...flat(5, 5, 1), name: "Puducherry" },
-  { ...flat(4, 4, 1), name: "Dadra & Nagar Haveli and Daman & Diu" },
   { ...flat(5, 5, 1), name: "Andaman & Nicobar Islands" },
   { ...flat(2, 2, 1), name: "Lakshadweep" },
   { ...flat(5, 4, 1), name: "Andhra Pradesh" },

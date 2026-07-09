@@ -6,12 +6,6 @@ from state_model import StateModelResponse
 
 router = APIRouter(prefix="/location-pages", tags=["location-pages"])
 
-DADRA_DAMAN_STATE_ALIASES = {
-    "dadra and nagar haveli and daman and diu",
-    "dadra and nagar haveli",
-    "daman and diu",
-}
-
 
 def clean_doc(doc: dict) -> dict:
     doc["id"] = doc.pop("_id", doc.get("id", ""))
@@ -20,21 +14,7 @@ def clean_doc(doc: dict) -> dict:
 
 def state_filter(state: str) -> dict:
     state_name = state.strip()
-    aliases = [state_name]
-
-    if state_name.lower() in DADRA_DAMAN_STATE_ALIASES:
-        aliases = [
-            "Dadra and Nagar Haveli and Daman and Diu",
-            "Dadra and Nagar Haveli",
-            "Daman and Diu",
-        ]
-
-    return {
-        "$or": [
-            {"location.state": {"$regex": f"^{re.escape(alias)}$", "$options": "i"}}
-            for alias in aliases
-        ]
-    }
+    return {"location.state": {"$regex": f"^{re.escape(state_name)}$", "$options": "i"}}
 
 
 @router.get("/{slug}", response_model=StateModelResponse)

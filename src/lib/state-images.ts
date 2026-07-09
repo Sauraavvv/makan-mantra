@@ -16,7 +16,6 @@ const STATE_IMAGE_BY_SLUG: Record<string, string> = {
   kerala: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=1600&auto=format&fit=crop&q=100",
   punjab: "https://images.unsplash.com/photo-1609947017136-9daf32a5eb16?w=1600&auto=format&fit=crop&q=100",
   chandigarh: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600&auto=format&fit=crop&q=100",
-  "dadra-and-nagar-haveli-and-daman-and-diu": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1600&auto=format&fit=crop&q=100",
   ladakh: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=1600&auto=format&fit=crop&q=100",
   lakshadweep: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&auto=format&fit=crop&q=100",
   puducherry: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=1600&auto=format&fit=crop&q=100",

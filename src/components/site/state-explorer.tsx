@@ -203,12 +203,6 @@ const STATE_CARDS = [
     image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=900&auto=format&fit=crop",
   },
   {
-    name: "Dadra and Nagar Haveli and Daman and Diu",
-    properties: "4,500+ Properties",
-    details: "Daman, Silvassa, Diu",
-    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=900&auto=format&fit=crop",
-  },
-  {
     name: "Ladakh",
     properties: "3,000+ Properties",
     details: "Leh, Kargil, Nubra",

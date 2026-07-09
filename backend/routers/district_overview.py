@@ -18,12 +18,7 @@ def clean_doc(doc: dict) -> dict:
 async def get_district_overview(slug: str):
     col = get_district_overview_collection()
     district_slug = slug.removeprefix("explore-")
-    slug_candidates = {
-        slug,
-        district_slug,
-        slug.replace("explore-dadra-nagar-haveli-", "explore-dadra-and-nagar-haveli-"),
-        district_slug.replace("dadra-nagar-haveli-", "dadra-and-nagar-haveli-"),
-    }
+    slug_candidates = {slug, district_slug}
     doc = await col.find_one(
         {
             "slug": {"$in": list(slug_candidates)},

@@ -23,7 +23,7 @@ import { Footer } from "@/components/site/footer";
 import { DistrictCarousel } from "@/components/site/district-carousel";
 import { StateMap } from "@/components/map/StateMap";
 import { stateCardImage } from "@/lib/state-images";
-import { canonicalExploreStateName, stateExploreHref, stateSlug } from "@/lib/state-routes";
+import { stateExploreHref, stateSlug } from "@/lib/state-routes";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -134,28 +134,17 @@ async function getStateOverview(routeSlug: string): Promise<StateOverview | null
 }
 
 async function getDistrictOverview(routeSlug: string): Promise<StateOverview | null> {
-  const routeCandidates = Array.from(new Set([
-    routeSlug,
-    routeSlug.replace(/^explore-/, "").replace(/-dadra-and-nagar-haveli-and-daman-and-diu$/, ""),
-    routeSlug.replace(/^explore-/, "").replace(/-dadra-nagar-haveli-dadra-and-nagar-haveli-and-daman-and-diu$/, ""),
-    routeSlug.replace("explore-dadra-nagar-haveli-", "explore-dadra-and-nagar-haveli-"),
-  ]));
+  try {
+    const res = await fetch(`${API}/district-overview/${routeSlug}`, {
+      next: { revalidate: 3600 },
+    });
 
-  for (const candidate of routeCandidates) {
-    try {
-      const res = await fetch(`${API}/district-overview/${candidate}`, {
-        next: { revalidate: 3600 },
-      });
-
-      if (!res.ok) continue;
-      const data = await res.json();
-      return { ...data, pageType: "district" };
-    } catch {
-      continue;
-    }
+    if (!res.ok) return null;
+    const data = await res.json();
+    return { ...data, pageType: "district" };
+  } catch {
+    return null;
   }
-
-  return null;
 }
 
 async function getExploreOverview(routeSlug: string) {
@@ -163,51 +152,29 @@ async function getExploreOverview(routeSlug: string) {
 }
 
 async function getStateDistrictPages(stateName: string): Promise<StateDistrictPage[]> {
-  const pages = await Promise.all(
-    locationStateAliases(stateName).map(async (stateAlias) => {
-      try {
-        const res = await fetch(`${API}/district-overview/?state=${encodeURIComponent(stateAlias)}&limit=100`, {
-          next: { revalidate: 3600 },
-        });
+  try {
+    const res = await fetch(`${API}/district-overview/?state=${encodeURIComponent(stateName)}&limit=100`, {
+      next: { revalidate: 3600 },
+    });
 
-        if (!res.ok) return [];
-        return res.json() as Promise<StateDistrictPage[]>;
-      } catch {
-        return [];
-      }
-    }),
-  );
-
-  return Array.from(new Map(pages.flat().map((page) => [page.slug, page])).values());
-}
-
-function locationStateAliases(stateName: string) {
-  const aliases = [stateName];
-
-  if (stateSlug(stateName) === "dadra-and-nagar-haveli-and-daman-and-diu") {
-    aliases.push("Dadra and Nagar Haveli", "Daman and Diu");
+    if (!res.ok) return [];
+    return res.json() as Promise<StateDistrictPage[]>;
+  } catch {
+    return [];
   }
-
-  return Array.from(new Set(aliases));
 }
 
 async function getStateLocationPages(stateName: string): Promise<StateLocationPage[]> {
-  const pages = await Promise.all(
-    locationStateAliases(stateName).map(async (stateAlias) => {
-      try {
-        const res = await fetch(`${API}/location-pages/?state=${encodeURIComponent(stateAlias)}&limit=100`, {
-          cache: "no-store",
-        });
+  try {
+    const res = await fetch(`${API}/location-pages/?state=${encodeURIComponent(stateName)}&limit=100`, {
+      cache: "no-store",
+    });
 
-        if (!res.ok) return [];
-        return res.json() as Promise<StateLocationPage[]>;
-      } catch {
-        return [];
-      }
-    }),
-  );
-
-  return Array.from(new Map(pages.flat().map((page) => [page.slug, page])).values());
+    if (!res.ok) return [];
+    return res.json() as Promise<StateLocationPage[]>;
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ state: string }> }): Promise<Metadata> {
@@ -237,7 +204,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   const faq = data.faq || [];
   const isDistrictPage = data.pageType === "district";
   const stateName = data.state_name;
-  const parentStateName = canonicalExploreStateName(stateName);
+  const parentStateName = stateName;
   const displayName = isDistrictPage ? asText(data.district_name) : stateName;
   const titleName = isDistrictPage ? `${displayName}, ${parentStateName}` : stateName;
   const locationPages = await getStateLocationPages(parentStateName);
