@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 
 class CoordinatesModel(BaseModel):
@@ -26,6 +26,7 @@ class SeoModel(BaseModel):
     on_page_description: Optional[str] = None
     tags: List[str] = []
     keywords: List[str] = []
+    faq_schema: Optional[Dict[str, Any]] = None
 
 
 class StateModel(BaseModel):

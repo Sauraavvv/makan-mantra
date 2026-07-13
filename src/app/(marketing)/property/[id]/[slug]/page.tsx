@@ -35,7 +35,7 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
-      <nav className="border-b border-border bg-card/40">
+      <nav className="relative z-10 border-b border-border bg-card/40">
         <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
           <li>
             <Link href="/" className="flex items-center gap-1 hover:text-foreground">

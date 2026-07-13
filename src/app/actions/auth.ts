@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
-import { getPendingUsersCollection, getUsersCollection } from "@/lib/auth/db";
+import { getAuthDbErrorMessage, getPendingUsersCollection, getUsersCollection } from "@/lib/auth/db";
 import { sendOTPEmail } from "@/lib/auth/email";
 import { createSession } from "@/lib/auth/session";
 
@@ -22,53 +22,57 @@ async function createUnverifiedUser(name: string, email: string, password: strin
     return { error: "Password must be at least 8 characters" };
   }
 
-  const users = await getUsersCollection();
-  const existingUser = await users.findOne({ email });
-  if (existingUser) {
-    return { error: "Email already registered" };
-  }
-
-  const hashed = await bcrypt.hash(password, 12);
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otp_expires = new Date(Date.now() + 10 * 60 * 1000);
-  const pendingUsers = await getPendingUsersCollection();
-
-  await pendingUsers.updateOne(
-    { email },
-    {
-      $set: {
-        name,
-        email,
-        password: hashed,
-        role: "user",
-        otp,
-        otp_expires,
-        provider: "email",
-        updated_at: new Date(),
-      },
-      $setOnInsert: {
-        created_at: new Date(),
-      },
-    },
-    { upsert: true },
-  );
 
   try {
-    await sendOTPEmail(email, name, otp);
-  } catch (error) {
-    if (process.env.NODE_ENV === "production") {
-      throw error;
+    const users = await getUsersCollection();
+    const existingUser = await users.findOne({ email });
+    if (existingUser) {
+      return { error: "Email already registered" };
     }
 
-    return {
-      success: true,
-      email,
-      devOtp: otp,
-      emailWarning: error instanceof Error ? error.message : "Email send failed",
-    };
-  }
+    const hashed = await bcrypt.hash(password, 12);
+    const otp_expires = new Date(Date.now() + 10 * 60 * 1000);
+    const pendingUsers = await getPendingUsersCollection();
 
-  return { success: true, email };
+    await pendingUsers.updateOne(
+      { email },
+      {
+        $set: {
+          name,
+          email,
+          password: hashed,
+          role: "user",
+          otp,
+          otp_expires,
+          provider: "email",
+          updated_at: new Date(),
+        },
+        $setOnInsert: {
+          created_at: new Date(),
+        },
+      },
+      { upsert: true },
+    );
+
+    await sendOTPEmail(email, name, otp);
+    return { success: true, email };
+  } catch (error) {
+    if (process.env.NODE_ENV === "production") {
+      return { error: getAuthDbErrorMessage(error) };
+    }
+
+    if (error instanceof Error && !error.message.toLowerCase().includes("mongodb")) {
+      return {
+        success: true,
+        email,
+        devOtp: otp,
+        emailWarning: error.message,
+      };
+    }
+
+    return { error: getAuthDbErrorMessage(error) };
+  }
 }
 
 export async function registerAction(
@@ -110,28 +114,32 @@ export async function loginAction(
     return { error: "Email and password are required" };
   }
 
-  const users = await getUsersCollection();
-  const user = await users.findOne({ email });
+  try {
+    const users = await getUsersCollection();
+    const user = await users.findOne({ email });
 
-  if (!user || !user.password) {
-    return { error: "Invalid email or password" };
+    if (!user || !user.password) {
+      return { error: "Invalid email or password" };
+    }
+
+    if (!user.email_verified) {
+      return { error: "Please verify your email first", email };
+    }
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return { error: "Invalid email or password" };
+    }
+
+    await createSession({
+      userId: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+
+    redirect("/dashboard");
+  } catch (error) {
+    return { error: getAuthDbErrorMessage(error) };
   }
-
-  if (!user.email_verified) {
-    return { error: "Please verify your email first", email };
-  }
-
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) {
-    return { error: "Invalid email or password" };
-  }
-
-  await createSession({
-    userId: user._id.toString(),
-    email: user.email,
-    name: user.name,
-    role: user.role,
-  });
-
-  redirect("/dashboard");
 }

@@ -21,9 +21,9 @@ import {
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { DistrictCarousel } from "@/components/site/district-carousel";
+import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
 import { StateMap } from "@/components/map/StateMap";
-import { stateCardImage } from "@/lib/state-images";
-import { stateExploreHref, stateSlug } from "@/lib/state-routes";
+import { stateExploreHref } from "@/lib/state-routes";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -181,7 +181,11 @@ export async function generateMetadata({ params }: { params: Promise<{ state: st
   const { state } = await params;
   const page = await getExploreOverview(state);
 
-  if (!page) return { title: "Overview Not Found" };
+  if (!page) {
+    const locationPage = await getLocationPage(state);
+    if (!locationPage) return { title: "Overview Not Found" };
+    return locationPageMetadata(locationPage);
+  }
 
   const titleName = page.pageType === "district" ? `${page.district_name}, ${page.state_name}` : page.state_name;
 
@@ -195,7 +199,11 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   const { state } = await params;
   const data = await getExploreOverview(state);
 
-  if (!data) notFound();
+  if (!data) {
+    const locationPage = await getLocationPage(state);
+    if (!locationPage) notFound();
+    return <LocationPageView page={locationPage} />;
+  }
 
   const { overview, connectivity, lifestyle_environment, social_infrastructure } = data;
   const investment_angle = data.investment_angle || {};
@@ -211,10 +219,9 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   const districtPages = isDistrictPage ? [] : await getStateDistrictPages(parentStateName);
   const footerLocationLinks = locationPages.map((page) => ({
     label: page.seo?.on_page_title || page.slug.replace(/-/g, " "),
-    href: `/${stateSlug(parentStateName)}/${page.slug}`,
+    href: `/${page.slug}`,
     propertyType: page.property_type || "",
   }));
-  const heroImage = stateCardImage(parentStateName);
   const coordinates = data.location?.coordinates;
   const mapCoordinates =
     typeof coordinates?.latitude === "number" && typeof coordinates?.longitude === "number"
@@ -266,12 +273,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     <div className="min-h-screen bg-secondary text-foreground selection:bg-primary/15">
       <Header />
 
-      <header
-        className="border-b border-border bg-cover bg-center text-white"
-        style={{
-          backgroundImage: `linear-gradient(90deg, rgba(10, 32, 54, 0.88), rgba(10, 32, 54, 0.62), rgba(10, 32, 54, 0.28)), url('${heroImage}')`,
-        }}
-      >
+      <header className="border-b border-border bg-[#0A2036] text-white">
         <nav className="relative z-10 border-b border-white/10 bg-black/30">
           <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-white/70">
             <li>
@@ -331,7 +333,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       </div>
 
       <section id="overview" className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-7 shadow-sm md:px-5 md:py-8">
+        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
           <div className="mb-6 max-w-3xl">
             <h2 className="text-3xl font-bold leading-tight md:text-4xl">
               {isDistrictPage ? "District Overview" : "State Overview"}
@@ -395,14 +397,14 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {districts.length > 0 && (
         <section id="districts" className="bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-8 shadow-sm md:px-5 md:py-10">
+          <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
             <DistrictCarousel districts={districts} stateName={parentStateName} />
           </div>
         </section>
       )}
 
       <section id="connectivity" className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-6 shadow-sm md:px-5 md:py-7">
+        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
           <div className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-stretch">
             <div className="rounded-2xl border border-border bg-background p-4 text-foreground shadow-sm md:p-5 lg:col-span-7">
               <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
@@ -484,7 +486,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       </section>
 
       <section id="investment" className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-6 shadow-sm md:px-5 md:py-7">
+        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
           <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:p-5">
             <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
               Real Estate Dynamics
@@ -519,7 +521,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       </section>
 
       <section id="lifestyle" className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-7xl rounded-[28px] bg-[#0A2036] px-3 py-6 text-white shadow-sm md:px-5 md:py-7">
+        <div className="mx-auto max-w-7xl rounded-[28px] bg-[#0A2036] px-5 py-5 text-white shadow-sm">
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <div className="rounded-2xl border border-white/15 p-4 md:p-5">
               <h2 className="mb-4 max-w-[18ch] text-4xl font-bold leading-tight md:text-5xl">
@@ -547,7 +549,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       </section>
 
       <section id="social" className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-6 shadow-sm md:px-5 md:py-7">
+        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
           <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:p-5">
             <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
               Social Infrastructure
@@ -567,7 +569,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {faq.length > 0 && (
         <section className="bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-3 py-6 shadow-sm md:px-5 md:py-7">
+          <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
             <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:p-5">
               <h2 className="text-3xl font-bold">FAQs</h2>
             </div>

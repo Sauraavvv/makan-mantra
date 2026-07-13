@@ -1,8 +1,16 @@
 """
-Import state_pages.json into MongoDB Atlas location_pages collection.
-Usage:  python3 import_state_pages_mongo.py
-Reads MONGODB_URL from backend/.env (or env var).
+Update SEO content in the MongoDB `state_pages` collection from a JSON file.
+
+Usage:
+  python3 import_state_pages_mongo.py
+
+Behavior:
+  - Reads MONGODB_URL from backend/.env (or env var).
+  - Loads ../makan_mantraa.state_pages.json from the workspace root.
+  - Updates matching documents by slug, preserving existing non-SEO fields.
+  - Reports slugs that are missing in the database instead of inserting partial docs.
 """
+
 import asyncio
 import json
 import os
@@ -14,8 +22,9 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent.parent
+WORKSPACE_ROOT = PROJECT_ROOT.parent
 ENV_PATH = PROJECT_ROOT / "backend" / ".env"
-JSON_PATH = PROJECT_ROOT.parent / "state_pages.json"
+JSON_PATH = WORKSPACE_ROOT / "makan_mantraa.state_pages.json"
 
 load_dotenv(dotenv_path=ENV_PATH)
 
@@ -37,35 +46,48 @@ async def import_data():
     print(f"Loaded {len(docs)} records from JSON")
 
     client = AsyncIOMotorClient(MONGODB_URL)
-    col = client["makan_mantraa"]["location_pages"]
+    col = client["makan_mantraa"]["state_pages"]
 
-    inserted = 0
-    skipped = 0
+    updated = 0
+    missing = 0
     errors = 0
+    missing_slugs: list[str] = []
 
     for doc in docs:
         try:
             slug = doc.get("slug")
-            if not slug:
+            location_name = doc.get("location_name")
+            seo = doc.get("seo")
+
+            if not slug or not location_name or not isinstance(seo, dict):
+                print(f"  Skipping invalid record: slug={slug!r}")
                 errors += 1
                 continue
 
-            existing = await col.find_one({"slug": slug})
-            if existing:
-                skipped += 1
+            result = await col.update_one(
+                {"slug": slug},
+                {"$set": {"location_name": location_name, "seo": seo}},
+            )
+
+            if result.matched_count == 0:
+                missing += 1
+                missing_slugs.append(slug)
                 continue
 
-            if "_id" not in doc and "id" in doc:
-                doc["_id"] = doc["id"]
-
-            await col.insert_one(doc)
-            inserted += 1
+            updated += 1
         except Exception as e:
-            print(f"  Error inserting slug={doc.get('slug', '?')}: {e}")
+            print(f"  Error updating slug={doc.get('slug', '?')}: {e}")
             errors += 1
 
     client.close()
-    print(f"\nDone — inserted: {inserted}, skipped (duplicate): {skipped}, errors: {errors}")
+
+    print(
+        f"\nDone - updated: {updated}, missing in DB: {missing}, errors: {errors}"
+    )
+    if missing_slugs:
+        print("\nSlugs not found in `state_pages`:")
+        for slug in missing_slugs:
+            print(f"  - {slug}")
 
 
 if __name__ == "__main__":
