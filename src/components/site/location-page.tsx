@@ -71,6 +71,7 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
     (item) => item?.name && item?.acceptedAnswer?.text,
   ) || [];
   const descriptionParagraphs = asParagraphs(page.seo.on_page_description);
+  const keywords = page.seo.keywords || [];
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -151,12 +152,12 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
         </section>
       )}
 
-      {page.seo.keywords?.length > 0 && (
+      {keywords.length > 0 && (
         <section className="border-t border-border bg-card/40">
           <div className="mx-auto max-w-7xl px-4 py-8">
             <h2 className="mb-3 text-sm font-semibold">Popular searches</h2>
             <div className="flex flex-wrap gap-2">
-              {page.seo.keywords.map((k: string) => (
+              {keywords.map((k) => (
                 <Badge key={k} variant="secondary" className="cursor-pointer hover:bg-accent">{k}</Badge>
               ))}
             </div>

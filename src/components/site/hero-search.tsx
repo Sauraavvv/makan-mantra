@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { ChevronDown, History, Mic, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { useLocation } from "@/context/location-context";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 
 const RECENT_KEY = "mm-recent-searches";
+const RECENT_CHANGE_EVENT = "mm-recent-searches-change";
+const EMPTY_RECENT_SEARCHES: RecentSearch[] = [];
 
 const TABS = ["Buy", "Rent", "Commercial", "Plots"] as const;
 
@@ -27,6 +29,9 @@ type RecentSearch = {
   createdAt: number;
 };
 
+let cachedRecentValue = "";
+let cachedRecentSearches: RecentSearch[] = EMPTY_RECENT_SEARCHES;
+
 function readRecentSearches(): RecentSearch[] {
   try {
     const value = localStorage.getItem(RECENT_KEY);
@@ -40,33 +45,67 @@ function readRecentSearches(): RecentSearch[] {
 
 function writeRecentSearches(searches: RecentSearch[]) {
   localStorage.setItem(RECENT_KEY, JSON.stringify(searches.slice(0, 8)));
+  window.dispatchEvent(new Event(RECENT_CHANGE_EVENT));
 }
 
-export function HeroSearch() {
+function subscribeToRecentSearches(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(RECENT_CHANGE_EVENT, callback);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(RECENT_CHANGE_EVENT, callback);
+  };
+}
+
+function getRecentSearchesSnapshot() {
+  try {
+    const value = localStorage.getItem(RECENT_KEY) || "";
+    if (value === cachedRecentValue) return cachedRecentSearches;
+    cachedRecentValue = value;
+    cachedRecentSearches = readRecentSearches();
+    return cachedRecentSearches;
+  } catch {
+    return EMPTY_RECENT_SEARCHES;
+  }
+}
+
+function getRecentSearchesServerSnapshot() {
+  return EMPTY_RECENT_SEARCHES;
+}
+
+type HeroSearchProps = {
+  align?: "center" | "left";
+  showRecent?: boolean;
+  locationName?: string;
+};
+
+export function HeroSearch({ align = "center", showRecent = true, locationName }: HeroSearchProps = {}) {
   const { meta } = useLocation();
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Buy");
   const [query, setQuery] = useState("");
-  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const recentSearches = useSyncExternalStore(
+    subscribeToRecentSearches,
+    getRecentSearchesSnapshot,
+    getRecentSearchesServerSnapshot,
+  );
 
   const { isSupported: micSupported, status: micStatus, toggle: toggleMic } =
     useSpeechRecognition((text) => setQuery(text));
 
   const category = CATEGORY_BY_TAB[activeTab];
+  const searchLocation = locationName || meta.from[0] || "Mumbai";
+  const searchLabel = locationName || meta.label;
   const placeholder = useMemo(() => {
-    const city = meta.from[0] || "Mumbai";
     const action = activeTab === "Rent" ? "rent" : "sale";
-    if (activeTab === "Commercial") return `Search "office space in ${city}"`;
-    if (activeTab === "Plots") return `Search "plots for sale in ${city}"`;
-    return `Search "3 BHK for ${action} in ${city}"`;
-  }, [activeTab, meta.from]);
-
-  useEffect(() => {
-    setRecentSearches(readRecentSearches());
-  }, []);
+    if (activeTab === "Commercial") return `Search "office space in ${searchLocation}"`;
+    if (activeTab === "Plots") return `Search "plots for sale in ${searchLocation}"`;
+    return `Search "3 BHK for ${action} in ${searchLocation}"`;
+  }, [activeTab, searchLocation]);
 
   function saveSearch(searchQuery: string) {
     const trimmed = searchQuery.trim();
-    const label = trimmed || `${activeTab} in ${meta.from[0]}, ${meta.label}`;
+    const label = trimmed || `${activeTab} in ${searchLabel}`;
     const nextSearch: RecentSearch = {
       id: `${Date.now()}-${label}`,
       label,
@@ -76,16 +115,15 @@ export function HeroSearch() {
       createdAt: Date.now(),
     };
 
-    setRecentSearches((current) => {
-      const deduped = current.filter((item) => item.label.toLowerCase() !== label.toLowerCase());
-      const next = [nextSearch, ...deduped].slice(0, 8);
-      writeRecentSearches(next);
-      return next;
-    });
+    const deduped = recentSearches.filter((item) => item.label.toLowerCase() !== label.toLowerCase());
+    writeRecentSearches([nextSearch, ...deduped].slice(0, 8));
   }
 
   return (
-    <div id="hero-search" className="mx-auto mt-6 w-full max-w-2xl">
+    <div
+      id="hero-search"
+      className={`mt-6 w-full max-w-2xl ${align === "center" ? "mx-auto" : ""}`}
+    >
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -152,31 +190,33 @@ export function HeroSearch() {
         </div>
       </form>
 
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-        <span className="text-[11px] font-semibold text-white/70">Recent:</span>
-        {(recentSearches.length > 0 ? recentSearches.slice(0, 2) : [
-          { id: "sample-1", label: `Buy in ${meta.from[0]}, ${meta.label}` },
-        ]).map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setQuery(item.label)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/90 px-3 text-xs font-semibold text-[#0A2036] shadow-sm hover:bg-white"
-          >
-            <History className="h-3 w-3" />
-            {item.label}
-          </button>
-        ))}
-        {recentSearches.length > 2 && (
-          <button
-            type="button"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/90 px-3 text-xs font-bold text-[#0A2036] shadow-sm hover:bg-white"
-          >
-            <History className="h-3 w-3" />
-            View all searches
-          </button>
-        )}
-      </div>
+      {showRecent && (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <span className="text-[11px] font-semibold text-white/70">Recent:</span>
+          {(recentSearches.length > 0 ? recentSearches.slice(0, 2) : [
+            { id: "sample-1", label: `Buy in ${searchLabel}` },
+          ]).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setQuery(item.label)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/90 px-3 text-xs font-semibold text-[#0A2036] shadow-sm hover:bg-white"
+            >
+              <History className="h-3 w-3" />
+              {item.label}
+            </button>
+          ))}
+          {recentSearches.length > 2 && (
+            <button
+              type="button"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/90 px-3 text-xs font-bold text-[#0A2036] shadow-sm hover:bg-white"
+            >
+              <History className="h-3 w-3" />
+              View all searches
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

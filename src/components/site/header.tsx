@@ -139,10 +139,6 @@ export function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (!dropdownOpen) setSearch("");
-  }, [dropdownOpen]);
-
   const filtered = STATES.filter((s) =>
     s.toLowerCase().includes(search.toLowerCase())
   );
