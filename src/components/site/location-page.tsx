@@ -133,7 +133,7 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
         <section className="bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
             <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:p-5">
-              <h2 className="text-3xl font-bold">FAQs</h2>
+              <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
             </div>
             <div className="divide-y divide-border rounded-2xl border border-border bg-card/70 px-4 shadow-sm md:px-5">
               {faqItems.map((item) => (
