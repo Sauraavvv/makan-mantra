@@ -1,5 +1,5 @@
 """
-Update SEO content in the MongoDB `state_pages` collection from a JSON file.
+Update state SEO content in the MongoDB `location_pages` collection from a JSON file.
 
 Usage:
   python3 import_state_pages_mongo.py
@@ -7,7 +7,7 @@ Usage:
 Behavior:
   - Reads MONGODB_URL from backend/.env (or env var).
   - Loads ../makan_mantraa.state_pages.json from the workspace root.
-  - Updates matching documents by slug, preserving existing non-SEO fields.
+  - Updates matching location_pages documents by slug, preserving existing non-SEO fields.
   - Reports slugs that are missing in the database instead of inserting partial docs.
 """
 
@@ -46,7 +46,7 @@ async def import_data():
     print(f"Loaded {len(docs)} records from JSON")
 
     client = AsyncIOMotorClient(MONGODB_URL)
-    col = client["makan_mantraa"]["state_pages"]
+    col = client["makan_mantraa"]["location_pages"]
 
     updated = 0
     missing = 0
@@ -85,7 +85,7 @@ async def import_data():
         f"\nDone - updated: {updated}, missing in DB: {missing}, errors: {errors}"
     )
     if missing_slugs:
-        print("\nSlugs not found in `state_pages`:")
+        print("\nSlugs not found in `location_pages`:")
         for slug in missing_slugs:
             print(f"  - {slug}")
 

@@ -17,6 +17,11 @@ def state_filter(state: str) -> dict:
     return {"location.state": {"$regex": f"^{re.escape(state_name)}$", "$options": "i"}}
 
 
+def district_filter(district: str) -> dict:
+    district_name = district.strip()
+    return {"location.district": {"$regex": f"^{re.escape(district_name)}$", "$options": "i"}}
+
+
 @router.get("/{slug}", response_model=StateModelResponse)
 async def get_location_page(slug: str):
     col = get_location_pages_collection()
@@ -29,6 +34,8 @@ async def get_location_page(slug: str):
 @router.get("/", response_model=List[StateModelResponse])
 async def list_location_pages(
     state: Optional[str] = None,
+    district: Optional[str] = None,
+    location_category: Optional[str] = None,
     property_type: Optional[str] = None,
     listing_type: Optional[str] = None,
     limit: int = 50,
@@ -38,6 +45,10 @@ async def list_location_pages(
 
     if state:
         query.update(state_filter(state))
+    if district:
+        query.update(district_filter(district))
+    if location_category:
+        query["location_category"] = location_category
     if property_type:
         query["property_type"] = property_type
     if listing_type:

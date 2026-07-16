@@ -24,7 +24,7 @@ def get_database():
     return client["makan_mantraa"]
 
 def get_location_pages_collection():
-    return get_database()["state_pages"]
+    return get_database()["location_pages"]
 
 def get_state_overview_collection():
     return get_database()["state_overview"]

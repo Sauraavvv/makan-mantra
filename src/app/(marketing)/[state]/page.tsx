@@ -136,7 +136,7 @@ function modeIcon(mode: string) {
 async function getStateOverview(routeSlug: string): Promise<StateOverview | null> {
   try {
     const res = await fetch(`${API}/state-overview/${routeSlug}`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
 
     if (!res.ok) return null;
@@ -150,7 +150,7 @@ async function getStateOverview(routeSlug: string): Promise<StateOverview | null
 async function getDistrictOverview(routeSlug: string): Promise<StateOverview | null> {
   try {
     const res = await fetch(`${API}/district-overview/${routeSlug}`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
 
     if (!res.ok) return null;
@@ -168,7 +168,7 @@ async function getExploreOverview(routeSlug: string) {
 async function getStateDistrictPages(stateName: string): Promise<StateDistrictPage[]> {
   try {
     const res = await fetch(`${API}/district-overview/?state=${encodeURIComponent(stateName)}&limit=100`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
 
     if (!res.ok) return [];
@@ -178,9 +178,25 @@ async function getStateDistrictPages(stateName: string): Promise<StateDistrictPa
   }
 }
 
-async function getStateLocationPages(stateName: string): Promise<StateLocationPage[]> {
+async function getExploreLocationPages({
+  stateName,
+  districtName,
+}: {
+  stateName: string;
+  districtName?: string;
+}): Promise<StateLocationPage[]> {
   try {
-    const res = await fetch(`${API}/location-pages/?state=${encodeURIComponent(stateName)}&limit=100`, {
+    const params = new URLSearchParams({
+      state: stateName,
+      location_category: districtName ? "district" : "state",
+      limit: "100",
+    });
+
+    if (districtName) {
+      params.set("district", districtName);
+    }
+
+    const res = await fetch(`${API}/location-pages/?${params.toString()}`, {
       cache: "no-store",
     });
 
@@ -228,7 +244,10 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   const stateName = data.state_name;
   const parentStateName = stateName;
   const displayName = isDistrictPage ? asText(data.district_name) : stateName;
-  const locationPages = await getStateLocationPages(parentStateName);
+  const locationPages = await getExploreLocationPages({
+    stateName: parentStateName,
+    districtName: isDistrictPage ? displayName : undefined,
+  });
   const districtPages = isDistrictPage ? [] : await getStateDistrictPages(parentStateName);
   const footerLocationLinks = locationPages.map((page) => ({
     label: page.seo?.on_page_title || page.slug.replace(/-/g, " "),
@@ -637,7 +656,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       )}
 
       <Footer
-        locationTitle={`Popular searches in ${parentStateName}`}
+        locationTitle={`Popular searches in ${displayName}`}
         locationLinks={footerLocationLinks}
       />
     </div>
