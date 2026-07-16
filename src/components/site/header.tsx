@@ -122,12 +122,20 @@ const PROPERTY_GROUPS = {
 type ListingType = keyof typeof PROPERTY_GROUPS;
 type AuthMode = "login" | "register" | "verify";
 
+type HeaderProps = {
+  showSearchBar?: boolean;
+  searchPlaceholder?: string;
+};
+
 function statePageHref(state: string, propertySlug: string, listingType: ListingType) {
   const slug = stateSlug(state);
   return `/${slug}/${propertySlug}-for-${listingType}-in-${slug}`;
 }
 
-export function Header() {
+export function Header({
+  showSearchBar = false,
+  searchPlaceholder = "Search city, locality or project...",
+}: HeaderProps = {}) {
   const { meta, setStateByName } = useLocation();
   const pathname = usePathname();
   const isHome = pathname === "/";
@@ -142,6 +150,7 @@ export function Header() {
   const filtered = STATES.filter((s) =>
     s.toLowerCase().includes(search.toLowerCase())
   );
+  const shouldShowSearch = showSearchBar || showSearch;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -333,7 +342,7 @@ export function Header() {
 
         <form
           className={`relative hidden flex-1 transition-all duration-300 md:block ${
-            showSearch
+            shouldShowSearch
               ? "max-w-md opacity-100"
               : "pointer-events-none max-w-0 overflow-hidden opacity-0"
           }`}
@@ -341,7 +350,7 @@ export function Header() {
         >
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search city, locality or project..."
+            placeholder={searchPlaceholder}
             className="h-9 border-white/15 bg-white text-foreground pl-9 shadow-sm focus-visible:ring-white/30"
           />
         </form>

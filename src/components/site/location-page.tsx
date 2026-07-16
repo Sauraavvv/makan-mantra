@@ -75,7 +75,10 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+      <Header
+        showSearchBar
+        searchPlaceholder={`Search properties in ${page.location_name}`}
+      />
 
       <nav className="relative z-10 border-b border-white/10 bg-black/30">
         <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-white/70">
