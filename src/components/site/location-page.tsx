@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { ExpandableDescription } from "@/components/site/expandable-description";
+import { GoogleMapEmbed } from "@/components/map/google-map-embed";
 import { Badge } from "@/components/ui/badge";
 import { stateExploreHref } from "@/lib/state-routes";
 
@@ -27,6 +28,10 @@ type FaqSchema = {
 export type LocationPageData = {
   location?: {
     state?: string;
+    coordinates?: {
+      latitude?: number | null;
+      longitude?: number | null;
+    } | null;
   };
   location_name: string;
   property_type?: string;
@@ -72,6 +77,9 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
   ) || [];
   const descriptionParagraphs = asParagraphs(page.seo.on_page_description);
   const keywords = page.seo.keywords || [];
+  const latitude = page.location?.coordinates?.latitude;
+  const longitude = page.location?.coordinates?.longitude;
+  const hasCoordinates = typeof latitude === "number" && typeof longitude === "number";
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -106,6 +114,19 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
       </section>
 
       <main className="mx-auto w-full max-w-7xl px-4 py-8">
+        {hasCoordinates && (
+          <section className="mb-8">
+            <h2 className="text-xl font-bold">Location</h2>
+            <div className="mt-3 overflow-hidden rounded-xl">
+              <GoogleMapEmbed
+                latitude={latitude}
+                longitude={longitude}
+                title={`${page.location_name} map`}
+              />
+            </div>
+          </section>
+        )}
+
         <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground">
           <MapPin className="mx-auto mb-3 h-10 w-10 opacity-30" />
           <p className="font-medium">Properties coming soon</p>

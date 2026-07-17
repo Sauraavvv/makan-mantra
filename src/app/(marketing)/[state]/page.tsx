@@ -10,9 +10,6 @@ import {
   Home,
   Landmark,
   MapPin,
-  Plane,
-  Route as RouteIcon,
-  Ship,
   ShoppingBag,
   Stethoscope,
   Trees,
@@ -21,9 +18,10 @@ import {
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { DistrictCarousel } from "@/components/site/district-carousel";
+import { LineClampedDescription } from "@/components/site/line-clamped-description";
 import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
 import { HeroSearch } from "@/components/site/hero-search";
-import { StateMap } from "@/components/map/StateMap";
+import { GoogleMapEmbed } from "@/components/map/google-map-embed";
 import { AnimatedList } from "@/registry/magicui/animated-list";
 import { stateExploreHref } from "@/lib/state-routes";
 
@@ -60,15 +58,6 @@ type StateOverview = {
   faq?: Array<{ question?: string; answer?: string }>;
 };
 
-type DistanceRow = {
-  city?: string;
-  metro?: string;
-  state?: string;
-  distance_km?: string | number;
-  travel_time?: string;
-  mode?: string;
-};
-
 type StateLocationPage = {
   slug: string;
   property_type?: string;
@@ -93,14 +82,6 @@ function asArray(value: unknown) {
   return Array.isArray(value) ? value.filter(Boolean).map(String) : [];
 }
 
-function asObjectArray(value: unknown): DistanceRow[] {
-  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") as DistanceRow[] : [];
-}
-
-function asParagraphs(value: string | undefined) {
-  return (value || "").split(/\n{2,}/).filter(Boolean);
-}
-
 function takeItems(value: unknown, limit = 5) {
   return asArray(value).slice(0, limit);
 }
@@ -117,20 +98,9 @@ function uniqueItems(value: unknown, limit?: number) {
   return typeof limit === "number" ? items.slice(0, limit) : items;
 }
 
-function joinItems(value: unknown, limit = 4) {
-  const items = takeItems(value, limit);
-  if (items.length === 0) return "Not available";
-  return items.join(" · ");
-}
-
 function compactText(...values: unknown[]) {
   const value = values.find((item) => item !== null && item !== undefined && item !== "");
   return value ? String(value) : "Not available";
-}
-
-function modeIcon(mode: string) {
-  if (/sea|ship|ferry/i.test(mode)) return <Ship className="h-3.5 w-3.5" strokeWidth={1.5} />;
-  return <Plane className="h-3.5 w-3.5" strokeWidth={1.5} />;
 }
 
 async function getStateOverview(routeSlug: string): Promise<StateOverview | null> {
@@ -235,7 +205,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     return <LocationPageView page={locationPage} />;
   }
 
-  const { overview, connectivity, lifestyle_environment, social_infrastructure } = data;
+  const { overview, lifestyle_environment, social_infrastructure } = data;
   const investment_angle = data.investment_angle || {};
   const realEstateOverview = data.real_estate_overview || {};
   const economyEmployment = data.economy_employment || {};
@@ -262,42 +232,14 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   const districts = districtPages.length > 0
     ? districtPages.map((district) => ({ name: district.district_name, slug: district.slug }))
     : asArray(overview.districts).map((district) => ({ name: district }));
-  const majorCities = asArray(overview.major_cities);
+  const majorCities = uniqueItems(overview.major_cities);
+  const majorTowns = uniqueItems(overview.major_towns);
   const languages = asArray(overview.official_languages);
-  const stateDistanceRows = [
-    ...asObjectArray(connectivity.distance_from_major_metros),
-    ...asObjectArray(connectivity.distance_from_other_major_cities),
-  ];
-  const districtDistanceRows: DistanceRow[] = [
-    connectivity.distance_from_state_capital
-      ? {
-          city: `${parentStateName} capital`,
-          distance_km: String(connectivity.distance_from_state_capital),
-          mode: "Road",
-          travel_time: "",
-        }
-      : null,
-    connectivity.distance_from_nearest_metro
-      ? {
-          city: asText(connectivity.nearest_metro_city),
-          distance_km: String(connectivity.distance_from_nearest_metro),
-          mode: "Road / Rail",
-          travel_time: "",
-        }
-      : null,
-  ].filter(Boolean) as DistanceRow[];
-  const distanceRows = (stateDistanceRows.length > 0 ? stateDistanceRows : districtDistanceRows).slice(0, 6);
-  const pageDescription = asParagraphs(data.seo?.page_description);
-  const overviewDetail = [
-    overview.urbanisation_pattern,
-    overview.urbanization_pattern,
-    overview.development_context,
-    overview.economic_identity,
-    pageDescription[1],
-  ].find((value) => value);
-  const overviewIntro = isDistrictPage
-    ? `${displayName} is a district in ${parentStateName}, with local movement, housing demand, and civic infrastructure shaped by its headquarters and major towns.`
-    : asText(overview.where_it_is);
+  const overviewSectionTitle = compactText(
+    data.seo?.page_title,
+    isDistrictPage ? "District Overview" : "State Overview",
+  );
+  const overviewSectionDescription = compactText(data.seo?.page_description);
   const capitalOrHeadquarters = compactText(overview.headquarters, overview.capital);
   const investmentPosition = compactText(investment_angle.market_position, realEstateOverview.real_estate_identity, overview.real_estate_identity);
   const heroStats = [
@@ -387,7 +329,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
           {[
             ["Overview", "#overview"],
             ...(districts.length > 0 ? [["Districts", "#districts"]] : []),
-            ["Logistics", "#connectivity"],
+            ["Cities & Towns", "#connectivity"],
             ["Market", "#investment"],
             ["Environment", "#lifestyle"],
             ["Living", "#social"],
@@ -400,64 +342,12 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       </div>
 
       <section id="overview" className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
-          <div className="mb-6 max-w-3xl">
+        <div className="mx-auto max-w-7xl px-5 py-5">
+          <div>
             <h2 className="text-3xl font-bold leading-tight md:text-4xl">
-              {isDistrictPage ? "District Overview" : "State Overview"}
+              {overviewSectionTitle}
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{overviewIntro}</p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-            <div className="rounded-2xl border border-border bg-card/60 p-5 md:p-6 lg:col-span-7">
-              <div className="mb-5 flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Landmark className="h-5 w-5" strokeWidth={1.8} />
-                </span>
-                <h3 className="text-xl font-semibold">Urban & Administrative Profile</h3>
-              </div>
-              <div className="space-y-4 leading-relaxed text-muted-foreground">
-                <p>{asText(overview.development_stage)}</p>
-                {overviewDetail ? <p>{asText(overviewDetail)}</p> : null}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-background p-5 shadow-sm md:p-6 lg:col-span-5">
-              <div className="grid gap-5">
-                <div>
-                  <div className="mb-3 flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <MapPin className="h-4.5 w-4.5" strokeWidth={1.8} />
-                    </span>
-                    <h3 className="font-semibold">Major Locations</h3>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {uniqueItems(majorCities.length > 0 ? majorCities : overview.major_towns, 8).map((city) => (
-                      <span key={city} className="rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-sm font-medium">
-                        {city}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t border-border pt-5">
-                  <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Building2 className="h-4.5 w-4.5" strokeWidth={1.8} />
-                  </span>
-                    <h3 className="font-semibold">Economic Identity</h3>
-                  </div>
-                  <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
-                    {takeItems(overview.economic_identity || economyEmployment.primary_industries, 3).map((item) => (
-                      <li key={item} className="flex gap-3">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
+            <LineClampedDescription text={overviewSectionDescription} lines={7} className="mt-2" />
           </div>
         </div>
       </section>
@@ -472,83 +362,31 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       <section id="connectivity" className="bg-secondary px-4 py-4 md:py-5">
         <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
-          <div className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-stretch">
-            <div className="rounded-2xl border border-border bg-background p-4 text-foreground shadow-sm md:p-5 lg:col-span-7">
-              <h2 className="mb-3 text-3xl font-bold leading-tight md:text-4xl">
-                Logistics & Access
-              </h2>
-              <p className="leading-relaxed text-muted-foreground">
-                {compactText(
-                  connectivity.connectivity_strength,
-                  `Nearest airport: ${asText(connectivity.nearest_airport)}. Internal transport: ${asText(connectivity.internal_transport)}.`,
-                )}
-              </p>
-            </div>
-            <div className="overflow-hidden rounded-2xl lg:col-span-5">
-              <StateMap stateName={parentStateName} coordinates={mapCoordinates} />
-            </div>
-          </div>
+          <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
+            Explore the top cities & towns
+          </h2>
 
-          {distanceRows.length > 0 && (
-            <div className="rounded-2xl border border-border bg-background p-4 text-foreground shadow-sm md:p-5">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Regional Distances
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px] border-collapse text-left">
-                  <thead>
-                    <tr className="border-b border-foreground/15">
-                      {["Transit Hub", "Destination", "Distance", "Typical Mode"].map((heading) => (
-                        <th key={heading} className="py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          {heading}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {distanceRows.map((row, index) => {
-                      const destination = row.metro || row.city || row.state || "Destination";
-                      const mode = asText(row.mode);
-                      return (
-                        <tr key={`${destination}-${row.distance_km}-${index}`}>
-                          <td className="py-3 font-medium">{capitalOrHeadquarters}</td>
-                          <td className="py-3">{destination}</td>
-                          <td className="py-3 tabular-nums">{asText(row.distance_km)}</td>
-                          <td className="py-3">
-                            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                              <span className="grid h-6 w-6 place-items-center rounded-full bg-background ring-1 ring-border">
-                                {modeIcon(mode)}
-                              </span>
-                              {mode} · {asText(row.travel_time)}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-stretch">
+            <div className={`grid grid-cols-1 items-start gap-3 sm:grid-cols-2 ${mapCoordinates ? "lg:col-span-7" : "lg:col-span-12"}`}>
+              {majorCities.length > 0 && (
+                <LocationListCard title="Major Cities" items={majorCities} />
+              )}
+              {majorTowns.length > 0 && (
+                <LocationListCard title="Major Towns" items={majorTowns} />
+              )}
+            </div>
+            {mapCoordinates && (
+              <div className="h-[300px] overflow-hidden rounded-2xl border-[3px] border-saffron/70 shadow-sm lg:col-span-5">
+                <GoogleMapEmbed
+                  latitude={mapCoordinates.latitude}
+                  longitude={mapCoordinates.longitude}
+                  zoom={6}
+                  height={294}
+                  title={`${parentStateName} map`}
+                />
               </div>
-            </div>
-          )}
-
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <InfraPlate icon={RouteIcon} title="Highway Spine" body={joinItems(connectivity.major_highways, 8)} />
-            <InfraPlate
-              icon={Landmark}
-              title="Airports / Ports"
-              body={isDistrictPage
-                ? asText(connectivity.nearest_airport)
-                : `${joinItems(connectivity.international_airports, 2)} · ${joinItems(connectivity.ports_if_any, 2)}`}
-            />
-            <InfraPlate
-              icon={MapPin}
-              title="Rail & Bus Hubs"
-              body={isDistrictPage
-                ? `${joinItems(connectivity.railway_stations, 3)} · ${joinItems(connectivity.bus_stands, 3)}`
-                : `${joinItems(connectivity.major_railway_junctions, 3)} · ${joinItems(connectivity.major_bus_terminals, 3)}`}
-            />
+            )}
           </div>
-
         </div>
       </section>
 
@@ -687,14 +525,19 @@ function StatPlate({
   );
 }
 
-function InfraPlate({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
+function LocationListCard({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-2xl border border-border bg-background p-4 text-foreground shadow-sm">
-      <div className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary">
-        <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </div>
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.16em]">{title}</h4>
-      <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
+    <div className="h-[300px] rounded-2xl border border-border bg-background p-4 text-foreground shadow-sm md:p-5">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {title}
+      </h3>
+      <ul className="divide-y divide-border">
+        {items.map((item) => (
+          <li key={item} className="py-2 text-sm font-medium text-foreground">
+            {item}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
