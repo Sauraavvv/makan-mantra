@@ -147,7 +147,7 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
         </section>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-3">
               <div className="grid h-12 w-12 place-items-center rounded-full bg-primary font-bold text-primary-foreground">
                 RK

@@ -60,7 +60,7 @@ export function StateExplorer() {
           <Link
             key={state.name}
             href={stateExploreHref(state.name)}
-            className="group relative block aspect-[3/2] overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+            className="group relative block aspect-[3/2] overflow-hidden rounded-xl border border-border bg-card transition-all hover:-translate-y-0.5"
           >
             <Image
               src={stateCardImage(state.name)}

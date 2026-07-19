@@ -129,7 +129,7 @@ export function EMICalculator() {
             {/* Left — inputs + results */}
             <div className="space-y-5">
               {/* Inputs card */}
-              <div className="rounded-2xl border border-border bg-background p-6 shadow-sm">
+              <div className="rounded-2xl border border-border bg-background p-6">
                 <h2 className="mb-5 font-semibold">Loan details</h2>
 
                 {/* Loan Amount */}
@@ -219,7 +219,7 @@ export function EMICalculator() {
                   { label: "Total interest", value: formatINR(totalInterest), color: "text-orange-500" },
                   { label: "Total payable", value: formatINR(totalPayable), color: "text-foreground" },
                 ].map(({ label, value, color }) => (
-                  <div key={label} className="rounded-2xl border border-border bg-background p-4 shadow-sm text-center">
+                  <div key={label} className="rounded-2xl border border-border bg-background p-4 text-center">
                     <div className={`text-lg font-bold md:text-xl ${color}`}>{value}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground">{label}</div>
                   </div>
@@ -228,7 +228,7 @@ export function EMICalculator() {
             </div>
 
             {/* Right — donut chart */}
-            <div className="flex flex-col items-center justify-start gap-4 rounded-2xl border border-border bg-background p-6 shadow-sm lg:w-56">
+            <div className="flex flex-col items-center justify-start gap-4 rounded-2xl border border-border bg-background p-6 lg:w-56">
               <h2 className="self-start font-semibold">Breakup</h2>
               <DonutChart principal={loanAmount} interest={totalInterest} />
               <div className="w-full space-y-2">
@@ -255,7 +255,7 @@ export function EMICalculator() {
           </div>
 
           {/* Amortization schedule */}
-          <div className="mt-5 rounded-2xl border border-border bg-background shadow-sm overflow-hidden">
+          <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-background">
             <div className="px-6 py-4 border-b border-border">
               <h2 className="font-semibold">Yearly amortization schedule</h2>
               <p className="text-xs text-muted-foreground mt-0.5">How your balance reduces year by year</p>

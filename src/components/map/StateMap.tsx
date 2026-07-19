@@ -95,7 +95,7 @@ export function StateMap({
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="grid aspect-[4/3] place-items-center bg-gradient-to-br from-primary/15 via-accent to-saffron/15 p-6 text-center">
           <div>
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-saffron text-saffron-foreground shadow-lg">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-saffron text-saffron-foreground">
               <MapPin className="h-6 w-6" />
             </div>
             <div className="mt-3 text-sm font-medium">{stateName}</div>
@@ -109,7 +109,7 @@ export function StateMap({
   const externalUrl = `https://www.openstreetmap.org/?mlat=${point.lat}&mlon=${point.lng}#map=${zoom}/${point.lat}/${point.lng}`;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <h3 className="text-sm font-semibold">{stateName} map</h3>

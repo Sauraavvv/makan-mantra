@@ -77,7 +77,7 @@ function StateCard({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 rounded-xl p-1 text-center transition-all duration-150 hover:scale-105 hover:brightness-95 hover:shadow-md ${
+      className={`flex flex-col items-center gap-1 rounded-xl p-1 text-center transition-all duration-150 hover:scale-105 hover:brightness-95 ${
         selected ? "ring-2 ring-saffron/50" : ""
       }`}
       style={{ backgroundColor: "#F4F4F4" }}
@@ -351,7 +351,7 @@ export function Header({
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={searchPlaceholder}
-            className="h-9 border-white/15 bg-white text-foreground pl-9 shadow-sm focus-visible:ring-white/30"
+            className="h-9 border-white/15 bg-white text-foreground pl-9 focus-visible:ring-white/30"
           />
         </form>
 

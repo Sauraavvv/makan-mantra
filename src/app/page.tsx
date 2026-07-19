@@ -34,7 +34,7 @@ export default function Home() {
 
       {/* Browse by state */}
       <section className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
+        <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
           <div className="mb-6">
             <h2 className="text-2xl font-bold md:text-3xl">Explore your state</h2>
             <p className="mt-1 text-muted-foreground">

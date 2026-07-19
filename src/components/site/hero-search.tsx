@@ -129,7 +129,7 @@ export function HeroSearch({ align = "center", showRecent = true, locationName }
           event.preventDefault();
           saveSearch(query);
         }}
-        className="overflow-hidden rounded-xl border border-white/20 bg-white text-foreground shadow-xl"
+        className="overflow-hidden rounded-xl border border-white/20 bg-white text-foreground"
       >
         <div className="flex min-h-10 items-center overflow-x-auto border-b border-border">
           {TABS.map((tab) => (
@@ -200,7 +200,7 @@ export function HeroSearch({ align = "center", showRecent = true, locationName }
               key={item.id}
               type="button"
               onClick={() => setQuery(item.label)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/90 px-3 text-xs font-semibold text-[#0A2036] shadow-sm hover:bg-white"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/90 px-3 text-xs font-semibold text-[#0A2036] hover:bg-white"
             >
               <History className="h-3 w-3" />
               {item.label}
@@ -209,7 +209,7 @@ export function HeroSearch({ align = "center", showRecent = true, locationName }
           {recentSearches.length > 2 && (
             <button
               type="button"
-              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/90 px-3 text-xs font-bold text-[#0A2036] shadow-sm hover:bg-white"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/90 px-3 text-xs font-bold text-[#0A2036] hover:bg-white"
             >
               <History className="h-3 w-3" />
               View all searches

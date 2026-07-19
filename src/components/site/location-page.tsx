@@ -88,7 +88,7 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
         searchPlaceholder={`Search properties in ${page.location_name}`}
       />
 
-      <nav className="relative z-10 border-b border-white/10 bg-black/30">
+      <nav>
         <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-white/70">
           <li>
             <Link href="/" className="flex items-center gap-1 hover:text-white">
@@ -155,11 +155,11 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
 
       {faqItems.length > 0 && (
         <section className="bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-7xl rounded-[28px] border border-border bg-background px-5 py-5 shadow-sm">
-            <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 shadow-sm md:p-5">
+          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+            <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 md:p-5">
               <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
             </div>
-            <div className="divide-y divide-border rounded-2xl border border-border bg-card/70 px-4 shadow-sm md:px-5">
+            <div className="divide-y divide-border rounded-2xl border border-border bg-card/70 px-4 md:px-5">
               {faqItems.map((item) => (
                 <details key={item.name} className="group py-3">
                   <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">

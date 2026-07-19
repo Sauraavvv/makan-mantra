@@ -37,7 +37,7 @@ export function DistrictCarousel({ districts, stateName }: { districts: District
                 type="button"
                 aria-label="Scroll districts left"
                 onClick={() => scroll("left")}
-                className="grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground shadow-sm transition-colors hover:bg-secondary"
+                className="grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-secondary"
               >
                 <ChevronLeft className="h-4 w-4" strokeWidth={1.8} />
               </button>
@@ -45,7 +45,7 @@ export function DistrictCarousel({ districts, stateName }: { districts: District
                 type="button"
                 aria-label="Scroll districts right"
                 onClick={() => scroll("right")}
-                className="grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground shadow-sm transition-colors hover:bg-secondary"
+                className="grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-secondary"
               >
                 <ChevronRight className="h-4 w-4" strokeWidth={1.8} />
               </button>
@@ -67,7 +67,7 @@ function DistrictCard({ district, stateName }: { district: DistrictItem; stateNa
   const href = district.slug ? stateExploreHref(district.slug) : stateExploreHref(`${district.name}-${stateSlug(stateName)}`);
 
   return (
-    <article className="w-[180px] shrink-0 rounded-[18px] border border-border bg-background p-2 text-foreground shadow-sm md:w-[calc((100%-3rem)/5)]">
+    <article className="w-[180px] shrink-0 rounded-[18px] border border-border bg-background p-2 text-foreground md:w-[calc((100%-3rem)/5)]">
       <div
         className="h-56 rounded-[14px] bg-cover bg-center"
         style={{

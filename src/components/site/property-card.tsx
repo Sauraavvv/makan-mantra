@@ -9,7 +9,7 @@ export function PropertyCard({ p }: { p: Property }) {
   const href = `/property/${p.id}/${generateSlug(p.title)}`;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md">
+    <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all">
       <Link href={href} className="relative block aspect-[4/3] overflow-hidden bg-muted">
         <img
           src={p.image}

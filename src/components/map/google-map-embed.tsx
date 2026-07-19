@@ -2,7 +2,7 @@ type GoogleMapEmbedProps = {
   latitude?: number | null;
   longitude?: number | null;
   zoom?: number;
-  height?: number;
+  height?: number | string;
   title?: string;
   className?: string;
 };
