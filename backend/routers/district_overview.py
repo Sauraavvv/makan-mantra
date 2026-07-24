@@ -19,9 +19,16 @@ async def get_district_overview(slug: str):
     col = get_district_overview_collection()
     district_slug = slug.removeprefix("explore-")
     slug_candidates = {slug, district_slug}
+    route_slug_candidates = {
+        item if item.startswith("explore-") else f"explore-{item}"
+        for item in slug_candidates
+    }
     doc = await col.find_one(
         {
-            "slug": {"$in": list(slug_candidates)},
+            "$or": [
+                {"slug": {"$in": list(slug_candidates)}},
+                {"route_slug": {"$in": list(route_slug_candidates)}},
+            ],
             "is_active": {"$ne": False},
         }
     )

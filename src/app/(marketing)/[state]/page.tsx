@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   Building2,
   ChevronRight,
   GraduationCap,
   Home,
   Landmark,
   MapPin,
+  TrendingUp,
 } from "lucide-react";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
@@ -75,6 +77,11 @@ type PriceTrendPoint = {
   averagePricePerSqft: number;
 };
 
+type BuilderDisplayItem = {
+  title: string;
+  details: Array<[string, string]>;
+};
+
 function asText(value: unknown) {
   if (value === null || value === undefined || value === "") return "Not available";
   return String(value);
@@ -113,6 +120,68 @@ function labelFromKey(key: string) {
   return key
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function asReadableValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.filter(hasDisplayValue).map(asReadableValue).join(" · ");
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => hasDisplayValue(item))
+      .map(([key, item]) => `${labelFromKey(key)}: ${asReadableValue(item)}`)
+      .join(" · ");
+  }
+
+  return String(value);
+}
+
+function asBuilderItems(value: unknown, limit = 12): BuilderDisplayItem[] {
+  const titleKeys = new Set(["name", "builder_name", "developer_name", "company", "title"]);
+
+  const fromRecord = (record: Record<string, unknown>, fallbackTitle?: string): BuilderDisplayItem | null => {
+    const titleValue = record.name || record.builder_name || record.developer_name || record.company || record.title || fallbackTitle;
+    if (!hasDisplayValue(titleValue)) return null;
+
+    return {
+      title: String(titleValue),
+      details: Object.entries(record)
+        .filter(([key, item]) => !titleKeys.has(key) && hasDisplayValue(item))
+        .map(([key, item]) => [labelFromKey(key), asReadableValue(item)]),
+    };
+  };
+
+  const items = Array.isArray(value)
+    ? value
+        .filter(hasDisplayValue)
+        .map((item) => (
+          item && typeof item === "object"
+            ? fromRecord(item as Record<string, unknown>)
+            : { title: String(item), details: [] }
+        ))
+    : value && typeof value === "object"
+      ? Object.entries(value as Record<string, unknown>)
+          .filter(([, item]) => hasDisplayValue(item))
+          .map(([key, item]) => (
+            item && typeof item === "object"
+              ? fromRecord(item as Record<string, unknown>, labelFromKey(key))
+              : { title: labelFromKey(key), details: [[labelFromKey(key), String(item)]] }
+          ))
+      : hasDisplayValue(value)
+        ? [{ title: String(value), details: [] }]
+        : [];
+
+  const seen = new Set<string>();
+  return items
+    .filter((item): item is BuilderDisplayItem => Boolean(item))
+    .filter((item) => {
+      const key = item.title.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, limit);
 }
 
 function asPriceTrend(value: unknown): PriceTrendPoint[] {
@@ -296,6 +365,23 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   const overviewSectionDescription = compactText(data.seo?.page_description);
   const capitalOrHeadquarters = compactText(overview.headquarters, overview.capital);
   const priceTrend = asPriceTrend(investment_angle.price_trend);
+  const growthDrivers = uniqueItems(investment_angle.key_growth_drivers, 10);
+  const investmentRisks = uniqueItems(investment_angle.investment_risks, 10);
+  const hasInvestmentComparison = growthDrivers.length > 0 || investmentRisks.length > 0;
+  const topBuildersValue = [
+    data.real_estate_overview?.top_builders,
+    data.real_estate_overview?.major_builders,
+    data.real_estate_overview?.leading_builders,
+    data.real_estate_overview?.developers,
+    investment_angle.top_builders,
+    investment_angle.major_builders,
+    investment_angle.leading_builders,
+    investment_angle.developers,
+    overview.top_builders,
+    overview.major_builders,
+    overview.leading_builders,
+  ].find(hasDisplayValue);
+  const topBuilders = asBuilderItems(topBuildersValue);
   const socialCardEntries = Object.entries(social_infrastructure || {})
     .filter(([key]) => key !== "markets_and_essentials_summary")
     .filter(([, value]) => hasDisplayValue(value));
@@ -401,7 +487,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         </div>
       </header>
 
-      <div className="sticky top-16 border-b border-black bg-black">
+      <div className="sticky top-16 z-30 border-b border-black bg-black">
         <div className="mx-auto flex max-w-7xl items-center gap-6 overflow-x-auto px-4 py-3">
           {[
             ["Overview", "#overview"],
@@ -409,7 +495,10 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
             ["Cities & Towns", "#cities-towns"],
             ...(connectivityCards.length > 0 ? [["Connectivity", "#connectivity"]] : []),
             ["Living", "#social"],
+            ...(topBuilders.length > 0 ? [["Top Builders", "#top-builders"]] : []),
             ...(priceTrend.length > 1 ? [["Price Trend", "#price-trend"]] : []),
+            ...(hasInvestmentComparison ? [["Growth & Risks", "#growth-risks"]] : []),
+            ...(faq.length > 0 ? [["FAQ", "#faq"]] : []),
           ].map(([label, href]) => (
             <a key={href} href={href} className="shrink-0 text-sm font-medium text-white/85 transition-colors hover:text-white">
               {label}
@@ -418,7 +507,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         </div>
       </div>
 
-      <section id="overview" className="bg-secondary px-4 py-4 md:py-5">
+      <section id="overview" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
         <div className="mx-auto max-w-[1250px] px-5 py-5">
           <div>
             <h2 className="text-3xl font-bold leading-tight md:text-4xl">
@@ -430,14 +519,14 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       </section>
 
       {districts.length > 0 && (
-        <section id="districts" className="bg-secondary px-4 py-4 md:py-5">
+        <section id="districts" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
             <DistrictCarousel districts={districts} stateName={parentStateName} />
           </div>
         </section>
       )}
 
-      <section id="cities-towns" className="bg-secondary px-4 py-4 md:py-5">
+      <section id="cities-towns" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
         <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
           <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
             Explore the top cities & towns
@@ -469,7 +558,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       </section>
 
       {connectivityCards.length > 0 && (
-        <section id="connectivity" className="bg-secondary px-4 py-4 md:py-5">
+        <section id="connectivity" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
             <SocialInfrastructureCarousel
               cards={connectivityCards}
@@ -482,14 +571,37 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         </section>
       )}
 
-      <section id="social" className="bg-secondary px-4 py-4 md:py-5">
+      <section id="social" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
         <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
           <SocialInfrastructureCarousel cards={socialCards} displayName={displayName} />
         </div>
       </section>
 
+      {topBuilders.length > 0 && (
+        <section id="top-builders" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+            <h2 className="mb-2 text-3xl font-bold leading-tight md:text-4xl">
+              Top Builders in {displayName}
+            </h2>
+            <p className="mb-5 max-w-4xl text-sm leading-relaxed text-muted-foreground">
+              Leading builder and developer names shaping residential and commercial supply across {displayName}.
+            </p>
+
+            <div className="-mx-5 overflow-x-auto scroll-smooth px-5 pb-2 no-scrollbar">
+              <div className="flex w-max gap-3">
+                {topBuilders.map((builder) => (
+                  <div key={builder.title} className="w-[min(78vw,320px)] shrink-0 lg:w-[340px]">
+                    <TopBuilderCard builder={builder} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {priceTrend.length > 1 && (
-        <section id="price-trend" className="bg-secondary px-4 py-4 md:py-5">
+        <section id="price-trend" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
             <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
               Price Trends &amp; Premium Segments
@@ -506,8 +618,40 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         </section>
       )}
 
+      {hasInvestmentComparison && (
+        <section id="growth-risks" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+            <h2 className="mb-2 text-3xl font-bold leading-tight md:text-4xl">
+              Growth Drivers vs Investment Risks
+            </h2>
+            <p className="mb-5 max-w-4xl text-sm leading-relaxed text-muted-foreground">
+              Compare the strongest market upside signals with the key watch points buyers should evaluate in {displayName}.
+            </p>
+
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <InvestmentComparisonCard
+                title="Key Growth Drivers"
+                subtitle="Upside signals"
+                description="Factors that support demand, infrastructure-led movement, and long-term real estate interest."
+                items={growthDrivers}
+                icon={TrendingUp}
+                tone="growth"
+              />
+              <InvestmentComparisonCard
+                title="Investment Risks"
+                subtitle="Watch points"
+                description="Risks and constraints that may affect pricing, absorption, timelines, or location-level returns."
+                items={investmentRisks}
+                icon={AlertTriangle}
+                tone="risk"
+              />
+            </div>
+          </div>
+        </section>
+      )}
+
       {faq.length > 0 && (
-        <section className="bg-secondary px-4 py-4 md:py-5">
+        <section id="faq" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
             <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 md:p-5">
               <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
@@ -639,5 +783,90 @@ function PremiumSegmentsCard({ items }: { items: string[] }) {
         </ul>
       </div>
     </div>
+  );
+}
+
+function InvestmentComparisonCard({
+  title,
+  subtitle,
+  description,
+  items,
+  icon: Icon,
+  tone,
+}: {
+  title: string;
+  subtitle: string;
+  description: string;
+  items: string[];
+  icon: LucideIcon;
+  tone: "growth" | "risk";
+}) {
+  const theme = tone === "growth"
+    ? {
+        border: "border-emerald-200",
+        header: "bg-emerald-50",
+        tile: "bg-emerald-100",
+        infoBorder: "border-emerald-200",
+        infoBg: "bg-emerald-100/70",
+      }
+    : {
+        border: "border-rose-200",
+        header: "bg-rose-50",
+        tile: "bg-rose-100",
+        infoBorder: "border-rose-200",
+        infoBg: "bg-rose-100/70",
+      };
+
+  return (
+    <div className={`flex min-h-[360px] flex-col overflow-hidden rounded-3xl border ${theme.border} bg-white text-foreground`}>
+      <div className={`${theme.header} p-3.5`}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold leading-tight text-foreground">
+              {title}
+            </h3>
+            <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+              {subtitle}
+            </p>
+          </div>
+          <div className={`grid size-12 shrink-0 place-items-center rounded-xl ${theme.tile} text-foreground`}>
+            <Icon className="h-5 w-5" strokeWidth={1.65} />
+          </div>
+        </div>
+
+        <div className={`mt-3 flex min-h-[58px] items-center rounded-xl border-2 ${theme.infoBorder} ${theme.infoBg} px-3 py-2.5`}>
+          <p className="text-xs font-medium leading-relaxed text-foreground/75">
+            {description}
+          </p>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 no-scrollbar">
+        {items.length > 0 ? (
+          <ul className="divide-y divide-border">
+            {items.map((item) => (
+              <li key={item} className="py-2 text-sm font-medium text-foreground">
+                {item}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">Not available</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TopBuilderCard({ builder }: { builder: BuilderDisplayItem }) {
+  return (
+    <article className="flex min-h-[88px] items-center overflow-hidden rounded-3xl border border-[#E8DCC8] bg-white text-foreground">
+      <div className="grid h-full min-h-[88px] w-24 shrink-0 place-items-center bg-[#F7EEDC] text-foreground/65">
+        <Building2 className="h-8 w-8" strokeWidth={1.55} />
+      </div>
+      <h3 className="min-w-0 flex-1 px-5 text-base font-bold leading-tight text-foreground md:text-lg">
+        {builder.title}
+      </h3>
+    </article>
   );
 }

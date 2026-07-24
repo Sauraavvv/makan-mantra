@@ -38,7 +38,7 @@ export function Footer({
           </div>
         )}
 
-        <div className="grid gap-10 md:grid-cols-4">
+        <div className="grid gap-10 md:grid-cols-5">
           <div>
             <div className="text-xl font-bold">
               Makan <span className="text-saffron">Mantraa</span>
@@ -48,6 +48,13 @@ export function Footer({
             </p>
           </div>
           <FooterCol title="Company" links={[["About", "/"], ["Contact", "/"], ["Careers", "/"]]} />
+          <FooterCol
+            title="Tools"
+            links={[
+              ["EMI Calculator", "/tools/emi-calculator"],
+              ["Stamp Duty Calculator", "/tools/stamp-duty-calculator"],
+            ]}
+          />
           <FooterCol title="Legal" links={[["Privacy", "/"], ["Terms", "/"], ["Cookies", "/"]]} />
           <FooterCol
             title="Popular"

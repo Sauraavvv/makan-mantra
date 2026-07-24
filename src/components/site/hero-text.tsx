@@ -61,7 +61,7 @@ export function HeroText() {
     <>
       <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur">
         <ShieldCheck className="h-3.5 w-3.5 text-success" />
-        1.2M+ verified listings across {meta.label}
+        Explore verified listings across {meta.label}
       </div>
       <h1 className="whitespace-nowrap text-center text-[clamp(1.4rem,3.2vw,3.2rem)] font-bold tracking-tight text-white">
         Find your next <span className="text-white">home</span> in{" "}
