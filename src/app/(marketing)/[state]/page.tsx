@@ -334,6 +334,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     ["international_airports", connectivity?.international_airports],
     ["major_airports", connectivity?.major_airports],
     ["domestic_airports", connectivity?.domestic_airports],
+    ["nearest_airports", connectivity?.nearest_airports],
   ].filter(([, value]) => hasDisplayValue(value)) as Array<[string, unknown]>;
   const airportCard = airportFields.length > 0
     ? {
@@ -343,7 +344,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       }
     : null;
   const baseConnectivityCards = Object.entries(connectivity || {})
-      .filter(([key]) => !["connectivity_strength", "international_airports", "major_airports", "domestic_airports"].includes(key))
+      .filter(([key]) => !["connectivity_strength", "international_airports", "major_airports", "domestic_airports", "nearest_airports"].includes(key))
       .filter(([, value]) => hasDisplayValue(value))
       .map(([key, value]) => ({
         key,
@@ -352,9 +353,8 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       }));
   const connectivityCards = airportCard
     ? [
-        ...baseConnectivityCards.slice(0, 3),
+        ...baseConnectivityCards,
         airportCard,
-        ...baseConnectivityCards.slice(3),
       ]
     : baseConnectivityCards;
   const languages = asArray(overview.official_languages);
