@@ -1,6 +1,6 @@
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { getLocationPage, locationPageMetadata } from "@/components/site/location-page";
+import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
 
 export async function generateMetadata({ params }: { params: Promise<{ state: string; slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -9,7 +9,13 @@ export async function generateMetadata({ params }: { params: Promise<{ state: st
   return locationPageMetadata(page);
 }
 
-export default async function LegacyLocationSlugPage({ params }: { params: Promise<{ state: string; slug: string }> }) {
+export default async function LocationPageSlugRoute({ params }: { params: Promise<{ state: string; slug: string }> }) {
   const { slug } = await params;
-  redirect(`/${slug}`);
+  const page = await getLocationPage(slug);
+
+  if (!page) {
+    notFound();
+  }
+
+  return <LocationPageView page={page} />;
 }

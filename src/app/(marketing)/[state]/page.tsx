@@ -277,12 +277,17 @@ async function getExploreLocationPages({
 
 export async function generateMetadata({ params }: { params: Promise<{ state: string }> }): Promise<Metadata> {
   const { state } = await params;
-  const page = await getExploreOverview(state);
 
-  if (!page) {
-    const locationPage = await getLocationPage(state);
-    if (!locationPage) return { title: "Overview Not Found" };
+  // First try as location page (city pages like shops-for-sale-in-mumbai)
+  const locationPage = await getLocationPage(state);
+  if (locationPage) {
     return locationPageMetadata(locationPage);
+  }
+
+  // Then try as state/district page
+  const page = await getExploreOverview(state);
+  if (!page) {
+    return { title: "Overview Not Found" };
   }
 
   const titleName = page.pageType === "district" ? `${page.district_name}, ${page.state_name}` : page.state_name;
@@ -295,12 +300,18 @@ export async function generateMetadata({ params }: { params: Promise<{ state: st
 
 export default async function StatePage({ params }: { params: Promise<{ state: string }> }) {
   const { state } = await params;
+
+  // First check if it's a location page (city pages like shops-for-sale-in-mumbai)
+  const locationPage = await getLocationPage(state);
+  if (locationPage) {
+    return <LocationPageView page={locationPage} />;
+  }
+
+  // Then check if it's a state/district explore page
   const data = await getExploreOverview(state);
 
   if (!data) {
-    const locationPage = await getLocationPage(state);
-    if (!locationPage) notFound();
-    return <LocationPageView page={locationPage} />;
+    notFound();
   }
 
   const { overview, connectivity, social_infrastructure } = data;

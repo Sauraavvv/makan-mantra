@@ -8,7 +8,7 @@ router = APIRouter(prefix="/location-pages", tags=["location-pages"])
 
 
 def clean_doc(doc: dict) -> dict:
-    doc["id"] = doc.pop("_id", doc.get("id", ""))
+    doc["id"] = str(doc.pop("_id", doc.get("id", "")))
     return doc
 
 
