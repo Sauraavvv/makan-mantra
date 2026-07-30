@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { stateExploreHref } from "@/lib/state-routes";
 import { stateCardImage } from "@/lib/state-images";
 
-const INITIAL_VISIBLE = 8;
+const INITIAL_VISIBLE = 12;
 
 const STATE_CARDS = [
   { name: "Delhi", details: "Delhi, Noida, Gurgaon" },
@@ -55,7 +55,7 @@ export function StateExplorer() {
 
   return (
     <div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
         {visibleStates.map((state) => (
           <Link
             key={state.name}
@@ -66,7 +66,7 @@ export function StateExplorer() {
               src={stateCardImage(state.name)}
               alt={`${state.name} — ${state.details}`}
               fill
-              sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+              sizes="(min-width: 1280px) 17vw, (min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
             <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">

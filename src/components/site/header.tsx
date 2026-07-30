@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useLocation } from "@/context/location-context";
 import { DotPattern } from "@/registry/magicui/dot-pattern";
 import { stateExploreHref, stateSlug } from "@/lib/state-routes";
+import { stateCardImage } from "@/lib/state-images";
 
 const STATES = [
   "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh",
@@ -32,37 +33,8 @@ const TOP_STATES = [
   "Tamil Nadu", "Gujarat", "Uttar Pradesh", "Rajasthan",
 ];
 
-const STATES_WITH_ICONS = new Set([
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
-  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
-  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
-  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
-  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
-]);
-
 const TOP_STATES_SET = new Set(TOP_STATES);
 const REST_STATES = STATES.filter((s) => !TOP_STATES_SET.has(s));
-const REST_WITH_ICONS = REST_STATES.filter((s) => STATES_WITH_ICONS.has(s));
-const NO_ICON_STATES = STATES.filter((s) => !STATES_WITH_ICONS.has(s));
-
-const STATE_ABBR: Record<string, string> = {
-  "Andaman and Nicobar Islands": "AN",
-  "Chandigarh": "CH",
-  "Delhi": "DL",
-  "Jammu and Kashmir": "JK",
-  "Ladakh": "LA",
-  "Lakshadweep": "LD",
-  "Puducherry": "PY",
-};
-
-function stateIconSrc(name: string): string | null {
-  if (!STATES_WITH_ICONS.has(name)) return null;
-  return `/states/${name.replace(/ /g, "_")}.png`;
-}
-
-function stateAbbr(name: string): string {
-  return STATE_ABBR[name] ?? name.slice(0, 2).toUpperCase();
-}
 
 function StateCard({
   state,
@@ -73,7 +45,6 @@ function StateCard({
   selected: boolean;
   onClick: () => void;
 }) {
-  const icon = stateIconSrc(state);
   return (
     <button
       onClick={onClick}
@@ -82,18 +53,14 @@ function StateCard({
       }`}
       style={{ backgroundColor: "#F4F4F4" }}
     >
-      {icon ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={icon} alt={state} width={78} height={78} className="h-[78px] w-[78px] object-contain" />
-      ) : (
-        <div
-          className={`flex h-20 w-20 items-center justify-center rounded-full text-base font-bold ${
-            selected ? "bg-saffron/20 text-saffron" : "bg-muted text-muted-foreground"
-          }`}
-        >
-          {stateAbbr(state)}
-        </div>
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={stateCardImage(state)}
+        alt={state}
+        width={150}
+        height={100}
+        className="aspect-[3/2] w-full rounded-lg object-contain"
+      />
     </button>
   );
 }
@@ -248,7 +215,7 @@ export function Header({
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 mt-3 w-[min(calc(100vw-2rem),26rem)] overflow-hidden rounded-xl border border-border bg-popover text-foreground shadow-2xl">
+            <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 mt-3 w-[min(calc(100vw-2rem),25rem)] overflow-hidden rounded-xl border border-border bg-popover text-foreground shadow-2xl">
               {/* Search */}
               <div className="bg-muted p-2">
                 <div className="relative">
@@ -280,7 +247,6 @@ export function Header({
                 /* List mode when searching */
                 <div className="max-h-72 overflow-y-auto p-1.5">
                   {filtered.map((state) => {
-                    const icon = stateIconSrc(state);
                     const selected = meta.label === state;
                     return (
                       <button
@@ -288,14 +254,14 @@ export function Header({
                         onClick={() => { setStateByName(state); setDropdownOpen(false); }}
                         className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent ${selected ? "bg-saffron/10 font-semibold text-saffron" : "text-foreground"}`}
                       >
-                        {icon ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={icon} alt={state} width={24} height={24} className="h-6 w-6 shrink-0 object-contain" />
-                        ) : (
-                          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${selected ? "bg-saffron/20 text-saffron" : "bg-muted text-muted-foreground"}`}>
-                            {stateAbbr(state)}
-                          </div>
-                        )}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={stateCardImage(state)}
+                          alt={state}
+                          width={42}
+                          height={28}
+                          className="h-7 w-[42px] shrink-0 rounded object-contain"
+                        />
                         <span>{state}</span>
                       </button>
                     );
@@ -308,9 +274,9 @@ export function Header({
                 /* Grid mode */
                 <div className="flex flex-col" style={{ backgroundColor: "#F4F4F4" }}>
                   {/* Scrollable icon grid */}
-                  <div className="max-h-[276px] overflow-y-auto p-1 pt-2 pb-2">
-                    <div className="grid grid-cols-4 gap-0.5">
-                      {[...TOP_STATES, ...REST_WITH_ICONS].map((state) => (
+                  <div className="max-h-[286px] overflow-y-auto p-1 pt-2 pb-2">
+                    <div className="grid grid-cols-3 gap-0.5">
+                      {[...TOP_STATES, ...REST_STATES].map((state) => (
                         <StateCard
                           key={state}
                           state={state}
@@ -319,19 +285,6 @@ export function Header({
                         />
                       ))}
                     </div>
-                  </div>
-
-                  {/* Fixed no-icon states list */}
-                  <div className="border-t border-border bg-popover px-1 pb-1 pt-1.5">
-                    {NO_ICON_STATES.map((state) => (
-                      <button
-                        key={state}
-                        onClick={() => { setStateByName(state); setDropdownOpen(false); }}
-                        className={`flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent ${meta.label === state ? "font-semibold text-saffron" : "text-foreground"}`}
-                      >
-                        {state}
-                      </button>
-                    ))}
                   </div>
                 </div>
               )}
