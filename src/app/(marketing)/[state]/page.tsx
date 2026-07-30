@@ -246,24 +246,8 @@ async function getStateDistrictPages(stateName: string): Promise<StateDistrictPa
   }
 }
 
-async function getExploreLocationPages({
-  stateName,
-  districtName,
-}: {
-  stateName: string;
-  districtName?: string;
-}): Promise<StateLocationPage[]> {
+async function fetchLocationPages(params: URLSearchParams): Promise<StateLocationPage[]> {
   try {
-    const params = new URLSearchParams({
-      state: stateName,
-      location_category: districtName ? "district" : "state",
-      limit: "100",
-    });
-
-    if (districtName) {
-      params.set("district", districtName);
-    }
-
     const res = await fetch(`${API}/location-pages/?${params.toString()}`, {
       cache: "no-store",
     });
@@ -273,6 +257,37 @@ async function getExploreLocationPages({
   } catch {
     return [];
   }
+}
+
+async function getExploreLocationPages({
+  stateName,
+  districtName,
+}: {
+  stateName: string;
+  districtName?: string;
+}): Promise<StateLocationPage[]> {
+  const params = new URLSearchParams({
+    state: stateName,
+    location_category: districtName ? "district" : "state",
+    limit: "100",
+  });
+
+  if (districtName) {
+    params.set("district", districtName);
+  }
+
+  const pages = await fetchLocationPages(params);
+  if (pages.length > 0 || districtName) return pages;
+
+  // Some union territories (e.g. Chandigarh) have no location_category="state"
+  // docs of their own, only city-level ones for the same location name.
+  // Fall back to those so the explore page still shows popular searches.
+  const cityParams = new URLSearchParams({
+    state: stateName,
+    location_category: "city",
+    limit: "100",
+  });
+  return fetchLocationPages(cityParams);
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ state: string }> }): Promise<Metadata> {
