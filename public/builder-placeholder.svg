@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300" role="img" aria-label="Builder image placeholder">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EAF2FE" />
+      <stop offset="1" stop-color="#F7FAFF" />
+    </linearGradient>
+  </defs>
+
+  <rect width="400" height="300" fill="url(#sky)" />
+
+  <g fill="#C7DBF8">
+    <rect x="18" y="150" width="46" height="110" rx="3" />
+    <rect x="76" y="176" width="34" height="84" rx="3" />
+    <rect x="300" y="164" width="38" height="96" rx="3" />
+    <rect x="348" y="188" width="34" height="72" rx="3" />
+  </g>
+
+  <rect x="124" y="96" width="70" height="164" rx="5" fill="#2C74F0" />
+  <rect x="206" y="130" width="70" height="130" rx="5" fill="#8FBAF7" />
+
+  <g fill="#FFFFFF" opacity="0.85">
+    <rect x="138" y="114" width="16" height="14" rx="2" />
+    <rect x="164" y="114" width="16" height="14" rx="2" />
+    <rect x="138" y="142" width="16" height="14" rx="2" />
+    <rect x="164" y="142" width="16" height="14" rx="2" />
+    <rect x="138" y="170" width="16" height="14" rx="2" />
+    <rect x="164" y="170" width="16" height="14" rx="2" />
+    <rect x="138" y="198" width="16" height="14" rx="2" />
+    <rect x="164" y="198" width="16" height="14" rx="2" />
+  </g>
+  <g fill="#FFFFFF" opacity="0.9">
+    <rect x="220" y="148" width="16" height="14" rx="2" />
+    <rect x="246" y="148" width="16" height="14" rx="2" />
+    <rect x="220" y="176" width="16" height="14" rx="2" />
+    <rect x="246" y="176" width="16" height="14" rx="2" />
+    <rect x="220" y="204" width="16" height="14" rx="2" />
+    <rect x="246" y="204" width="16" height="14" rx="2" />
+  </g>
+
+  <g stroke="#2C74F0" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M292 96V60" />
+    <path d="M246 60h96" />
+    <path d="M318 60v20" />
+  </g>
+
+  <rect x="0" y="258" width="400" height="4" fill="#BFD6F7" />
+</svg>

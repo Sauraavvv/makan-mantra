@@ -18,6 +18,7 @@ import { DistrictCarousel } from "@/components/site/district-carousel";
 import { LineClampedDescription } from "@/components/site/line-clamped-description";
 import { PriceTrendChart } from "@/components/site/price-trend-chart";
 import { SocialInfrastructureCarousel } from "@/components/site/social-infrastructure-carousel";
+import { TopBuildersCarousel } from "@/components/site/top-builders-carousel";
 import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
 import { HeroSearch } from "@/components/site/hero-search";
 import { GoogleMapEmbed } from "@/components/map/google-map-embed";
@@ -606,22 +607,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       {topBuilders.length > 0 && (
         <section id="top-builders" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
-            <h2 className="mb-2 text-3xl font-bold leading-tight md:text-4xl">
-              Top Builders in {displayName}
-            </h2>
-            <p className="mb-5 max-w-4xl text-sm leading-relaxed text-muted-foreground">
-              Leading builder and developer names shaping residential and commercial supply across {displayName}.
-            </p>
-
-            <div className="-mx-5 overflow-x-auto scroll-smooth px-5 pb-2 no-scrollbar">
-              <div className="flex w-max gap-3">
-                {topBuilders.map((builder) => (
-                  <div key={builder.title} className="w-[min(78vw,320px)] shrink-0 lg:w-[340px]">
-                    <TopBuilderCard builder={builder} />
-                  </div>
-                ))}
-              </div>
-            </div>
+            <TopBuildersCarousel builders={topBuilders} displayName={displayName} />
           </div>
         </section>
       )}
@@ -881,18 +867,5 @@ function InvestmentComparisonCard({
         )}
       </div>
     </div>
-  );
-}
-
-function TopBuilderCard({ builder }: { builder: BuilderDisplayItem }) {
-  return (
-    <article className="flex min-h-[88px] items-center overflow-hidden rounded-3xl border border-[#E8DCC8] bg-white text-foreground">
-      <div className="grid h-full min-h-[88px] w-24 shrink-0 place-items-center bg-[#F7EEDC] text-foreground/65">
-        <Building2 className="h-8 w-8" strokeWidth={1.55} />
-      </div>
-      <h3 className="min-w-0 flex-1 px-5 text-base font-bold leading-tight text-foreground md:text-lg">
-        {builder.title}
-      </h3>
-    </article>
   );
 }
