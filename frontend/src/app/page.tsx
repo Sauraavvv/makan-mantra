@@ -4,6 +4,7 @@ import { Footer } from "@/components/site/footer";
 import { HeroSearch } from "@/components/site/hero-search";
 import { StateExplorer } from "@/components/site/state-explorer";
 import { HeroText } from "@/components/site/hero-text";
+import { PostPropertyBanner } from "@/components/site/post-property-banner";
 
 export default function Home() {
   return (
@@ -43,6 +44,13 @@ export default function Home() {
           </div>
 
           <StateExplorer />
+        </div>
+      </section>
+
+      {/* Post your property banner */}
+      <section className="bg-secondary px-4 py-4 md:py-5 lg:py-16">
+        <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background p-2 md:p-3">
+          <PostPropertyBanner />
         </div>
       </section>
 

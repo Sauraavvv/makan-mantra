@@ -51,6 +51,11 @@ export async function getPendingUsersCollection() {
   return c.db("makan_mantraa").collection("pending_users");
 }
 
+export async function getPropertySubmissionsCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection("property_submissions");
+}
+
 export type UserDoc = {
   _id?: string;
   name: string;

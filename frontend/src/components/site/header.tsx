@@ -92,6 +92,10 @@ type AuthMode = "login" | "register" | "verify";
 type HeaderProps = {
   showSearchBar?: boolean;
   searchPlaceholder?: string;
+  /** Lays the header over the page hero instead of taking space above it. */
+  overlay?: boolean;
+  /** Background used in overlay mode. */
+  overlayTone?: "tint" | "solid";
 };
 
 function statePageHref(state: string, propertySlug: string, listingType: ListingType) {
@@ -101,6 +105,8 @@ function statePageHref(state: string, propertySlug: string, listingType: Listing
 export function Header({
   showSearchBar = false,
   searchPlaceholder = "Search city, locality or project...",
+  overlay = false,
+  overlayTone = "tint",
 }: HeaderProps = {}) {
   const { meta, setStateByName } = useLocation();
   const pathname = usePathname();
@@ -180,7 +186,15 @@ export function Header({
 
   return (
     <>
-    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0A2036] text-white shadow-lg shadow-black/10">
+    <header
+      className={
+        overlay
+          ? `absolute inset-x-0 top-0 z-40 w-full border-b border-white/10 text-white ${
+              overlayTone === "tint" ? "bg-black/35 backdrop-blur-md" : "bg-[#0A2036]"
+            }`
+          : "sticky top-0 z-40 w-full border-b border-white/10 bg-[#0A2036] text-white shadow-lg shadow-black/10"
+      }
+    >
       <div className="flex h-16 w-full items-center gap-3 px-4">
         <Link href="/" className="flex shrink-0 items-center text-xl font-bold tracking-tight sm:text-2xl">
           <span>

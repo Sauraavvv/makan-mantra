@@ -45,6 +45,11 @@ export function stateSlug(state: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+/** Returns the canonical state label for any spelling of a known state, else null. */
+export function canonicalStateName(value: string) {
+  return STATE_LABEL_BY_SLUG[stateSlug(value)] ?? null;
+}
+
 export function stateExploreHref(state: string) {
   return `/explore-${stateSlug(state)}`;
 }
