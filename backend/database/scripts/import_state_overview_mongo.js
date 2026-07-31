@@ -3,9 +3,10 @@ const path = require("path");
 const { MongoClient } = require("mongodb");
 
 const SCRIPT_DIR = __dirname;
-const PROJECT_ROOT = path.resolve(SCRIPT_DIR, "../..");
+const BACKEND_ROOT = path.resolve(SCRIPT_DIR, "../..");
+const PROJECT_ROOT = path.resolve(BACKEND_ROOT, "..");
 const WORKSPACE_ROOT = path.resolve(PROJECT_ROOT, "..");
-const ENV_PATH = path.join(PROJECT_ROOT, "backend", ".env");
+const ENV_PATH = path.join(BACKEND_ROOT, ".env");
 const DATA_DIR = path.join(WORKSPACE_ROOT, "state pages data");
 const COORDINATES_PATH = path.join(DATA_DIR, "state_coordinates.json");
 

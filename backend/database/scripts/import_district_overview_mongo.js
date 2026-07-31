@@ -3,11 +3,12 @@ const path = require("path");
 const { MongoClient } = require("mongodb");
 
 const SCRIPT_DIR = __dirname;
-const PROJECT_ROOT = path.resolve(SCRIPT_DIR, "../..");
+const BACKEND_ROOT = path.resolve(SCRIPT_DIR, "../..");
+const PROJECT_ROOT = path.resolve(BACKEND_ROOT, "..");
 const WORKSPACE_ROOT = path.resolve(PROJECT_ROOT, "..");
-const ENV_PATH = path.join(PROJECT_ROOT, "backend", ".env");
+const ENV_PATH = path.join(BACKEND_ROOT, ".env");
 const DEFAULT_JSON_PATH = path.join(WORKSPACE_ROOT, "district_names_district_overview_results_final.json");
-const BACKUP_DIR = path.join(PROJECT_ROOT, "database", "backups");
+const BACKUP_DIR = path.join(BACKEND_ROOT, "database", "backups");
 const DB_NAME = process.env.MONGODB_DB || "makan_mantraa";
 const COLLECTION_NAME = "district_overview";
 

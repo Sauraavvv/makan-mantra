@@ -27,8 +27,9 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ReplaceOne
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent.parent
-ENV_PATH = PROJECT_ROOT / "backend" / ".env"
+BACKEND_ROOT = SCRIPT_DIR.parent.parent
+PROJECT_ROOT = BACKEND_ROOT.parent
+ENV_PATH = BACKEND_ROOT / ".env"
 DEFAULT_DB_NAME = "makan_mantraa"
 SOURCE_COLLECTIONS = ("state_pages", "district_pages")
 TARGET_COLLECTION = "location_pages"

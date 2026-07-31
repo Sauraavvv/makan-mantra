@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Makan Mantraa
 
-## Getting Started
+Indian real estate platform. The repo holds two independent services that talk to each other
+only over HTTP — there are no cross-imports between them.
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+makan-mantra/
+├── frontend/          Next.js app (App Router, Tailwind, shadcn)
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   └── .env.local
+└── backend/           FastAPI service
+    ├── main.py
+    ├── routers/
+    ├── requirements.txt
+    ├── .env
+    └── database/      MongoDB import scripts + collection backups
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Getting started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Both services run at the same time. Use two terminals.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Backend (FastAPI, port 8000)
 
-## Learn More
+```bash
+cd backend
+python3 -m venv .venv && source .venv/bin/activate   # first time only
+pip install -r requirements.txt                      # first time only
+python -m uvicorn main:app --port 8000 --reload
+```
 
-To learn more about Next.js, take a look at the following resources:
+Docs at [http://localhost:8000/docs](http://localhost:8000/docs), health check at `/health`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Frontend (Next.js, port 3000)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+cd frontend
+npm install     # first time only
+npm run dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Environment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Each service owns its own env file; neither reads the other's.
+
+| File | Keys |
+| --- | --- |
+| `frontend/.env.local` | `NEXT_PUBLIC_API_URL`, `MONGODB_URL`, `JWT_SECRET`, `RESEND_API_KEY` |
+| `backend/.env` | `MONGODB_URL` |
+
+Both services connect to MongoDB directly: the backend serves the state/district/location
+content APIs, while the frontend uses its own connection for auth only
+(`frontend/src/lib/auth/db.ts`).
+
+`NEXT_PUBLIC_API_URL` points the frontend at the backend (defaults to `http://localhost:8000`).
+The backend's CORS allowlist in `main.py` must include the frontend origin.
+
+## Database scripts
+
+One-off import and sync scripts live in `backend/database/scripts/`. They resolve paths
+relative to their own location and read `MONGODB_URL` from `backend/.env`, so run them
+from anywhere:
+
+```bash
+python backend/database/scripts/import_state_overview_mongo.py
+node   backend/database/scripts/import_district_overview_mongo.js
+```
+
+Collection backups are written to `backend/database/backups/`.

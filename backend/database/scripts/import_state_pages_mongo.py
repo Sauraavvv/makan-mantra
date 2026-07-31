@@ -25,9 +25,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import UpdateOne
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent.parent
+BACKEND_ROOT = SCRIPT_DIR.parent.parent
+PROJECT_ROOT = BACKEND_ROOT.parent
 WORKSPACE_ROOT = PROJECT_ROOT.parent
-ENV_PATH = PROJECT_ROOT / "backend" / ".env"
+ENV_PATH = BACKEND_ROOT / ".env"
 JSON_PATH = WORKSPACE_ROOT / "makan_mantraa.state_pages.json"
 DB_NAME = "makan_mantraa"
 COLLECTION_NAME = "location_pages"
