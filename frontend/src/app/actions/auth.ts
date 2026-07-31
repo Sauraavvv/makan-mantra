@@ -14,21 +14,42 @@ export type AuthState = {
   emailWarning?: string;
 } | undefined;
 
-async function createUnverifiedUser(name: string, email: string, password: string): Promise<AuthState> {
-  if (!name || !email || !password) {
+// Accepts "9876543210", "+91 98765 43210", "091-9876543210" and stores the
+// bare 10-digit number.
+function normalizePhone(value: string) {
+  const digits = value.replace(/\D/g, "").replace(/^(?:0|91|091)(?=\d{10}$)/, "");
+  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
+}
+
+async function createUnverifiedUser(
+  name: string,
+  email: string,
+  phone: string,
+  password: string,
+): Promise<AuthState> {
+  if (!name || !email || !phone || !password) {
     return { error: "All fields are required" };
   }
   if (password.length < 8) {
     return { error: "Password must be at least 8 characters" };
   }
 
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) {
+    return { error: "Enter a valid 10-digit mobile number" };
+  }
+
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   try {
     const users = await getUsersCollection();
-    const existingUser = await users.findOne({ email });
+    const existingUser = await users.findOne({ $or: [{ email }, { phone: normalizedPhone }] });
     if (existingUser) {
-      return { error: "Email already registered" };
+      return {
+        error: existingUser.email === email
+          ? "Email already registered"
+          : "Mobile number already registered",
+      };
     }
 
     const hashed = await bcrypt.hash(password, 12);
@@ -41,6 +62,7 @@ async function createUnverifiedUser(name: string, email: string, password: strin
         $set: {
           name,
           email,
+          phone: normalizedPhone,
           password: hashed,
           role: "user",
           otp,
@@ -81,9 +103,10 @@ export async function registerAction(
 ): Promise<AuthState> {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
+  const phone = formData.get("phone") as string;
   const password = formData.get("password") as string;
 
-  const result = await createUnverifiedUser(name, email, password);
+  const result = await createUnverifiedUser(name, email, phone, password);
   if (result?.error) return result;
   if (result?.devOtp) {
     redirect(`/verify-email?email=${encodeURIComponent(email)}&devOtp=${encodeURIComponent(result.devOtp)}`);
@@ -98,9 +121,10 @@ export async function registerModalAction(
 ): Promise<AuthState> {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
+  const phone = formData.get("phone") as string;
   const password = formData.get("password") as string;
 
-  return createUnverifiedUser(name, email, password);
+  return createUnverifiedUser(name, email, phone, password);
 }
 
 export async function loginAction(

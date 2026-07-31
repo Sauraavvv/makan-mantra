@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     const result = await users.insertOne({
       name: user.name,
       email: user.email,
+      phone: user.phone,
       password: user.password,
       role: user.role || "user",
       email_verified: true,

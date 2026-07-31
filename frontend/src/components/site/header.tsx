@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { ArrowRight, BedDouble, ChevronDown, Home, LockKeyhole, Mail, MailCheck, MapPin, Menu, Plus, Search, ShieldCheck, UserRound, X } from "lucide-react";
+import { ArrowRight, BedDouble, ChevronDown, Home, LockKeyhole, Mail, MailCheck, MapPin, Menu, Phone, Plus, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { loginAction, registerModalAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,8 +95,7 @@ type HeaderProps = {
 };
 
 function statePageHref(state: string, propertySlug: string, listingType: ListingType) {
-  const slug = stateSlug(state);
-  return `/${slug}/${propertySlug}-for-${listingType}-in-${slug}`;
+  return `/${propertySlug}-for-${listingType}-in-${stateSlug(state)}`;
 }
 
 export function Header({
@@ -631,6 +630,26 @@ function LoginModal({
                 />
               </div>
             </div>
+
+            {isRegister && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Mobile number</label>
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    name="phone"
+                    type="tel"
+                    required
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    pattern="(\+91[\s-]?)?[6-9][0-9]{9}"
+                    title="Enter a 10-digit Indian mobile number"
+                    placeholder="9876543210"
+                    className="h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/15"
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="mb-1.5 block text-sm font-medium">Password</label>
