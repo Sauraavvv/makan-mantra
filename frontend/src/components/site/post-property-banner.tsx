@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { PostPropertyForm } from "@/components/site/post-property-form";
+import { PostPropertyWizard } from "@/components/site/post-property-wizard";
 
 export function PostPropertyBanner() {
   return (
@@ -27,7 +27,7 @@ export function PostPropertyBanner() {
         </Link>
       </div>
 
-      <PostPropertyForm className="relative z-10 -mt-6 mx-3 sm:mx-8 lg:absolute lg:-right-3 lg:top-1/2 lg:mx-0 lg:mt-0 lg:w-[430px] lg:-translate-y-1/2" />
+      <PostPropertyWizard variant="compact" source="banner" className="relative z-10 -mt-6 mx-3 sm:mx-8 lg:absolute lg:-right-3 lg:top-1/2 lg:mx-0 lg:mt-0 lg:w-[430px] lg:-translate-y-1/2" />
     </div>
   );
 }

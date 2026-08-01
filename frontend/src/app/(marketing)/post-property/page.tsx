@@ -1,23 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { connection } from "next/server";
-import {
-  Building2,
-  Eye,
-  FileText,
-  ImagePlus,
-  IndianRupee,
-  Map,
-  MapPin,
-  Send,
-  ShieldCheck,
-  Tag,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { Building2, ChevronRight, Eye, Map, MapPin, ShieldCheck, Tag, Users } from "lucide-react";
 
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
+import { PostPropertyWizard } from "@/components/site/post-property-wizard";
 import { getPropertyStats } from "@/lib/property-stats";
 
 export const metadata: Metadata = {
@@ -61,34 +50,6 @@ const HIGHLIGHTS = [
   { icon: Eye, title: "Maximum Visibility", copy: "Seen across India" },
 ];
 
-const STEPS = [
-  {
-    icon: FileText,
-    title: "Enter Property Details",
-    copy: "Add basic details about your property",
-  },
-  {
-    icon: ImagePlus,
-    title: "Add Photos",
-    copy: "Upload high quality photos to attract buyers",
-  },
-  {
-    icon: IndianRupee,
-    title: "Set Price",
-    copy: "Set the right price to get better response",
-  },
-  {
-    icon: UserRound,
-    title: "Your Contact Details",
-    copy: "Add your contact details for verification",
-  },
-  {
-    icon: Send,
-    title: "Go Live",
-    copy: "Your property will be live for millions to see",
-  },
-];
-
 export default async function PostPropertyPage({
   searchParams,
 }: {
@@ -108,7 +69,7 @@ export default async function PostPropertyPage({
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
-      <Header overlay overlayTone={variant === "night" ? "tint" : "solid"} />
+      <Header overlay minimal overlayTone={variant === "night" ? "tint" : "solid"} />
 
       <main className="flex-1">
         {/* Hero */}
@@ -126,7 +87,23 @@ export default async function PostPropertyPage({
           {/* The header sits on top of the hero, so the top padding makes room for it. */}
           <div className="relative mx-auto flex w-full max-w-[1250px] flex-col justify-center gap-6 px-4 pb-12 pt-28 md:px-8 lg:min-h-[664px] lg:pb-16 lg:pt-32">
             <div className="max-w-3xl text-white">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-sm font-semibold">
+              <nav aria-label="Breadcrumb">
+                <ol className="flex items-center gap-2 text-sm text-white/60">
+                  <li>
+                    <Link href="/" className="transition-colors hover:text-white">
+                      Home
+                    </Link>
+                  </li>
+                  <li aria-hidden="true">
+                    <ChevronRight className="size-3.5" />
+                  </li>
+                  <li className="font-medium text-white" aria-current="page">
+                    Post Property
+                  </li>
+                </ol>
+              </nav>
+
+              <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-sm font-semibold">
                 <ShieldCheck className="size-4 text-saffron" />
                 India&apos;s Trusted Property Platform
               </span>
@@ -181,35 +158,10 @@ export default async function PostPropertyPage({
           </div>
         </section>
 
-        {/* Steps */}
-        <section className="bg-secondary px-4 py-12 md:px-8 md:py-16">
+        {/* Steps + form */}
+        <section className="bg-secondary px-4 pb-12 pt-4 md:px-8 md:pb-16 md:pt-5">
           <div className="mx-auto max-w-[1250px]">
-            <h2 className="text-center text-2xl font-bold md:text-3xl">
-              Post Your Property Free in 5 Simple Steps
-            </h2>
-            <div className="mx-auto mt-3 h-[3px] w-16 rounded-full bg-saffron" />
-
-            <ol className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-5 lg:gap-4">
-              {STEPS.map((step, index) => (
-                <li key={step.title} className="relative text-center">
-                  {index < STEPS.length - 1 && (
-                    <span className="absolute left-[calc(50%+2.5rem)] right-[calc(-50%+2.5rem)] top-8 hidden h-px bg-border lg:block" />
-                  )}
-
-                  <span className="relative mx-auto grid size-16 place-items-center rounded-full bg-saffron/10">
-                    <step.icon className="size-6 text-primary" />
-                    <span className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                      {index + 1}
-                    </span>
-                  </span>
-
-                  <h3 className="mt-4 text-sm font-bold">{step.title}</h3>
-                  <p className="mx-auto mt-1 max-w-[210px] text-xs leading-relaxed text-muted-foreground">
-                    {step.copy}
-                  </p>
-                </li>
-              ))}
-            </ol>
+            <PostPropertyWizard />
           </div>
         </section>
       </main>

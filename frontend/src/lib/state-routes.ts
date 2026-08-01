@@ -45,6 +45,11 @@ export function stateSlug(state: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+/** Unique state labels — some states are reachable through more than one slug. */
+export const STATE_NAMES = [...new Set(Object.values(STATE_LABEL_BY_SLUG))].sort((a, b) =>
+  a.localeCompare(b),
+);
+
 /** Returns the canonical state label for any spelling of a known state, else null. */
 export function canonicalStateName(value: string) {
   return STATE_LABEL_BY_SLUG[stateSlug(value)] ?? null;

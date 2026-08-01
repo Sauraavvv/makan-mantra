@@ -19,6 +19,12 @@ import { LineClampedDescription } from "@/components/site/line-clamped-descripti
 import { PriceTrendChart } from "@/components/site/price-trend-chart";
 import { SocialInfrastructureCarousel } from "@/components/site/social-infrastructure-carousel";
 import { TopBuildersCarousel } from "@/components/site/top-builders-carousel";
+import {
+  DistrictCityLinks,
+  PropertyTypeLinks,
+  type LocationLinkSections,
+} from "@/components/site/location-link-sections";
+import { getBuilderProfile } from "@/lib/constants/builders";
 import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
 import { HeroSearch } from "@/components/site/hero-search";
 import { GoogleMapEmbed } from "@/components/map/google-map-embed";
@@ -247,6 +253,19 @@ async function getStateDistrictPages(stateName: string): Promise<StateDistrictPa
   }
 }
 
+async function getLocationLinkSections(stateName: string): Promise<LocationLinkSections | null> {
+  try {
+    const res = await fetch(`${API}/location-pages/links/${encodeURIComponent(stateName)}`, {
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    return res.json() as Promise<LocationLinkSections>;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchLocationPages(params: URLSearchParams): Promise<StateLocationPage[]> {
   try {
     const res = await fetch(`${API}/location-pages/?${params.toString()}`, {
@@ -342,6 +361,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     districtName: isDistrictPage ? displayName : undefined,
   });
   const districtPages = isDistrictPage ? [] : await getStateDistrictPages(parentStateName);
+  const linkSections = isDistrictPage ? null : await getLocationLinkSections(parentStateName);
   const footerLocationLinks = locationPages.map((page) => ({
     label: page.seo?.on_page_title || page.slug.replace(/-/g, " "),
     href: `/${page.slug}`,
@@ -408,7 +428,10 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     overview.major_builders,
     overview.leading_builders,
   ].find(hasDisplayValue);
-  const topBuilders = asBuilderItems(topBuildersValue);
+  const topBuilders = asBuilderItems(topBuildersValue).map((builder) => ({
+    ...builder,
+    ...getBuilderProfile(builder.title, displayName),
+  }));
   const socialCardEntries = Object.entries(social_infrastructure || {})
     .filter(([key]) => key !== "markets_and_essentials_summary")
     .filter(([, value]) => hasDisplayValue(value));
@@ -608,6 +631,22 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         <section id="top-builders" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
             <TopBuildersCarousel builders={topBuilders} displayName={displayName} />
+          </div>
+        </section>
+      )}
+
+      {linkSections && linkSections.property_pages.length > 0 && (
+        <section id="property-types" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-6">
+            <PropertyTypeLinks pages={linkSections.property_pages} displayName={displayName} />
+          </div>
+        </section>
+      )}
+
+      {linkSections && linkSections.districts.length > 0 && (
+        <section id="districts-cities" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-6">
+            <DistrictCityLinks districts={linkSections.districts} displayName={displayName} />
           </div>
         </section>
       )}

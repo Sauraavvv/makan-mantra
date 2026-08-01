@@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ArrowRight, BedDouble, ChevronDown, Home, LockKeyhole, Mail, MailCheck, MapPin, Menu, Phone, Plus, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { loginAction, registerModalAction } from "@/app/actions/auth";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useLocation } from "@/context/location-context";
@@ -96,6 +95,8 @@ type HeaderProps = {
   overlay?: boolean;
   /** Background used in overlay mode. */
   overlayTone?: "tint" | "solid";
+  /** Hides the Buy/Rent nav and the "Post Property" CTA (used on the post-property page itself). */
+  minimal?: boolean;
 };
 
 function statePageHref(state: string, propertySlug: string, listingType: ListingType) {
@@ -107,6 +108,7 @@ export function Header({
   searchPlaceholder = "Search city, locality or project...",
   overlay = false,
   overlayTone = "tint",
+  minimal = false,
 }: HeaderProps = {}) {
   const { meta, setStateByName } = useLocation();
   const pathname = usePathname();
@@ -321,23 +323,30 @@ export function Header({
           />
         </form>
 
-        <nav className="ml-auto hidden items-center gap-1 lg:flex">
-          {NAV.map((item) => (
-            <MegaNavItem
-              key={item.label}
-              label={item.label}
-              href={item.href}
-              listingType={item.label === "Rent" ? "rent" : "sale"}
-            />
-          ))}
-        </nav>
+        {minimal ? (
+          <div className="ml-auto" />
+        ) : (
+          <>
+            <nav className="ml-auto hidden items-center gap-1 lg:flex">
+              {NAV.map((item) => (
+                <MegaNavItem
+                  key={item.label}
+                  label={item.label}
+                  href={item.href}
+                  listingType={item.label === "Rent" ? "rent" : "sale"}
+                />
+              ))}
+            </nav>
 
-        <Button
-          className="hidden h-9 shrink-0 gap-1 rounded-full bg-saffron px-4 text-sm font-semibold text-saffron-foreground hover:bg-saffron/90 sm:inline-flex"
-        >
-          <Plus className="h-4 w-4" /> Post Property{" "}
-          <span className="ml-1 rounded bg-white/20 px-1 text-[10px] font-bold">FREE</span>
-        </Button>
+            <Link
+              href="/post-property"
+              className="hidden h-9 shrink-0 items-center gap-1 rounded-full bg-saffron px-4 text-sm font-semibold text-saffron-foreground transition-colors hover:bg-saffron/90 sm:inline-flex"
+            >
+              <Plus className="h-4 w-4" /> Post Property{" "}
+              <span className="ml-1 rounded bg-white/20 px-1 text-[10px] font-bold">FREE</span>
+            </Link>
+          </>
+        )}
 
         <button
           type="button"
@@ -368,18 +377,25 @@ export function Header({
               >
                 Login
               </button>
-              {NAV.map((item) => (
-                <MobileNavSection
-                  key={item.label}
-                  label={item.label}
-                  href={item.href}
-                  icon={item.icon}
-                  listingType={item.label === "Rent" ? "rent" : "sale"}
-                />
-              ))}
-              <Button className="mt-4 w-full gap-1 bg-saffron text-saffron-foreground hover:bg-saffron/90">
-                <Plus className="h-4 w-4" /> Post Property FREE
-              </Button>
+              {!minimal && (
+                <>
+                  {NAV.map((item) => (
+                    <MobileNavSection
+                      key={item.label}
+                      label={item.label}
+                      href={item.href}
+                      icon={item.icon}
+                      listingType={item.label === "Rent" ? "rent" : "sale"}
+                    />
+                  ))}
+                  <Link
+                    href="/post-property"
+                    className="mt-4 inline-flex h-9 w-full items-center justify-center gap-1 rounded-lg bg-saffron text-sm font-medium text-saffron-foreground transition-colors hover:bg-saffron/90"
+                  >
+                    <Plus className="h-4 w-4" /> Post Property FREE
+                  </Link>
+                </>
+              )}
             </div>
           </SheetContent>
         </Sheet>
