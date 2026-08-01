@@ -67,7 +67,7 @@ const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
 
 const DETAILS_PLACEHOLDER = [
   "Example:",
-  "3 BHK Apartment",
+  "3 BHK",
   "1200 sq.ft",
   "5th Floor",
   "₹50,00,000",
