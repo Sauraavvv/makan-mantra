@@ -61,6 +61,12 @@ export async function getPropertySubmissionsCollection() {
   return c.db("makan_mantraa").collection("property_submissions");
 }
 
+/** Admins live apart from site users — separate collection, separate session. */
+export async function getAdminUsersCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection("admin_users");
+}
+
 export type UserDoc = {
   _id?: string;
   name: string;

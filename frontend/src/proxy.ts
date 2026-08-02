@@ -3,27 +3,49 @@ import { jwtVerify } from "jose";
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 const COOKIE = "mm_session";
+const ADMIN_COOKIE = "mm_admin";
 
 const PUBLIC_PATHS = ["/login", "/register", "/verify-email"];
+
+/** Reachable without an admin session — otherwise nobody could ever sign in. */
+const PUBLIC_ADMIN_PATHS = ["/admin/login", "/admin/setup"];
+
+async function isValid(token: string | undefined, kind?: string) {
+  if (!token) return false;
+
+  try {
+    const { payload } = await jwtVerify(token, SECRET);
+    return kind ? payload.kind === kind : true;
+  } catch {
+    return false;
+  }
+}
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-  if (isPublic) return NextResponse.next();
+  // Admins carry their own cookie, so /admin never consults the site session.
+  if (pathname.startsWith("/admin")) {
+    if (PUBLIC_ADMIN_PATHS.some((p) => pathname.startsWith(p))) {
+      return NextResponse.next();
+    }
 
-  const token = req.cookies.get(COOKIE)?.value;
+    if (await isValid(req.cookies.get(ADMIN_COOKIE)?.value, "admin")) {
+      return NextResponse.next();
+    }
 
-  if (!token) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    return NextResponse.redirect(new URL("/admin/login", req.url));
   }
 
-  try {
-    await jwtVerify(token, SECRET);
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
-  } catch {
-    return NextResponse.redirect(new URL("/login", req.url));
   }
+
+  if (await isValid(req.cookies.get(COOKIE)?.value)) {
+    return NextResponse.next();
+  }
+
+  return NextResponse.redirect(new URL("/login", req.url));
 }
 
 export const config = {

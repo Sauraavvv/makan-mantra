@@ -21,12 +21,12 @@ const NIGHT_START_HOUR = 18;
 
 const HERO_IMAGES = {
   morning: {
-    src: "/post-property-hero-morning.png",
+    src: "/post-property-hero-morning.webp",
     alt: "Waterfront home at sunrise with the city skyline behind it",
     overlay: "bg-gradient-to-r from-[#03142B] via-[#03142B]/80 to-[#03142B]/10",
   },
   night: {
-    src: "/post-property-hero-night.png",
+    src: "/post-property-hero-night.webp",
     alt: "Waterfront home at night with the city skyline behind it",
     // Black only behind the copy, faded out well before the house.
     overlay:

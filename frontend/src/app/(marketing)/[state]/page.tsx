@@ -19,6 +19,7 @@ import { LineClampedDescription } from "@/components/site/line-clamped-descripti
 import { PriceTrendChart } from "@/components/site/price-trend-chart";
 import { SocialInfrastructureCarousel } from "@/components/site/social-infrastructure-carousel";
 import { TopBuildersCarousel } from "@/components/site/top-builders-carousel";
+import { QuickLinks, type QuickLinkGroup } from "@/components/site/quick-links";
 import { getBuilderProfile } from "@/lib/constants/builders";
 import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
 import { HeroSearch } from "@/components/site/hero-search";
@@ -248,6 +249,21 @@ async function getStateDistrictPages(stateName: string): Promise<StateDistrictPa
   }
 }
 
+async function getQuickLinks(stateName: string): Promise<QuickLinkGroup[]> {
+  try {
+    const res = await fetch(`${API}/location-pages/quick-links/${encodeURIComponent(stateName)}`, {
+      // The set rotates once a day, so an hour of caching is plenty.
+      next: { revalidate: 3600 },
+    });
+
+    if (!res.ok) return [];
+    const data = (await res.json()) as { groups?: QuickLinkGroup[] };
+    return data.groups ?? [];
+  } catch {
+    return [];
+  }
+}
+
 async function fetchLocationPages(params: URLSearchParams): Promise<StateLocationPage[]> {
   try {
     const res = await fetch(`${API}/location-pages/?${params.toString()}`, {
@@ -343,6 +359,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     districtName: isDistrictPage ? displayName : undefined,
   });
   const districtPages = isDistrictPage ? [] : await getStateDistrictPages(parentStateName);
+  const quickLinkGroups = isDistrictPage ? [] : await getQuickLinks(parentStateName);
   const footerLocationLinks = locationPages.map((page) => ({
     label: page.seo?.on_page_title || page.slug.replace(/-/g, " "),
     href: `/${page.slug}`,
@@ -529,6 +546,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
             ...(topBuilders.length > 0 ? [["Top Builders", "#top-builders"]] : []),
             ...(priceTrend.length > 1 ? [["Price Trend", "#price-trend"]] : []),
             ...(hasInvestmentComparison ? [["Growth & Risks", "#growth-risks"]] : []),
+            ...(quickLinkGroups.length > 0 ? [["Quick Links", "#quick-links"]] : []),
             ...(faq.length > 0 ? [["FAQ", "#faq"]] : []),
           ].map(([label, href]) => (
             <a key={href} href={href} className="shrink-0 text-sm font-medium text-white/85 transition-colors hover:text-white">
@@ -666,12 +684,20 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         </section>
       )}
 
+      {quickLinkGroups.length > 0 && (
+        <section id="quick-links" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-6">
+            <QuickLinks groups={quickLinkGroups} displayName={displayName} />
+          </div>
+        </section>
+      )}
+
       {faq.length > 0 && (
         <section id="faq" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
-            <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 md:p-5">
-              <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
-            </div>
+            <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
+              Frequently Asked Questions
+            </h2>
             <div className="divide-y divide-border rounded-2xl border border-border bg-card/70 px-4 md:px-5">
               {faq.map((item) => (
                 <details key={item.question} className="group py-3">

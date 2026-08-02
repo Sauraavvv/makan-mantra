@@ -11,7 +11,7 @@ export function PostPropertyBanner() {
     <div className="relative">
       <div className="relative overflow-hidden rounded-[20px]">
         <Image
-          src="/post-property-banner.png"
+          src="/post-property-banner.webp"
           alt="List your property on MakanMantraa and reach the right buyers"
           width={3838}
           height={1416}

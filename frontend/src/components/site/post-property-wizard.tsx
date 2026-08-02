@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -10,6 +11,7 @@ import {
   ImagePlus,
   Mail,
   Phone,
+  Plus,
   Send,
   ShieldCheck,
   UserRound,
@@ -25,7 +27,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PROPERTY_TYPES, type PropertyType } from "@/lib/constants/propertyTypes";
+import { uploadToCloudinary, type CloudinaryAsset } from "@/lib/cloudinary-upload";
+import { cldThumb } from "@/lib/cloudinary-url";
 import { cn } from "@/lib/utils";
+
+/**
+ * A file the owner picked. Uploading starts immediately so the media is already
+ * on Cloudinary by the time they reach the publish button.
+ */
+type Upload = {
+  id: string;
+  name: string;
+  size: number;
+  kind: "image" | "video";
+  status: "uploading" | "done" | "error";
+  progress: number;
+  asset?: CloudinaryAsset;
+  error?: string;
+};
 
 const LISTING_OPTIONS = [
   { value: "buy", label: "For Sale" },
@@ -86,12 +105,6 @@ const selectClass = `${fieldClass} gap-2 pl-3 pr-2 text-sm data-[size=default]:h
 const cardClass = "rounded-[28px] border border-border bg-background p-6";
 const cardTitleClass = "text-[13px] font-bold uppercase tracking-wide text-muted-foreground";
 
-function formatSize(bytes: number) {
-  return bytes >= 1024 * 1024
-    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-    : `${Math.round(bytes / 1024)} KB`;
-}
-
 /**
  * Three-step property posting form.
  *
@@ -109,6 +122,7 @@ export function PostPropertyWizard({
 }) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const uploadIdRef = useRef(0);
 
   const [step, setStep] = useState(0);
 
@@ -121,14 +135,22 @@ export function PostPropertyWizard({
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
 
-  const [images, setImages] = useState<File[]>([]);
-  const [videos, setVideos] = useState<File[]>([]);
-  const files = [...images, ...videos];
+  const [uploads, setUploads] = useState<Upload[]>([]);
+  const images = uploads.filter((item) => item.kind === "image");
+  const videos = uploads.filter((item) => item.kind === "video");
   const [createAccount, setCreateAccount] = useState(true);
 
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
   const [error, setError] = useState<string | null>(null);
   const [accountCreated, setAccountCreated] = useState(false);
+
+  // The confirmation art shows briefly, then the card goes back to a blank form.
+  useEffect(() => {
+    if (status !== "success") return;
+
+    const timer = setTimeout(() => setStatus("idle"), 3000);
+    return () => clearTimeout(timer);
+  }, [status]);
 
   const addFiles = (kind: "image" | "video", fileList: FileList | null) => {
     if (!fileList?.length) return;
@@ -148,24 +170,44 @@ export function PostPropertyWizard({
       }
     }
 
-    const current = kind === "image" ? images : videos;
-    const other = kind === "image" ? videos : images;
-    const next = [...current, ...picked].slice(0, MAX_FILES - other.length);
+    const room = MAX_FILES - uploads.length;
+    const accepted = picked.slice(0, room);
+    const used = uploads.reduce((sum, item) => sum + item.size, 0);
 
-    if ([...next, ...other].reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_BYTES) {
+    if (used + accepted.reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_BYTES) {
       setError("Total upload size must stay under 10MB.");
       return;
     }
 
     setError(null);
-    (kind === "image" ? setImages : setVideos)(next);
     if (inputRef.current) inputRef.current.value = "";
+
+    for (const file of accepted) {
+      uploadIdRef.current += 1;
+      const id = `upload-${uploadIdRef.current}`;
+
+      setUploads((current) => [
+        ...current,
+        { id, name: file.name, size: file.size, kind, status: "uploading", progress: 0 },
+      ]);
+
+      const patch = (changes: Partial<Upload>) =>
+        setUploads((current) =>
+          current.map((item) => (item.id === id ? { ...item, ...changes } : item)),
+        );
+
+      uploadToCloudinary(file, kind, (progress) => patch({ progress }))
+        .then((asset) => patch({ status: "done", progress: 100, asset }))
+        .catch((uploadError: Error) =>
+          patch({ status: "error", error: uploadError.message || "Upload failed." }),
+        );
+    }
   };
 
-  const removeFile = (kind: "image" | "video", index: number) => {
-    (kind === "image" ? setImages : setVideos)((current) =>
-      current.filter((_, i) => i !== index),
-    );
+  const removeFile = (id: string) => {
+    // The asset keeps its `draft` tag on Cloudinary and is swept up later, so
+    // nothing has to be deleted here.
+    setUploads((current) => current.filter((item) => item.id !== id));
   };
 
   const validateStep = (index: number) => {
@@ -204,8 +246,7 @@ export function PostPropertyWizard({
     setOwnerName("");
     setOwnerEmail("");
     setOwnerPhone("");
-    setImages([]);
-    setVideos([]);
+    setUploads([]);
     setCreateAccount(true);
     if (imageInputRef.current) imageInputRef.current.value = "";
     if (videoInputRef.current) videoInputRef.current.value = "";
@@ -219,6 +260,16 @@ export function PostPropertyWizard({
         setError(message);
         return;
       }
+    }
+
+    if (uploads.some((item) => item.status === "uploading")) {
+      setError("Please wait for your uploads to finish.");
+      return;
+    }
+
+    if (uploads.some((item) => item.status === "error")) {
+      setError("Some files failed to upload. Remove them and try again.");
+      return;
     }
 
     setError(null);
@@ -235,7 +286,15 @@ export function PostPropertyWizard({
       payload.append("owner_phone", ownerPhone.trim());
       payload.append("create_account", createAccount ? "true" : "false");
       payload.append("source", source);
-      files.forEach((file) => payload.append("images", file));
+      payload.append(
+        "media",
+        JSON.stringify(
+          uploads
+            .map((item) => item.asset)
+            .filter((asset): asset is CloudinaryAsset => Boolean(asset))
+            .map(({ public_id, kind }) => ({ public_id, kind })),
+        ),
+      );
 
       const res = await fetch("/api/post-property", { method: "POST", body: payload });
       const data = await res.json();
@@ -255,8 +314,12 @@ export function PostPropertyWizard({
     }
   };
 
+  // Both buttons render in the same slot. They keep `type="button"` and carry
+  // distinct keys so React swaps the element instead of flipping `type` on the
+  // node mid-click — that turned one Continue click into a submit.
   const continueButton = (
     <button
+      key="continue"
       type="button"
       onClick={goNext}
       className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
@@ -267,7 +330,9 @@ export function PostPropertyWizard({
 
   const publishButton = (
     <button
-      type="submit"
+      key="publish"
+      type="button"
+      onClick={() => void submitForm()}
       disabled={status === "submitting"}
       className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-70"
     >
@@ -275,6 +340,13 @@ export function PostPropertyWizard({
       {status === "submitting" ? "Publishing..." : "Publish Property"}
     </button>
   );
+
+  /** Enter inside a field advances the wizard; it only publishes on the last step. */
+  const handleFormSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (step < STEPS.length - 1) goNext();
+    else void submitForm();
+  };
 
   const propertyFields = (
     <>
@@ -436,7 +508,7 @@ export function PostPropertyWizard({
     const isImage = kind === "image";
     const inputRef = isImage ? imageInputRef : videoInputRef;
     const picked = isImage ? images : videos;
-    const full = files.length >= MAX_FILES;
+    const full = uploads.length >= MAX_FILES;
     const Icon = isImage ? ImagePlus : Video;
 
     return (
@@ -450,50 +522,81 @@ export function PostPropertyWizard({
           onChange={(event) => addFiles(kind, event.target.files)}
         />
 
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={full}
+        {/* Previews live inside the box so its height never changes. */}
+        <div
           className={cn(
-            "flex w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border bg-secondary/50 text-sm font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60",
+            "w-full rounded-xl border border-dashed border-border bg-secondary/50",
             variant === "compact" ? "min-h-[68px] flex-1" : "h-24",
+            picked.length === 0 ? "" : "flex items-center gap-2 p-2",
           )}
         >
-          <Icon className="size-5 text-primary" />
-          {isImage ? "Upload photos" : "Upload a video"}
-          <span className="text-[11px] font-normal text-muted-foreground">
-            {isImage ? "JPG or PNG, up to 2MB each" : "MP4 or MOV, up to 8MB"}
-          </span>
-        </button>
+          {picked.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={full}
+              className="flex size-full flex-col items-center justify-center gap-1 rounded-xl text-sm font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Icon className="size-5 text-primary" />
+              {isImage ? "Upload photos" : "Upload a video"}
+              <span className="text-[11px] font-normal text-muted-foreground">
+                {isImage ? "JPG or PNG, up to 2MB each" : "MP4 or MOV, up to 8MB"}
+              </span>
+            </button>
+          ) : (
+            <>
+              <ul className="flex min-w-0 flex-1 gap-2 overflow-x-auto no-scrollbar">
+                {picked.map((item) => (
+                  <li key={item.id} className="group relative shrink-0">
+                    <span
+                      className={cn(
+                        "grid size-14 place-items-center overflow-hidden rounded-lg border bg-background",
+                        item.status === "error" ? "border-destructive" : "border-border",
+                      )}
+                      title={item.name}
+                    >
+                      {item.status === "done" && item.asset && isImage ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={cldThumb(item.asset.public_id, 112)}
+                          alt=""
+                          className="size-full object-cover"
+                        />
+                      ) : item.status === "uploading" ? (
+                        <span className="text-[11px] font-semibold text-muted-foreground">
+                          {item.progress}%
+                        </span>
+                      ) : item.status === "error" ? (
+                        <X className="size-4 text-destructive" />
+                      ) : (
+                        <Film className="size-4 text-primary" />
+                      )}
+                    </span>
 
-        {picked.length > 0 && (
-          <ul className="mt-2 space-y-1.5">
-            {picked.map((file, index) => (
-              <li
-                key={`${file.name}-${index}`}
-                className="flex items-center gap-2 rounded-md bg-secondary px-2.5 py-2 text-xs"
+                    <button
+                      type="button"
+                      onClick={() => removeFile(item.id)}
+                      aria-label={`Remove ${item.name}`}
+                      className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={full}
+                aria-label={isImage ? "Add more photos" : "Add a video"}
+                className="grid size-14 shrink-0 place-items-center rounded-lg border border-dashed border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {isImage ? (
-                  <ImagePlus className="size-3.5 shrink-0 text-primary" />
-                ) : (
-                  <Film className="size-3.5 shrink-0 text-primary" />
-                )}
-                <span className="truncate">{file.name}</span>
-                <span className="ml-auto shrink-0 text-muted-foreground">
-                  {formatSize(file.size)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeFile(kind, index)}
-                  aria-label={`Remove ${file.name}`}
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+                <Plus className="size-5" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
     );
   };
@@ -524,19 +627,37 @@ export function PostPropertyWizard({
 
   const stepFields = [propertyFields, ownerFields, mediaFields];
 
-  const feedback = (
-    <>
-      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
-      {status === "success" && (
-        <p className="text-xs font-medium text-success">
-          Your property has been submitted. Our team will review it shortly.
-          {accountCreated && " Your MakanMantraa account is ready — you are signed in."}
+  const feedback = error ? (
+    <p className="text-xs font-medium text-destructive">{error}</p>
+  ) : null;
+
+  /* Confirmation art holds the card for a beat, then the form returns to step 1. */
+  const successView = (
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 py-2">
+      <Image
+        src="/property-submitted.webp"
+        alt="Your property has been submitted. Our team will review it shortly."
+        width={941}
+        height={1672}
+        priority
+        className="min-h-0 w-auto max-w-full flex-1 object-contain"
+      />
+
+      {accountCreated && (
+        <p className="shrink-0 text-center text-xs font-medium text-muted-foreground">
+          Your MakanMantraa account is ready — you are signed in.
         </p>
       )}
-    </>
+    </div>
   );
 
   if (variant === "compact") {
+    if (status === "success") {
+      return (
+        <div className={cn(cardClass, "flex flex-col lg:h-[600px]", className)}>{successView}</div>
+      );
+    }
+
     return (
       <div className={cn(cardClass, "flex flex-col lg:h-[600px]", className)}>
         <div className="flex items-baseline justify-between gap-3">
@@ -559,13 +680,7 @@ export function PostPropertyWizard({
           {step + 1}. {STEPS[step].title}
         </p>
 
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitForm();
-          }}
-          className="mt-4 flex min-h-0 flex-1 flex-col"
-        >
+        <form onSubmit={handleFormSubmit} className="mt-4 flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 flex-col justify-between gap-4 overflow-y-auto">
             {stepFields[step]}
           </div>
@@ -646,14 +761,13 @@ export function PostPropertyWizard({
         })}
       </ol>
 
-      {/* Form — one card per step, opening side by side as steps are completed */}
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submitForm();
-        }}
-        className="mt-10"
-      >
+      {status === "success" ? (
+        <div className={cn(cardClass, "mx-auto mt-10 flex h-[460px] max-w-md flex-col")}>
+          {successView}
+        </div>
+      ) : (
+      /* Form — one card per step, opening side by side as steps are completed */
+      <form onSubmit={handleFormSubmit} className="mt-10">
         <div className="grid gap-6 lg:grid-cols-3">
           {STEPS.map((item, index) => {
             if (index > step) return null;
@@ -678,6 +792,7 @@ export function PostPropertyWizard({
 
         <div className="mt-4 text-center">{feedback}</div>
       </form>
+      )}
     </div>
   );
 }

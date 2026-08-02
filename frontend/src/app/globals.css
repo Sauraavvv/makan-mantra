@@ -150,4 +150,11 @@
     background: oklch(1 0 0 / 88%) !important;
     font-size: 10px;
   }
+
+  /* Anchor navigation animates, but respect a reduced-motion preference. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
 }

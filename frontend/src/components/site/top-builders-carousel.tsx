@@ -45,7 +45,7 @@ export function TopBuildersCarousel({
   return (
     <div className="relative overflow-hidden rounded-[20px] md:aspect-[1536/820]">
       <Image
-        src="/top-builders-bg.png"
+        src="/top-builders-bg.webp"
         alt=""
         fill
         priority={false}
