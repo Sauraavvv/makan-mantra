@@ -79,6 +79,22 @@ const STEPS = [
   },
 ];
 
+/** One illustration per step, shown beside the form on wide screens. */
+const POSES = [
+  {
+    src: "/pose-1.webp",
+    alt: "Let's get your property listed!",
+    width: 651,
+    height: 1186,
+  },
+  {
+    src: "/pose-2.webp",
+    alt: "Let's add my details so buyers can reach me easily!",
+    width: 639,
+    height: 1116,
+  },
+];
+
 const MAX_FILES = 6;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 8 * 1024 * 1024;
@@ -627,6 +643,9 @@ export function PostPropertyWizard({
 
   const stepFields = [propertyFields, ownerFields, mediaFields];
 
+  // The last step fills all three columns, so there is no room for a pose.
+  const pose = POSES[step] ?? null;
+
   const feedback = error ? (
     <p className="text-xs font-medium text-destructive">{error}</p>
   ) : null;
@@ -773,7 +792,7 @@ export function PostPropertyWizard({
             if (index > step) return null;
 
             return (
-              <section key={item.title} className={`${cardClass} flex flex-col gap-4`}>
+              <section key={item.title} className={`${cardClass} relative z-10 flex flex-col gap-4`}>
                 <p className={cardTitleClass}>
                   {index + 1}. {item.title}
                 </p>
@@ -788,6 +807,24 @@ export function PostPropertyWizard({
               </section>
             );
           })}
+
+          {/* Leans on the open card. The pull-back exactly cancels the grid gap,
+              so the figure meets the card edge without disappearing behind it. */}
+          {pose && (
+            <div
+              className={`-ml-6 hidden items-end justify-start lg:flex ${step === 0 ? "lg:col-span-2" : ""}`}
+            >
+              <Image
+                key={pose.src}
+                src={pose.src}
+                alt={pose.alt}
+                width={pose.width}
+                height={pose.height}
+                priority
+                className="h-[520px] w-auto select-none object-contain object-bottom"
+              />
+            </div>
+          )}
         </div>
 
         <div className="mt-4 text-center">{feedback}</div>

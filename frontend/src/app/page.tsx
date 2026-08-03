@@ -5,8 +5,29 @@ import { HeroSearch } from "@/components/site/hero-search";
 import { StateExplorer } from "@/components/site/state-explorer";
 import { HeroText } from "@/components/site/hero-text";
 import { PostPropertyBanner } from "@/components/site/post-property-banner";
+import { QuickLinks, type QuickLinkGroup } from "@/components/site/quick-links";
 
-export default function Home() {
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+/** State-level pages only — the district and city blocks live on state pages. */
+async function getStateQuickLinks(): Promise<QuickLinkGroup[]> {
+  try {
+    const res = await fetch(`${API}/location-pages/quick-links-states`, {
+      // The set rotates once a day, so an hour of caching is plenty.
+      next: { revalidate: 3600 },
+    });
+
+    if (!res.ok) return [];
+    const data = (await res.json()) as { groups?: QuickLinkGroup[] };
+    return data.groups ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export default async function Home() {
+  const quickLinkGroups = await getStateQuickLinks();
+
   return (
     <div className="flex min-h-screen flex-col bg-secondary">
       <Header />
@@ -53,6 +74,14 @@ export default function Home() {
           <PostPropertyBanner />
         </div>
       </section>
+
+      {quickLinkGroups.length > 0 && (
+        <section id="quick-links" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-6">
+            <QuickLinks groups={quickLinkGroups} displayName="India" />
+          </div>
+        </section>
+      )}
 
       <Footer />
     </div>

@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
-import { ChevronRight, Home, MapPin } from "lucide-react";
+import { ChevronRight, Home } from "lucide-react";
 import Link from "next/link";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { ExpandableDescription } from "@/components/site/expandable-description";
 import { GoogleMapEmbed } from "@/components/map/google-map-embed";
+import { PropertyFilters } from "@/components/property/property-filters";
+import { PropertyList } from "@/components/property/property-list";
+import { PropertySearchBar } from "@/components/property/property-search-bar";
+import {
+  SaveSearchCard,
+  SkylineArt,
+  SortBy,
+} from "@/components/property/property-results-header";
 import { Badge } from "@/components/ui/badge";
 import { stateExploreHref } from "@/lib/state-routes";
 
@@ -88,51 +96,76 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
         searchPlaceholder={`Search properties in ${page.location_name}`}
       />
 
-      <nav>
-        <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-white/70">
-          <li>
-            <Link href="/" className="flex items-center gap-1 hover:text-white">
-              <Home className="h-3.5 w-3.5" /> India
-            </Link>
-          </li>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <li>
-            <Link href={stateExploreHref(stateName)} className="hover:text-white">{stateName}</Link>
-          </li>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <li className="font-medium text-white">{page.seo.on_page_title}</li>
-        </ol>
-      </nav>
+      <div className="mx-auto w-full max-w-[1400px] px-4 pt-4">
+        <PropertySearchBar locationName={`${page.location_name}, ${stateName}`} />
+      </div>
 
-      <section className="border-b border-border bg-gradient-to-br from-primary/5 via-background to-saffron/5">
-        <div className="mx-auto max-w-7xl px-4 py-8 md:py-12">
-          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-            {page.seo.on_page_title}
-          </h1>
-          <ExpandableDescription paragraphs={descriptionParagraphs} />
+      <main className="mx-auto grid w-full max-w-[1400px] gap-5 px-4 py-5 lg:grid-cols-[280px_1fr] lg:items-start">
+        <div className="lg:sticky lg:top-4">
+          <PropertyFilters />
         </div>
-      </section>
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-8">
-        {hasCoordinates && (
-          <section className="mb-8">
-            <h2 className="text-xl font-bold">Location</h2>
-            <div className="mt-3 overflow-hidden rounded-xl">
-              <GoogleMapEmbed
-                latitude={latitude}
-                longitude={longitude}
-                title={`${page.location_name} map`}
-              />
+        <div className="min-w-0">
+          <nav>
+            <ol className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-3 text-sm text-muted-foreground">
+              <li>
+                <Link href="/" className="flex items-center gap-1 hover:text-foreground">
+                  <Home className="h-3.5 w-3.5" /> Home
+                </Link>
+              </li>
+              <ChevronRight className="h-3.5 w-3.5" />
+              <li>
+                <Link href={stateExploreHref(stateName)} className="hover:text-foreground">
+                  {stateName}
+                </Link>
+              </li>
+              <ChevronRight className="h-3.5 w-3.5" />
+              <li className="font-medium text-foreground">{page.location_name}</li>
+            </ol>
+          </nav>
+
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                {page.seo.on_page_title}
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">12,345+ properties available</p>
             </div>
-          </section>
-        )}
 
-        <div className="rounded-xl border border-dashed border-border p-16 text-center text-muted-foreground">
-          <MapPin className="mx-auto mb-3 h-10 w-10 opacity-30" />
-          <p className="font-medium">Properties coming soon</p>
-          <p className="mt-1 text-sm">
-            {page.seo.on_page_title} listings will appear here once property data is connected.
-          </p>
+            <SkylineArt />
+
+            <div className="w-full max-w-xs">
+              <SaveSearchCard />
+            </div>
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <SortBy />
+          </div>
+
+          <div className="mt-4">
+            <PropertyList cityName={page.location_name} />
+          </div>
+
+          {descriptionParagraphs.length > 0 && (
+            <section className="mt-8 rounded-2xl border border-border bg-background p-5">
+              <h2 className="text-lg font-bold">About {page.location_name}</h2>
+              <ExpandableDescription paragraphs={descriptionParagraphs} />
+            </section>
+          )}
+
+          {hasCoordinates && (
+            <section className="mt-5">
+              <h2 className="text-lg font-bold">Location</h2>
+              <div className="mt-3 overflow-hidden rounded-xl">
+                <GoogleMapEmbed
+                  latitude={latitude}
+                  longitude={longitude}
+                  title={`${page.location_name} map`}
+                />
+              </div>
+            </section>
+          )}
         </div>
       </main>
 

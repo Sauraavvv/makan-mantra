@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException
+from math import asin, cos, radians, sin, sqrt
 from typing import List, Optional
 import random
 import re
-from mongodb import get_location_pages_collection
+from mongodb import get_district_overview_collection, get_location_pages_collection
 from state_model import StateModelResponse
 
 router = APIRouter(prefix="/location-pages", tags=["location-pages"])
@@ -141,6 +142,235 @@ async def get_quick_links(state: str, district: Optional[str] = None, limit: int
     groups.sort(key=lambda g: (g["listing_type"], g["property_type"]))
 
     return {"state": state, "district": district, "day": day, "groups": groups}
+
+
+NEARBY_DISTRICT_LIMIT = 25
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    radius = 6371.0
+    p1, p2 = radians(lat1), radians(lat2)
+    dp, dl = radians(lat2 - lat1), radians(lon2 - lon1)
+    a = sin(dp / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
+    return 2 * radius * asin(sqrt(a))
+
+
+async def _district_centroids(col) -> list:
+    """One coordinate pair per district, taken from its district-level pages."""
+    pipeline = [
+        {
+            "$match": {
+                "is_active": {"$ne": False},
+                "location_category": "district",
+                "location.coordinates.latitude": {"$type": "number", "$ne": 0},
+                "location.coordinates.longitude": {"$type": "number", "$ne": 0},
+            }
+        },
+        {
+            "$group": {
+                "_id": {"state": "$location.state", "district": "$location.district"},
+                "lat": {"$first": "$location.coordinates.latitude"},
+                "lng": {"$first": "$location.coordinates.longitude"},
+            }
+        },
+    ]
+    return await col.aggregate(pipeline).to_list(length=5000)
+
+
+@router.get("/quick-links-district/{state}/{district}")
+async def get_district_quick_links(state: str, district: str, limit: int = QUICK_LINK_LIMIT):
+    """
+    Category-wise link blocks for a district page.
+
+    The district's own city pages come first — those are the pages that carry
+    this district in their hierarchy. Most districts have only one or two, so
+    the rest of each block is filled from the geographically nearest districts
+    rather than an arbitrary slice of the state.
+    """
+    col = get_location_pages_collection()
+    district_key = district.strip().lower()
+
+    centroids = await _district_centroids(col)
+
+    # The page itself is built from district_overview, and district names there
+    # do not always match location_pages. Read the coordinates from the same
+    # place the page comes from so a name mismatch cannot break the lookup.
+    overview = await get_district_overview_collection().find_one(
+        {
+            "district_name": {"$regex": f"^{re.escape(district.strip())}$", "$options": "i"},
+            "state_name": {"$regex": f"^{re.escape(state.strip())}$", "$options": "i"},
+        },
+        {"location.coordinates": 1},
+    )
+
+    coords = ((overview or {}).get("location") or {}).get("coordinates") or {}
+    lat, lng = coords.get("latitude"), coords.get("longitude")
+
+    if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)) or not lat or not lng:
+        # Fall back to location_pages for districts with no overview document.
+        match = next(
+            (
+                c
+                for c in centroids
+                if (c["_id"].get("district") or "").strip().lower() == district_key
+                and (c["_id"].get("state") or "").strip().lower() == state.strip().lower()
+            ),
+            None,
+        )
+        if match is None:
+            raise HTTPException(status_code=404, detail="District not found")
+        lat, lng = match["lat"], match["lng"]
+
+    here = {"lat": lat, "lng": lng}
+
+    ranked = sorted(
+        (
+            (
+                _haversine_km(here["lat"], here["lng"], c["lat"], c["lng"]),
+                (c["_id"].get("district") or "").strip(),
+            )
+            for c in centroids
+            if (c["_id"].get("district") or "").strip().lower() != district_key
+        ),
+        key=lambda pair: pair[0],
+    )[:NEARBY_DISTRICT_LIMIT]
+
+    nearby_order = {name.lower(): index for index, (_, name) in enumerate(ranked)}
+
+    query = {
+        "is_active": {"$ne": False},
+        "$or": [
+            {"location_category": "city", **district_filter(district)},
+            {
+                "location_category": {"$in": ["district", "city"]},
+                "location.district": {
+                    "$in": [name for _, name in ranked],
+                },
+            },
+        ],
+    }
+    projection = {
+        "slug": 1,
+        "location_category": 1,
+        "location_name": 1,
+        "property_type": 1,
+        "listing_type": 1,
+        "seo.on_page_title": 1,
+        "location.district": 1,
+        "location.city": 1,
+    }
+
+    docs = await col.find(query, projection).to_list(length=20000)
+
+    day = _ist_day()
+    buckets: dict = {}
+
+    for doc in docs:
+        property_type = doc.get("property_type")
+        listing_type = doc.get("listing_type")
+        if not property_type or not listing_type or not doc.get("slug"):
+            continue
+
+        buckets.setdefault((property_type, listing_type), []).append(_link(doc))
+
+    groups = []
+    for (property_type, listing_type), links in buckets.items():
+        seed = f"{state}|{district_key}|{property_type}|{listing_type}|{day}"
+
+        own = [l for l in links if l["district"].lower() == district_key]
+        rest = [l for l in links if l["district"].lower() != district_key]
+        # Closest districts first; the shuffle only reorders within one district.
+        rest.sort(key=lambda l: nearby_order.get(l["district"].lower(), len(nearby_order)))
+
+        ordered = _shuffled(own, seed) + rest
+        picked = ordered[:limit]
+        if not picked:
+            continue
+
+        groups.append(
+            {
+                "key": f"{property_type}-{listing_type}",
+                "property_type": property_type,
+                "listing_type": listing_type,
+                "label": f"{PROPERTY_TYPE_LABELS.get(property_type, property_type.title())} "
+                f"{LISTING_TYPE_LABELS.get(listing_type, listing_type)}",
+                "links": [
+                    {k: v for k, v in link.items() if k != "district"} for link in picked
+                ],
+            }
+        )
+
+    groups.sort(key=lambda g: (g["listing_type"], g["property_type"]))
+
+    return {
+        "state": state,
+        "district": district,
+        "day": day,
+        "own_cities": len({l["slug"] for l in buckets.get(("flat", "sale"), []) if l["district"].lower() == district_key}),
+        "groups": groups,
+    }
+
+
+@router.get("/quick-links-states")
+async def get_state_quick_links(limit: int = QUICK_LINK_LIMIT):
+    """
+    The home-page version of the block above.
+
+    Pool is every state-level page across India — the pages built on a state
+    name itself, not its districts or cities. Same day-based seed, so the set
+    holds for the day and rotates the next morning.
+    """
+    col = get_location_pages_collection()
+    query = {
+        "is_active": {"$ne": False},
+        "location_category": "state",
+    }
+    projection = {
+        "slug": 1,
+        "location_category": 1,
+        "location_name": 1,
+        "property_type": 1,
+        "listing_type": 1,
+        "seo.on_page_title": 1,
+        "location.state": 1,
+    }
+
+    docs = await col.find(query, projection).to_list(length=20000)
+
+    day = _ist_day()
+    buckets: dict = {}
+
+    for doc in docs:
+        property_type = doc.get("property_type")
+        listing_type = doc.get("listing_type")
+        if not property_type or not listing_type or not doc.get("slug"):
+            continue
+
+        buckets.setdefault((property_type, listing_type), []).append(_link(doc))
+
+    groups = []
+    for (property_type, listing_type), links in buckets.items():
+        seed = f"india|{property_type}|{listing_type}|{day}"
+        picked = _shuffled(links, seed)[:limit]
+        if not picked:
+            continue
+
+        groups.append(
+            {
+                "key": f"{property_type}-{listing_type}",
+                "property_type": property_type,
+                "listing_type": listing_type,
+                "label": f"{PROPERTY_TYPE_LABELS.get(property_type, property_type.title())} "
+                f"{LISTING_TYPE_LABELS.get(listing_type, listing_type)}",
+                "links": [
+                    {k: v for k, v in link.items() if k != "district"} for link in picked
+                ],
+            }
+        )
+
+    groups.sort(key=lambda g: (g["listing_type"], g["property_type"]))
+
+    return {"scope": "india", "day": day, "groups": groups}
 
 
 PREFERRED_LINK_PROPERTY_TYPE = "flat"

@@ -61,12 +61,12 @@ const LISTING_TABS = [
     value: "rent" as const,
     label: "For Rent",
     icon: Tag,
-    active: "border-teal-500/50 bg-teal-50 text-teal-700",
-    accent: "bg-teal-500",
-    hover: "group-hover:text-teal-700",
-    dotHover: "group-hover:bg-teal-500",
-    header: "bg-teal-50 text-foreground",
-    tile: "bg-teal-100 text-teal-700",
+    active: "border-saffron/40 bg-saffron/10 text-saffron",
+    accent: "bg-saffron",
+    hover: "group-hover:text-saffron",
+    dotHover: "group-hover:bg-saffron",
+    header: "bg-saffron/10 text-foreground",
+    tile: "bg-saffron/20 text-saffron",
   },
 ];
 
@@ -198,7 +198,7 @@ export function QuickLinks({
           width={1819}
           height={558}
           aria-hidden
-          className="pointer-events-none absolute -top-3 right-[1%] hidden h-[135%] w-auto max-w-[52%] select-none object-contain object-top lg:block"
+          className="pointer-events-none absolute bottom-0 right-[1%] hidden h-full w-auto max-w-[52%] select-none object-contain object-bottom lg:block"
         />
 
         <div className="relative grid grid-cols-1 gap-y-5 px-5 py-5 sm:grid-cols-2 sm:gap-x-5 lg:w-[60%] lg:grid-cols-3 lg:gap-x-0 lg:divide-x lg:divide-border">

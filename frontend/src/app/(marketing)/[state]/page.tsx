@@ -264,6 +264,27 @@ async function getQuickLinks(stateName: string): Promise<QuickLinkGroup[]> {
   }
 }
 
+/** District pages lead with their own city pages, then the nearest districts. */
+async function getDistrictQuickLinks(
+  stateName: string,
+  districtName: string,
+): Promise<QuickLinkGroup[]> {
+  if (!districtName) return [];
+
+  try {
+    const res = await fetch(
+      `${API}/location-pages/quick-links-district/${encodeURIComponent(stateName)}/${encodeURIComponent(districtName)}`,
+      { next: { revalidate: 3600 } },
+    );
+
+    if (!res.ok) return [];
+    const data = (await res.json()) as { groups?: QuickLinkGroup[] };
+    return data.groups ?? [];
+  } catch {
+    return [];
+  }
+}
+
 async function fetchLocationPages(params: URLSearchParams): Promise<StateLocationPage[]> {
   try {
     const res = await fetch(`${API}/location-pages/?${params.toString()}`, {
@@ -359,7 +380,9 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     districtName: isDistrictPage ? displayName : undefined,
   });
   const districtPages = isDistrictPage ? [] : await getStateDistrictPages(parentStateName);
-  const quickLinkGroups = isDistrictPage ? [] : await getQuickLinks(parentStateName);
+  const quickLinkGroups = isDistrictPage
+    ? await getDistrictQuickLinks(parentStateName, displayName)
+    : await getQuickLinks(parentStateName);
   const footerLocationLinks = locationPages.map((page) => ({
     label: page.seo?.on_page_title || page.slug.replace(/-/g, " "),
     href: `/${page.slug}`,

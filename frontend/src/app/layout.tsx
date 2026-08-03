@@ -27,6 +27,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // Anchor links glide, but route changes still jump straight to the top:
+      // Next only suspends `scroll-behavior` during navigation when asked to.
+      data-scroll-behavior="smooth"
       className={`${interSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
       <body className="min-h-full flex flex-col">
