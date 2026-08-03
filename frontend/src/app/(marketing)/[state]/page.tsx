@@ -451,7 +451,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   ].find(hasDisplayValue);
   const topBuilders = asBuilderItems(topBuildersValue).map((builder) => ({
     ...builder,
-    ...getBuilderProfile(builder.title, displayName),
+    ...getBuilderProfile(builder.title, parentStateName),
   }));
   const socialCardEntries = Object.entries(social_infrastructure || {})
     .filter(([key]) => key !== "markets_and_essentials_summary")
@@ -651,7 +651,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {topBuilders.length > 0 && (
         <section id="top-builders" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto w-full max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
             <TopBuildersCarousel builders={topBuilders} displayName={displayName} />
           </div>
         </section>
