@@ -89,17 +89,15 @@ export function TopBuildersCarousel({
 
       <div className="relative isolate w-full max-w-full overflow-hidden rounded-[24px] border border-[#DCE5F3] bg-white">
         <div className="relative min-h-[570px] lg:min-h-[455px]">
-          <div className="pointer-events-none relative z-20 min-h-[275px] min-w-0 overflow-hidden border-b border-[#DCE5F3] bg-[#EAF3FF] lg:absolute lg:inset-y-0 lg:left-0 lg:w-[38%] lg:border-b-0 lg:border-r">
+          <div className="pointer-events-none relative z-20 min-h-[275px] min-w-0 overflow-hidden border-b border-[#DCE5F3] bg-white lg:absolute lg:inset-y-0 lg:left-0 lg:w-[38%] lg:border-b-0 lg:border-r">
             <Image
-              src="/builder-banner.webp"
+              src="/top-builders-left.png"
               alt=""
               fill
               priority={false}
               sizes="(min-width: 1280px) 440px, 100vw"
-              className="scale-110 object-cover object-[right_58%] saturate-[0.85]"
+              className="object-contain object-center saturate-[0.95]"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-[#D8E9FF]/45 to-[#BBD6FF]/75" />
-            <div className="absolute inset-0 bg-[#1769E8]/20 mix-blend-color" />
 
           </div>
 
