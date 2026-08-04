@@ -28,13 +28,16 @@ async def get_district_overview(slug: str):
             "$or": [
                 {"slug": {"$in": list(slug_candidates)}},
                 {"route_slug": {"$in": list(route_slug_candidates)}},
-            ],
-            "is_active": {"$ne": False},
+            ]
         }
     )
 
     if not doc:
         raise HTTPException(status_code=404, detail="District overview not found")
+
+    # Deactivated pages are gone for good, not merely missing.
+    if doc.get("is_active") is False:
+        raise HTTPException(status_code=410, detail="District overview permanently removed")
 
     return clean_doc(doc)
 

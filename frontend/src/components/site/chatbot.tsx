@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronRight,
@@ -146,7 +147,22 @@ const INITIAL_MESSAGES: Message[] = [
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+/** Back-office screens the property assistant has no business appearing on. */
+const HIDDEN_PREFIXES = ["/admin"];
+
+/**
+ * Mounted once in the root layout. The widget itself is kept behind this gate
+ * so its timers and speech hooks never start on a route that hides it.
+ */
 export function Chatbot() {
+  const pathname = usePathname();
+
+  if (HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return null;
+
+  return <ChatbotWidget />;
+}
+
+function ChatbotWidget() {
   const [open, setOpen] = useState(false);
   const [showBubble, setShowBubble] = useState(false);
   const [avatarVisible, setAvatarVisible] = useState(false);

@@ -44,7 +44,7 @@ export function PropertyList({ cityName }: { cityName: string }) {
 
   return (
     <div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {items.map((property) => (
           <PropertyCard key={property.id} property={property} cityName={cityName} />
         ))}

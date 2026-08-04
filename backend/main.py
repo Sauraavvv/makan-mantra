@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mongodb import connect_db, close_db
-from routers import district_overview, location_pages, state_overview
+from routers import district_overview, gone, location_pages, state_overview
 
 
 @asynccontextmanager
@@ -21,6 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(gone.router)
 app.include_router(location_pages.router)
 app.include_router(state_overview.router)
 app.include_router(district_overview.router)

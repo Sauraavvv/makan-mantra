@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
 const uri = process.env.MONGODB_URL!;
 let client: MongoClient | null = null;
@@ -51,9 +51,32 @@ export async function getPendingUsersCollection() {
   return c.db("makan_mantraa").collection("pending_users");
 }
 
+/**
+ * Page collections were seeded in more than one pass, so `_id` is a readable
+ * string on some documents and a real ObjectId on others. Both spellings have
+ * to be accepted when looking a page up.
+ */
+export type PageDoc = {
+  _id: string | ObjectId;
+  slug?: string;
+  route_slug?: string;
+  is_active?: boolean;
+  [key: string]: unknown;
+};
+
 export async function getLocationPagesCollection() {
   const c = await getClient();
-  return c.db("makan_mantraa").collection("location_pages");
+  return c.db("makan_mantraa").collection<PageDoc>("location_pages");
+}
+
+export async function getStateOverviewCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection<PageDoc>("state_overview");
+}
+
+export async function getDistrictOverviewCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection<PageDoc>("district_overview");
 }
 
 export async function getPropertySubmissionsCollection() {

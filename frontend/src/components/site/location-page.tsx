@@ -8,11 +8,7 @@ import { GoogleMapEmbed } from "@/components/map/google-map-embed";
 import { PropertyFilters } from "@/components/property/property-filters";
 import { PropertyList } from "@/components/property/property-list";
 import { PropertySearchBar } from "@/components/property/property-search-bar";
-import {
-  SaveSearchCard,
-  SkylineArt,
-  SortBy,
-} from "@/components/property/property-results-header";
+import { SortBy } from "@/components/property/property-results-header";
 import { Badge } from "@/components/ui/badge";
 import { stateExploreHref } from "@/lib/state-routes";
 
@@ -88,58 +84,63 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
   const latitude = page.location?.coordinates?.latitude;
   const longitude = page.location?.coordinates?.longitude;
   const hasCoordinates = typeof latitude === "number" && typeof longitude === "number";
+  // The last crumb is the page itself ("Plots for Sale in Maharashtra"), not its location.
+  const currentCrumb = page.seo.on_page_title || page.location_name;
+  const showLocationCrumb =
+    page.location_name.trim().toLowerCase() !== stateName.trim().toLowerCase();
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-secondary">
       <Header
         showSearchBar
         searchPlaceholder={`Search properties in ${page.location_name}`}
       />
 
-      <div className="mx-auto w-full max-w-[1400px] px-4 pt-4">
+      <div className="mx-auto w-full max-w-[1250px] px-4 pt-4">
         <PropertySearchBar locationName={`${page.location_name}, ${stateName}`} />
       </div>
 
-      <main className="mx-auto grid w-full max-w-[1400px] gap-5 px-4 py-5 lg:grid-cols-[280px_1fr] lg:items-start">
+      <main className="mx-auto grid w-full max-w-[1250px] gap-5 px-4 py-5 lg:grid-cols-[280px_1fr] lg:items-start">
         <div className="lg:sticky lg:top-4">
           <PropertyFilters />
         </div>
 
         <div className="min-w-0">
-          <nav>
+          <nav aria-label="Breadcrumb">
             <ol className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-3 text-sm text-muted-foreground">
               <li>
                 <Link href="/" className="flex items-center gap-1 hover:text-foreground">
                   <Home className="h-3.5 w-3.5" /> Home
                 </Link>
               </li>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <li>
+              <li className="flex items-center gap-1">
+                <ChevronRight className="h-3.5 w-3.5" />
                 <Link href={stateExploreHref(stateName)} className="hover:text-foreground">
                   {stateName}
                 </Link>
               </li>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <li className="font-medium text-foreground">{page.location_name}</li>
+              {/* City/district pages sit under the state; state pages would just repeat it. */}
+              {showLocationCrumb && (
+                <li className="flex items-center gap-1">
+                  <ChevronRight className="h-3.5 w-3.5" />
+                  {page.location_name}
+                </li>
+              )}
+              <li className="flex items-center gap-1 font-medium text-foreground" aria-current="page">
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                {currentCrumb}
+              </li>
             </ol>
           </nav>
 
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background p-4">
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+              <h1 className="text-lg font-bold tracking-tight md:text-xl">
                 {page.seo.on_page_title}
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">12,345+ properties available</p>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">12,345+ properties available</p>
             </div>
 
-            <SkylineArt />
-
-            <div className="w-full max-w-xs">
-              <SaveSearchCard />
-            </div>
-          </div>
-
-          <div className="mt-4 flex justify-end">
             <SortBy />
           </div>
 
@@ -148,14 +149,14 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
           </div>
 
           {descriptionParagraphs.length > 0 && (
-            <section className="mt-8 rounded-2xl border border-border bg-background p-5">
+            <section className="mt-4 rounded-2xl border border-border bg-background p-5">
               <h2 className="text-lg font-bold">About {page.location_name}</h2>
               <ExpandableDescription paragraphs={descriptionParagraphs} />
             </section>
           )}
 
           {hasCoordinates && (
-            <section className="mt-5">
+            <section className="mt-4 rounded-2xl border border-border bg-background p-5">
               <h2 className="text-lg font-bold">Location</h2>
               <div className="mt-3 overflow-hidden rounded-xl">
                 <GoogleMapEmbed
@@ -169,8 +170,8 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
         </div>
       </main>
 
-      <section className="border-t border-border bg-card/30">
-        <div className="mx-auto max-w-7xl px-4 py-5">
+      <section className="bg-secondary px-4 py-4 md:py-5">
+        <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span className="mr-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
               Page tags
@@ -189,9 +190,9 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
       {faqItems.length > 0 && (
         <section className="bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
-            <div className="mb-4 rounded-2xl border border-border bg-card/70 p-4 md:p-5">
-              <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
-            </div>
+            <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
+              Frequently Asked Questions
+            </h2>
             <div className="divide-y divide-border rounded-2xl border border-border bg-card/70 px-4 md:px-5">
               {faqItems.map((item) => (
                 <details key={item.name} className="group py-3">
@@ -210,8 +211,8 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
       )}
 
       {keywords.length > 0 && (
-        <section className="border-t border-border bg-card/40">
-          <div className="mx-auto max-w-7xl px-4 py-8">
+        <section className="bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
             <h2 className="mb-3 text-sm font-semibold">Popular searches</h2>
             <div className="flex flex-wrap gap-2">
               {keywords.map((k) => (

@@ -460,9 +460,12 @@ async def get_state_link_sections(state: str):
 @router.get("/{slug}", response_model=StateModelResponse)
 async def get_location_page(slug: str):
     col = get_location_pages_collection()
-    doc = await col.find_one({"slug": slug, "is_active": {"$ne": False}})
+    doc = await col.find_one({"slug": slug})
     if not doc:
         raise HTTPException(status_code=404, detail="Page not found")
+    # Deactivated pages are gone for good, not merely missing.
+    if doc.get("is_active") is False:
+        raise HTTPException(status_code=410, detail="Page permanently removed")
     return clean_doc(doc)
 
 

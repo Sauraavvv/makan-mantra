@@ -31,13 +31,16 @@ async def get_state_overview(slug: str):
                 {"slug": state_slug},
                 {"slug": canonical},
                 {"route_slug": slug},
-            ],
-            "is_active": {"$ne": False},
+            ]
         }
     )
 
     if not doc:
         raise HTTPException(status_code=404, detail="State overview not found")
+
+    # Deactivated pages are gone for good, not merely missing.
+    if doc.get("is_active") is False:
+        raise HTTPException(status_code=410, detail="State overview permanently removed")
 
     return clean_doc(doc)
 
