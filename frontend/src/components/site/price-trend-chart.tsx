@@ -105,7 +105,7 @@ export function PriceTrendChart({
   const tooltipY = activePoint ? Math.max(activePoint.y - tooltipHeight - 14, chart.padding.top - 8) : 0;
 
   return (
-    <div ref={chartRef} className="flex h-full flex-col overflow-hidden rounded-3xl border border-orange-200 bg-white">
+    <div ref={chartRef} className="flex h-full flex-col overflow-hidden rounded-xl border border-orange-200 bg-white">
       <div className="h-[150px] shrink-0 bg-orange-50 p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div>

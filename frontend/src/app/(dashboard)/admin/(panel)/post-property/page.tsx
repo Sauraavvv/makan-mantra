@@ -62,14 +62,14 @@ export default async function AdminPostPropertyPage({
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-2xl border border-border bg-background py-16 text-center">
+        <div className="rounded-xl border border-border bg-background py-16 text-center">
           <p className="text-sm font-medium">No enquiries yet</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {q ? "Nothing matched that search." : "New form submissions will appear here."}
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-background">
+        <div className="overflow-hidden rounded-xl border border-border bg-background">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[880px] text-sm">
               <thead className="border-b border-border bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">

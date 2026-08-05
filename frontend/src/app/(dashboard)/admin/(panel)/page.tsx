@@ -13,7 +13,7 @@ export default async function AdminPage() {
 
       <Link
         href="/admin/post-property"
-        className="flex max-w-xs items-center gap-4 rounded-2xl border border-border bg-background p-5 transition-colors hover:bg-secondary/40"
+        className="flex max-w-xs items-center gap-4 rounded-xl border border-border bg-background p-5 transition-colors hover:bg-secondary/40"
       >
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-violet-50 text-violet-600">
           <Inbox className="size-5" strokeWidth={1.8} />

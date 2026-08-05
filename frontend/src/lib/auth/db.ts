@@ -79,6 +79,11 @@ export async function getDistrictOverviewCollection() {
   return c.db("makan_mantraa").collection<PageDoc>("district_overview");
 }
 
+export async function getNewsletterCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection("newsletter_subscribers");
+}
+
 export async function getPropertySubmissionsCollection() {
   const c = await getClient();
   return c.db("makan_mantraa").collection("property_submissions");

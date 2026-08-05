@@ -551,7 +551,7 @@ function LoginModal({
         onClick={onClose}
       />
 
-      <div className="relative grid max-h-[calc(100vh-3rem)] w-full max-w-5xl overflow-hidden rounded-2xl border border-white/20 bg-background text-foreground shadow-2xl lg:grid-cols-[1fr_430px]">
+      <div className="relative grid max-h-[calc(100vh-3rem)] w-full max-w-5xl overflow-hidden rounded-xl border border-white/20 bg-background text-foreground shadow-2xl lg:grid-cols-[1fr_430px]">
         <button
           type="button"
           aria-label="Close login"

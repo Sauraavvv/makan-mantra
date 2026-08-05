@@ -48,7 +48,7 @@ export default async function AdminSubmissionPage({
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
-          <section className="rounded-2xl border border-border bg-background p-5">
+          <section className="rounded-xl border border-border bg-background p-5">
             <h1 className="text-xl font-bold">{type}</h1>
             <p className="text-sm text-muted-foreground">
               {submission.listing_type === "rent" ? "For Rent" : "For Sale"}
@@ -62,7 +62,7 @@ export default async function AdminSubmissionPage({
             </p>
           </section>
 
-          <section className="rounded-2xl border border-border bg-background p-5">
+          <section className="rounded-xl border border-border bg-background p-5">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Photos &amp; videos ({submission.media.length})
             </h2>
@@ -118,7 +118,7 @@ export default async function AdminSubmissionPage({
         </div>
 
         <aside className="space-y-4">
-          <section className="rounded-2xl border border-border bg-background p-5">
+          <section className="rounded-xl border border-border bg-background p-5">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Contact the owner
             </h2>
@@ -154,7 +154,7 @@ export default async function AdminSubmissionPage({
             )}
           </section>
 
-          <section className="rounded-2xl border border-border bg-background p-5">
+          <section className="rounded-xl border border-border bg-background p-5">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Enquiry
             </h2>

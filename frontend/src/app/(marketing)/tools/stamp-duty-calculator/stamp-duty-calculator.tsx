@@ -74,7 +74,7 @@ export function StampDutyCalculator() {
           <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
             {/* Inputs */}
             <div className="space-y-5">
-              <div className="rounded-2xl border border-border bg-background p-6 space-y-5">
+              <div className="rounded-xl border border-border bg-background p-6 space-y-5">
                 <h2 className="font-semibold">Property details</h2>
 
                 {/* Property value */}
@@ -155,7 +155,7 @@ export function StampDutyCalculator() {
 
             {/* Result */}
             <div className="space-y-4">
-              <div className="rounded-2xl border border-border bg-background p-6">
+              <div className="rounded-xl border border-border bg-background p-6">
                 <h2 className="mb-4 font-semibold">Cost breakdown</h2>
 
                 {result ? (

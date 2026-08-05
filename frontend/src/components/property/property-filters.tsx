@@ -69,7 +69,7 @@ export function PropertyFilters() {
     );
 
   return (
-    <aside className="rounded-2xl border border-border bg-background p-4">
+    <aside className="rounded-xl border border-border bg-background p-4">
       <div className="flex items-center justify-between gap-3 pb-2">
         <h2 className="text-lg font-bold">Filters</h2>
         <button

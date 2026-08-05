@@ -56,7 +56,7 @@ export default async function Home() {
 
       {/* Browse by state */}
       <section className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
           <div className="mb-6">
             <h2 className="text-2xl font-bold md:text-3xl">Explore your state</h2>
             <p className="mt-1 text-muted-foreground">
@@ -70,14 +70,14 @@ export default async function Home() {
 
       {/* Post your property banner */}
       <section className="bg-secondary px-4 py-4 md:py-5 lg:py-16">
-        <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background p-2 md:p-3">
+        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background p-2 md:p-3">
           <PostPropertyBanner />
         </div>
       </section>
 
       {quickLinkGroups.length > 0 && (
         <section id="quick-links" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-6">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-6">
             <QuickLinks groups={quickLinkGroups} displayName="India" />
           </div>
         </section>

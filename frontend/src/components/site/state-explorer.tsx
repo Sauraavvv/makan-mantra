@@ -75,7 +75,7 @@ export function StateExplorer() {
 
       {remaining > 0 && (
         <div
-          className={`mt-6 rounded-2xl bg-secondary px-4 py-4 sm:px-6 ${
+          className={`mt-6 rounded-xl bg-secondary px-4 py-4 sm:px-6 ${
             expanded
               ? "flex justify-center"
               : "flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between"

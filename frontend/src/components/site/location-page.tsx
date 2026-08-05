@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { ExpandableDescription } from "@/components/site/expandable-description";
-import { GoogleMapEmbed } from "@/components/map/google-map-embed";
 import { PropertyFilters } from "@/components/property/property-filters";
 import { PropertyList } from "@/components/property/property-list";
 import { PropertySearchBar } from "@/components/property/property-search-bar";
@@ -81,9 +80,6 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
   ) || [];
   const descriptionParagraphs = asParagraphs(page.seo.on_page_description);
   const keywords = page.seo.keywords || [];
-  const latitude = page.location?.coordinates?.latitude;
-  const longitude = page.location?.coordinates?.longitude;
-  const hasCoordinates = typeof latitude === "number" && typeof longitude === "number";
   // The last crumb is the page itself ("Plots for Sale in Maharashtra"), not its location.
   const currentCrumb = page.seo.on_page_title || page.location_name;
   const showLocationCrumb =
@@ -133,7 +129,7 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
             </ol>
           </nav>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-4">
             <div className="min-w-0">
               <h1 className="text-lg font-bold tracking-tight md:text-xl">
                 {page.seo.on_page_title}
@@ -147,31 +143,22 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
           <div className="mt-4">
             <PropertyList cityName={page.location_name} />
           </div>
-
-          {descriptionParagraphs.length > 0 && (
-            <section className="mt-4 rounded-2xl border border-border bg-background p-5">
-              <h2 className="text-lg font-bold">About {page.location_name}</h2>
-              <ExpandableDescription paragraphs={descriptionParagraphs} />
-            </section>
-          )}
-
-          {hasCoordinates && (
-            <section className="mt-4 rounded-2xl border border-border bg-background p-5">
-              <h2 className="text-lg font-bold">Location</h2>
-              <div className="mt-3 overflow-hidden rounded-xl">
-                <GoogleMapEmbed
-                  latitude={latitude}
-                  longitude={longitude}
-                  title={`${page.location_name} map`}
-                />
-              </div>
-            </section>
-          )}
         </div>
       </main>
 
+      {/* Outside the grid on purpose: the sticky filter rail ends with the
+          results, so everything below runs the full width of the page. */}
+      {descriptionParagraphs.length > 0 && (
+        <section className="mx-auto w-full max-w-[1250px] px-4 pb-5">
+          <div className="rounded-xl border border-border bg-background p-5">
+            <h2 className="text-lg font-bold">About {page.location_name}</h2>
+            <ExpandableDescription paragraphs={descriptionParagraphs} />
+          </div>
+        </section>
+      )}
+
       <section className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span className="mr-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
               Page tags
@@ -189,11 +176,11 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
 
       {faqItems.length > 0 && (
         <section className="bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
               Frequently Asked Questions
             </h2>
-            <div className="divide-y divide-border rounded-2xl border border-border bg-card/70 px-4 md:px-5">
+            <div className="divide-y divide-border rounded-xl border border-border bg-card/70 px-4 md:px-5">
               {faqItems.map((item) => (
                 <details key={item.name} className="group py-3">
                   <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
@@ -212,7 +199,7 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
 
       {keywords.length > 0 && (
         <section className="bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <h2 className="mb-3 text-sm font-semibold">Popular searches</h2>
             <div className="flex flex-wrap gap-2">
               {keywords.map((k) => (

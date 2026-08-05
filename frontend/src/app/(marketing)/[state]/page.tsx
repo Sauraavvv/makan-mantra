@@ -592,14 +592,14 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {districts.length > 0 && (
         <section id="districts" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <DistrictCarousel districts={districts} stateName={parentStateName} />
           </div>
         </section>
       )}
 
       <section id="cities-towns" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
           <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
             Explore the top cities & towns
           </h2>
@@ -614,7 +614,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
               )}
             </div>
             {mapCoordinates && (
-              <div className="h-[300px] overflow-hidden rounded-2xl border-[3px] border-saffron/70 lg:col-span-5 lg:h-full">
+              <div className="h-[300px] overflow-hidden rounded-xl border-[3px] border-saffron/70 lg:col-span-5 lg:h-full">
                 <GoogleMapEmbed
                   latitude={mapCoordinates.latitude}
                   longitude={mapCoordinates.longitude}
@@ -631,7 +631,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {connectivityCards.length > 0 && (
         <section id="connectivity" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <SocialInfrastructureCarousel
               cards={connectivityCards}
               displayName={displayName}
@@ -644,14 +644,14 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       )}
 
       <section id="social" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
           <SocialInfrastructureCarousel cards={socialCards} displayName={displayName} />
         </div>
       </section>
 
       {topBuilders.length > 0 && (
         <section id="top-builders" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto w-full max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto w-full max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <TopBuildersCarousel builders={topBuilders} displayName={displayName} />
           </div>
         </section>
@@ -659,7 +659,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {priceTrend.length > 1 && (
         <section id="price-trend" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
               Price Trends &amp; Premium Segments
             </h2>
@@ -677,7 +677,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {hasInvestmentComparison && (
         <section id="growth-risks" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <h2 className="mb-2 text-3xl font-bold leading-tight md:text-4xl">
               Growth Drivers vs Investment Risks
             </h2>
@@ -709,7 +709,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {quickLinkGroups.length > 0 && (
         <section id="quick-links" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-6">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-6">
             <QuickLinks groups={quickLinkGroups} displayName={displayName} />
           </div>
         </section>
@@ -717,11 +717,11 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {faq.length > 0 && (
         <section id="faq" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[28px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
               Frequently Asked Questions
             </h2>
-            <div className="divide-y divide-border rounded-2xl border border-border bg-card/70 px-4 md:px-5">
+            <div className="divide-y divide-border rounded-xl border border-border bg-card/70 px-4 md:px-5">
               {faq.map((item) => (
                 <details key={item.question} className="group py-3">
                   <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
@@ -754,7 +754,7 @@ function StatPlate({
   icon: LucideIcon;
 }) {
   return (
-    <figure className="relative min-h-[70px] w-full cursor-pointer overflow-hidden rounded-2xl border border-white/12 bg-white/[0.08] p-4 text-white backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.025] hover:bg-white/[0.12]">
+    <figure className="relative min-h-[70px] w-full cursor-pointer overflow-hidden rounded-xl border border-white/12 bg-white/[0.08] p-4 text-white backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.025] hover:bg-white/[0.12]">
       <div className="flex items-center gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.04] text-white/85">
           <Icon className="h-5 w-5" strokeWidth={1.55} />
@@ -777,7 +777,7 @@ function LocationListCard({ title, items }: { title: string; items: string[] }) 
     : "Primary cities that anchor real estate activity and urban growth.";
 
   return (
-    <div className="h-full overflow-hidden rounded-3xl border border-sky-200 bg-white text-foreground">
+    <div className="h-full overflow-hidden rounded-xl border border-sky-200 bg-white text-foreground">
       <div className="bg-sky-100 p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -815,7 +815,7 @@ function LocationListCard({ title, items }: { title: string; items: string[] }) 
 
 function PremiumSegmentsCard({ items }: { items: string[] }) {
   return (
-    <div className="flex min-h-[360px] flex-col overflow-hidden rounded-3xl border border-orange-200 bg-white text-foreground lg:min-h-full">
+    <div className="flex min-h-[360px] flex-col overflow-hidden rounded-xl border border-orange-200 bg-white text-foreground lg:min-h-full">
       <div className="h-[150px] bg-orange-50 p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -883,7 +883,7 @@ function InvestmentComparisonCard({
       };
 
   return (
-    <div className={`flex min-h-[360px] flex-col overflow-hidden rounded-3xl border ${theme.border} bg-white text-foreground`}>
+    <div className={`flex min-h-[360px] flex-col overflow-hidden rounded-xl border ${theme.border} bg-white text-foreground`}>
       <div className={`${theme.header} p-3.5`}>
         <div className="flex items-start justify-between gap-3">
           <div>

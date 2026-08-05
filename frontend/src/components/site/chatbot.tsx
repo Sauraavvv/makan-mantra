@@ -263,7 +263,7 @@ function ChatbotWidget() {
               animate={{ y: 0, scale: 1 }}
               exit={{ y: 26, scale: 0.96 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="flex h-[calc(100dvh-2rem)] w-full max-w-[1020px] overflow-hidden rounded-[28px] border border-white/40 bg-white shadow-2xl sm:h-[min(86vh,760px)] sm:min-h-[620px]"
+              className="flex h-[calc(100dvh-2rem)] w-full max-w-[1020px] overflow-hidden rounded-[20px] border border-white/40 bg-white shadow-2xl sm:h-[min(86vh,760px)] sm:min-h-[620px]"
             >
               <aside className="hidden w-[248px] shrink-0 flex-col border-r border-slate-200 bg-[#F4F7FB] md:flex">
                 <div className="px-7 pb-5 pt-7">

@@ -28,7 +28,7 @@ export default async function AdminTeamPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-        <div className="overflow-hidden rounded-2xl border border-border bg-background">
+        <div className="overflow-hidden rounded-xl border border-border bg-background">
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>

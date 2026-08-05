@@ -134,7 +134,7 @@ export default async function PostPropertyPage({
             </div>
 
             {stats && (
-              <dl className="grid max-w-3xl grid-cols-1 gap-5 rounded-2xl border border-white/10 bg-black/40 px-5 py-4 text-white backdrop-blur-sm sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-white/10">
+              <dl className="grid max-w-3xl grid-cols-1 gap-5 rounded-xl border border-white/10 bg-black/40 px-5 py-4 text-white backdrop-blur-sm sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-white/10">
                 {[
                   { icon: Building2, value: stats.properties, label: "Properties Posted" },
                   { icon: MapPin, value: stats.cities, label: "Cities Covered" },

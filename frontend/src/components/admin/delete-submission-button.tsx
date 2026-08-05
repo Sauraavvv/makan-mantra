@@ -15,7 +15,7 @@ export function DeleteSubmissionButton({
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <section className="rounded-2xl border border-destructive/30 bg-background p-5">
+    <section className="rounded-xl border border-destructive/30 bg-background p-5">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-destructive">
         Danger zone
       </h2>

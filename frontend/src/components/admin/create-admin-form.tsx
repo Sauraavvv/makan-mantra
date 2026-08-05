@@ -11,7 +11,7 @@ export function CreateAdminForm() {
   const [state, formAction, pending] = useActionState(createAdminAction, {});
 
   return (
-    <section className="rounded-2xl border border-border bg-background p-5">
+    <section className="rounded-xl border border-border bg-background p-5">
       <h2 className="text-sm font-bold">Add an admin</h2>
       <p className="mt-1 text-xs text-muted-foreground">
         They will be able to sign in at /admin/login straight away.

@@ -65,7 +65,7 @@ export function PropertyTypeLinks({
 
       <div className="grid gap-6 md:grid-cols-2">
         {groups.map((group) => (
-          <div key={group.value} className="rounded-2xl border border-border bg-secondary/40 p-5">
+          <div key={group.value} className="rounded-xl border border-border bg-secondary/40 p-5">
             <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
               {group.label}
             </h3>
@@ -115,7 +115,7 @@ export function DistrictCityLinks({
         {districts.map((district) => (
           <div
             key={district.name}
-            className="rounded-2xl border border-border bg-secondary/40 p-4 transition-colors hover:border-primary/30"
+            className="rounded-xl border border-border bg-secondary/40 p-4 transition-colors hover:border-primary/30"
           >
             {district.slug ? (
               <Link

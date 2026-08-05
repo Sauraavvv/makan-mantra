@@ -25,7 +25,7 @@ export function AdminAuthForm({
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary/40 px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-background p-6 shadow-sm">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-background p-6 shadow-sm">
         <span className="grid size-11 place-items-center rounded-full bg-violet-50 text-violet-600">
           <ShieldCheck className="size-5" strokeWidth={1.8} />
         </span>

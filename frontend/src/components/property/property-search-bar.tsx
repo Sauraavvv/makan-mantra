@@ -11,7 +11,7 @@ export function PropertySearchBar({ locationName }: { locationName: string }) {
   const [location, setLocation] = useState(locationName);
 
   return (
-    <div className="rounded-2xl border border-border bg-background p-4">
+    <div className="rounded-xl border border-border bg-background p-4">
       <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr_0.8fr_auto_auto] lg:items-end">
         <div>
           <label className={LABEL} htmlFor="search-location">

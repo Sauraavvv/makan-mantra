@@ -152,7 +152,7 @@ export function QuickLinks({
               return (
                 <div
                   key={group.key}
-                  className="w-[min(80vw,380px)] shrink-0 overflow-hidden rounded-2xl border border-border bg-background"
+                  className="w-[min(80vw,380px)] shrink-0 overflow-hidden rounded-xl border border-border bg-background"
                 >
                   <h4
                     className={`flex items-center gap-2 border-b border-border px-4 py-3 text-sm font-bold ${listing.header}`}
@@ -191,7 +191,7 @@ export function QuickLinks({
       )}
 
       {/* Highlight bar — skyline illustration sits flush at the bottom-right */}
-      <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-white">
+      <div className="relative mt-4 overflow-hidden rounded-xl border border-border bg-white">
         <Image
           src="/quick-links-skyline.webp"
           alt=""

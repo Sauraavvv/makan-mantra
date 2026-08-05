@@ -118,7 +118,7 @@ const labelClass = "mb-1.5 block text-[13px] font-semibold text-primary";
 const fieldClass =
   "h-12 w-full rounded-lg border border-border bg-background text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60 focus:ring-3 focus:ring-primary/15";
 const selectClass = `${fieldClass} gap-2 pl-3 pr-2 text-sm data-[size=default]:h-12`;
-const cardClass = "rounded-[28px] border border-border bg-background p-6";
+const cardClass = "rounded-[20px] border border-border bg-background p-6";
 const cardTitleClass = "text-[13px] font-bold uppercase tracking-wide text-muted-foreground";
 
 /**

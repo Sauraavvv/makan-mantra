@@ -46,7 +46,7 @@ export default async function SetPasswordPage({
       <Header />
 
       <main className="mx-auto flex w-full max-w-[1250px] flex-1 items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6">
+        <div className="w-full max-w-md rounded-xl border border-border bg-background p-6">
           <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
             <KeyRound className="size-5" />
           </span>

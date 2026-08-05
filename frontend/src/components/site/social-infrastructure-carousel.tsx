@@ -274,7 +274,7 @@ function SocialInfoCard({
       };
 
   return (
-    <div className={`flex h-full flex-col overflow-hidden rounded-3xl border ${theme.border} bg-white`}>
+    <div className={`flex h-full flex-col overflow-hidden rounded-xl border ${theme.border} bg-white`}>
       <div className={`${theme.header} p-3.5`}>
         <div className="flex items-start justify-between gap-3">
           <div>
