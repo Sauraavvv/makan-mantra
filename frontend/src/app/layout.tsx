@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { LocationProvider } from "@/context/location-context";
+import { SessionProvider } from "@/context/session-context";
 import { Chatbot } from "@/components/site/chatbot";
 import "./globals.css";
 
@@ -33,7 +34,9 @@ export default function RootLayout({
       className={`${interSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <LocationProvider>{children}</LocationProvider>
+        <SessionProvider>
+          <LocationProvider>{children}</LocationProvider>
+        </SessionProvider>
         <Chatbot />
       </body>
     </html>

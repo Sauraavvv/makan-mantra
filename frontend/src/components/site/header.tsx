@@ -4,6 +4,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ArrowRight, BedDouble, ChevronDown, Home, LockKeyhole, Mail, MailCheck, MapPin, Menu, Phone, Plus, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { loginAction, registerModalAction } from "@/app/actions/auth";
+import { ResendSetPasswordForm } from "@/components/auth/resend-set-password-form";
+import { UserMenu } from "@/components/site/user-menu";
+import { useSession } from "@/context/session-context";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useLocation } from "@/context/location-context";
@@ -111,6 +114,7 @@ export function Header({
   minimal = false,
 }: HeaderProps = {}) {
   const { meta, setStateByName } = useLocation();
+  const { user: sessionUser, loaded: sessionLoaded } = useSession();
   const pathname = usePathname();
   const isHome = pathname === "/";
   const [showSearch, setShowSearch] = useState(false);
@@ -348,13 +352,22 @@ export function Header({
           </>
         )}
 
-        <button
-          type="button"
-          onClick={() => openAuthModal("login")}
-          className="hidden h-9 shrink-0 items-center rounded-full border border-white/15 px-4 text-sm font-semibold text-white hover:bg-white/10 md:inline-flex"
-        >
-          Login
-        </button>
+        {/* Nothing is rendered until the first session read settles, so the
+            Login button never flashes for someone who is already signed in. */}
+        {sessionLoaded &&
+          (sessionUser ? (
+            <div className="hidden md:block">
+              <UserMenu user={sessionUser} />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openAuthModal("login")}
+              className="hidden h-9 shrink-0 items-center rounded-full border border-white/15 px-4 text-sm font-semibold text-white hover:bg-white/10 md:inline-flex"
+            >
+              Login
+            </button>
+          ))}
 
         <Sheet>
           <SheetTrigger
@@ -370,13 +383,23 @@ export function Header({
               </SheetTitle>
             </SheetHeader>
             <div className="mt-4 flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => openAuthModal("login")}
-                className="mb-2 flex w-full items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
-              >
-                Login
-              </button>
+              {sessionUser ? (
+                <div className="mb-2 flex items-center gap-3 rounded-md border border-input bg-background px-3 py-2">
+                  <UserMenu user={sessionUser} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold">{sessionUser.name || "Your account"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{sessionUser.email}</p>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("login")}
+                  className="mb-2 flex w-full items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
+                >
+                  Login
+                </button>
+              )}
               {!minimal && (
                 <>
                   {NAV.map((item) => (
@@ -425,6 +448,7 @@ function LoginModal({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { refresh: refreshSession } = useSession();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [verifyEmail, setVerifyEmail] = useState(initialEmail || "");
   const [devOtp, setDevOtp] = useState(initialDevOtp || "");
@@ -433,7 +457,22 @@ function LoginModal({
   const [verifyError, setVerifyError] = useState("");
   const [verifyLoading, setVerifyLoading] = useState(false);
   const otpInputs = useRef<(HTMLInputElement | null)[]>([]);
-  const [loginState, loginActionState, loginPending] = useActionState(loginAction, undefined);
+  const [loginState, loginActionState, loginPending] = useActionState(
+    async (_previousState: Awaited<ReturnType<typeof loginAction>>, formData: FormData) => {
+      const result = await loginAction(undefined, formData);
+
+      // Signing in lands on the home page now, with the avatar in place of the
+      // Login button — so the session has to be re-read before navigating.
+      if (result?.success) {
+        await refreshSession();
+        onClose();
+        router.push("/");
+      }
+
+      return result;
+    },
+    undefined,
+  );
   const [registerState, registerActionState, registerPending] = useActionState(
     async (_previousState: Awaited<ReturnType<typeof registerModalAction>>, formData: FormData) => {
       const result = await registerModalAction(undefined, formData);
@@ -451,6 +490,7 @@ function LoginModal({
   );
   const isRegister = mode === "register";
   const isVerify = mode === "verify";
+  const activeState = isRegister ? registerState : loginState;
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -496,7 +536,10 @@ function LoginModal({
       return;
     }
 
-    router.push("/dashboard");
+    // Verifying signs the account in, so it lands on the home page too.
+    await refreshSession();
+    onClose();
+    router.push("/");
   }
 
   return (
@@ -696,24 +739,32 @@ function LoginModal({
               </div>
             </div>
 
-            {(isRegister ? registerState?.error : loginState?.error) && (
+            {activeState?.error && (
               <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {isRegister ? registerState?.error : loginState?.error}
-                {!isRegister && loginState?.email && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVerifyEmail(loginState.email || "");
-                      setDevOtp("");
-                      setEmailWarning("");
-                      setOtp(["", "", "", "", "", ""]);
-                      setVerifyError("");
-                      setMode("verify");
-                    }}
-                    className="ml-1 font-medium underline"
-                  >
-                    Verify now
-                  </button>
+                {activeState.error}
+
+                {/* A post-property account has no password yet, so the OTP screen
+                    would lead nowhere — it needs a fresh set-password link. */}
+                {activeState.needsSetPassword ? (
+                  <ResendSetPasswordForm compact defaultEmail={activeState.email} />
+                ) : (
+                  !isRegister &&
+                  loginState?.email && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVerifyEmail(loginState.email || "");
+                        setDevOtp("");
+                        setEmailWarning("");
+                        setOtp(["", "", "", "", "", ""]);
+                        setVerifyError("");
+                        setMode("verify");
+                      }}
+                      className="ml-1 font-medium underline"
+                    >
+                      Verify now
+                    </button>
+                  )
                 )}
               </div>
             )}

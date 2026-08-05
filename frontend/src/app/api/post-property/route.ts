@@ -4,7 +4,15 @@ import {
   getPropertySubmissionsCollection,
   getUsersCollection,
 } from "@/lib/auth/db";
-import { createSession, getSession } from "@/lib/auth/session";
+import { getLiveSession } from "@/lib/auth/session";
+import { sendSetPasswordEmail } from "@/lib/auth/email";
+import { normalizeEmail } from "@/lib/auth/normalize";
+import {
+  createSetPasswordToken,
+  randomPassword,
+  setPasswordUrl,
+} from "@/lib/auth/set-password";
+import bcrypt from "bcryptjs";
 import {
   markAssetsSaved,
   verifyAsset,
@@ -45,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const userType = text(form, "user_type");
   const ownerName = text(form, "owner_name");
-  const ownerEmail = text(form, "owner_email").toLowerCase();
+  const ownerEmail = normalizeEmail(text(form, "owner_email"));
   const ownerPhone = text(form, "owner_phone");
   const wantsAccount = text(form, "create_account") === "true";
 
@@ -120,9 +128,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const session = await getSession();
+    // Must be the live session: a stale cookie would look like "already has an
+    // account" and quietly skip creating one, so no link would ever be sent.
+    const session = await getLiveSession();
     let userId = session?.userId ?? null;
     let accountCreated = false;
+    let setPasswordEmailSent = false;
+    // Dev only — lets the flow be walked end to end before a sending domain is
+    // verified, the same way the signup OTP falls back to `devOtp`.
+    let devSetPasswordUrl: string | undefined;
 
     // The owner opted in to an account, so create one when the email is new.
     // An existing email is never signed into here — that would need verification.
@@ -131,26 +145,40 @@ export async function POST(req: NextRequest) {
       const existing = await users.findOne({ email: ownerEmail });
 
       if (!existing) {
+        // Nobody chose a password here. A random one keeps the account shaped
+        // like every other user, and the emailed link is how the owner replaces
+        // it — which is also what proves the mailbox is theirs. No session is
+        // handed out before that, so an address cannot be squatted by typing it.
+        const setPassword = createSetPasswordToken();
+
         const created = await users.insertOne({
           name: ownerName,
           email: ownerEmail,
           phone: ownerPhone || null,
-          password: null,
+          password: await bcrypt.hash(randomPassword(), 12),
           role: "user",
           email_verified: false,
           provider: "post_property",
+          set_password_token: setPassword.hash,
+          set_password_expires: setPassword.expires,
           created_at: new Date(),
         });
 
         userId = created.insertedId.toString();
         accountCreated = true;
 
-        await createSession({
-          userId,
-          email: ownerEmail,
-          name: ownerName,
-          role: "user",
-        });
+        const link = setPasswordUrl(req.nextUrl.origin, setPassword.token);
+
+        // The listing matters more than the email — a send failure must not
+        // cost the owner their submission. It must still be visible though:
+        // swallowing it silently hides a misconfigured sending domain.
+        try {
+          await sendSetPasswordEmail(ownerEmail, ownerName, link);
+          setPasswordEmailSent = true;
+        } catch (error) {
+          console.error("[post-property] set-password email failed:", error);
+          if (process.env.NODE_ENV !== "production") devSetPasswordUrl = link;
+        }
       }
     }
 
@@ -185,6 +213,8 @@ export async function POST(req: NextRequest) {
       success: true,
       id: result.insertedId.toString(),
       account_created: accountCreated,
+      set_password_email_sent: setPasswordEmailSent,
+      dev_set_password_url: devSetPasswordUrl,
     });
   } catch (error) {
     return NextResponse.json({ error: getAuthDbErrorMessage(error) }, { status: 503 });

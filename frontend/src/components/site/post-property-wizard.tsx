@@ -159,6 +159,8 @@ export function PostPropertyWizard({
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
   const [error, setError] = useState<string | null>(null);
   const [accountCreated, setAccountCreated] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [devSetPasswordUrl, setDevSetPasswordUrl] = useState<string | null>(null);
 
   // The confirmation art shows briefly, then the card goes back to a blank form.
   useEffect(() => {
@@ -322,6 +324,8 @@ export function PostPropertyWizard({
       }
 
       setAccountCreated(Boolean(data.account_created));
+      setEmailSent(Boolean(data.set_password_email_sent));
+      setDevSetPasswordUrl(data.dev_set_password_url || null);
       resetForm();
       setStatus("success");
     } catch {
@@ -513,9 +517,16 @@ export function PostPropertyWizard({
         </div>
       </div>
 
-      <p className="flex items-start gap-2 rounded-lg bg-secondary/60 p-3 text-xs leading-relaxed text-muted-foreground">
+      {/* Phone is collected for contact only — verification runs over email. */}
+      {/* <p className="flex items-start gap-2 rounded-lg bg-secondary/60 p-3 text-xs leading-relaxed text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
         Keep your phone with you — we will send an OTP to this number to verify your listing.
+      </p> */}
+
+      <p className="flex items-start gap-2 rounded-lg bg-secondary/60 p-3 text-xs leading-relaxed text-muted-foreground">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+        We will email you to confirm this listing. Your number is only used so buyers
+        can reach you.
       </p>
     </>
   );
@@ -664,8 +675,19 @@ export function PostPropertyWizard({
 
       {accountCreated && (
         <p className="shrink-0 text-center text-xs font-medium text-muted-foreground">
-          Your MakanMantraa account is ready — you are signed in.
+          {emailSent
+            ? "Check your email — we sent a link to set your password and activate your MakanMantraa account."
+            : "Your account is ready. We could not email your set-password link just now — request a fresh one from the sign-in panel."}
         </p>
+      )}
+
+      {devSetPasswordUrl && (
+        <a
+          href={devSetPasswordUrl}
+          className="shrink-0 break-all text-center text-[11px] font-medium text-saffron underline"
+        >
+          Dev only — open set-password link
+        </a>
       )}
     </div>
   );

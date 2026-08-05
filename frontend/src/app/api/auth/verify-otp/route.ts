@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthDbErrorMessage, getPendingUsersCollection, getUsersCollection } from "@/lib/auth/db";
+import { normalizeEmail } from "@/lib/auth/normalize";
 import { createSession } from "@/lib/auth/session";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, otp } = await req.json();
+    const { email: rawEmail, otp } = await req.json();
+    const email = normalizeEmail(String(rawEmail || ""));
 
     if (!email || !otp) {
       return NextResponse.json({ error: "Email and OTP required" }, { status: 400 });

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { getAuthDbErrorMessage, getPendingUsersCollection, getUsersCollection } from "@/lib/auth/db";
 import { sendOTPEmail } from "@/lib/auth/email";
+import { normalizeEmail } from "@/lib/auth/normalize";
 import { createSession } from "@/lib/auth/session";
 
 export type AuthState = {
@@ -12,6 +13,12 @@ export type AuthState = {
   success?: boolean;
   devOtp?: string;
   emailWarning?: string;
+  /**
+   * The address belongs to an account that was opened from the post-property
+   * form and never activated. Signing in and signing up both refuse it, so the
+   * caller should offer a fresh set-password link instead of a plain error.
+   */
+  needsSetPassword?: boolean;
 } | undefined;
 
 // Accepts "9876543210", "+91 98765 43210", "091-9876543210" and stores the
@@ -23,10 +30,12 @@ function normalizePhone(value: string) {
 
 async function createUnverifiedUser(
   name: string,
-  email: string,
+  rawEmail: string,
   phone: string,
   password: string,
 ): Promise<AuthState> {
+  const email = normalizeEmail(rawEmail || "");
+
   if (!name || !email || !phone || !password) {
     return { error: "All fields are required" };
   }
@@ -45,6 +54,16 @@ async function createUnverifiedUser(
     const users = await getUsersCollection();
     const existingUser = await users.findOne({ $or: [{ email }, { phone: normalizedPhone }] });
     if (existingUser) {
+      // An account opened from the post-property form sits here unverified. It
+      // is theirs, not a clash — send them to the link instead of a dead end.
+      if (existingUser.email === email && !existingUser.email_verified) {
+        return {
+          error: "You already have an account from posting a property. Set its password to continue.",
+          email,
+          needsSetPassword: true,
+        };
+      }
+
       return {
         error: existingUser.email === email
           ? "Email already registered"
@@ -108,11 +127,15 @@ export async function registerAction(
 
   const result = await createUnverifiedUser(name, email, phone, password);
   if (result?.error) return result;
+
+  // `result.email` is the normalised spelling — the one verify-otp will match.
+  const verifyEmail = result?.email ?? normalizeEmail(email || "");
+
   if (result?.devOtp) {
-    redirect(`/verify-email?email=${encodeURIComponent(email)}&devOtp=${encodeURIComponent(result.devOtp)}`);
+    redirect(`/verify-email?email=${encodeURIComponent(verifyEmail)}&devOtp=${encodeURIComponent(result.devOtp)}`);
   }
 
-  redirect(`/verify-email?email=${encodeURIComponent(email)}`);
+  redirect(`/verify-email?email=${encodeURIComponent(verifyEmail)}`);
 }
 
 export async function registerModalAction(
@@ -131,12 +154,16 @@ export async function loginAction(
   _prevState: AuthState,
   formData: FormData
 ): Promise<AuthState> {
-  const email = formData.get("email") as string;
+  // Stored lower-cased, so it has to be matched lower-cased too — otherwise a
+  // capitalised address looks like a wrong password.
+  const email = normalizeEmail((formData.get("email") as string) || "");
   const password = formData.get("password") as string;
 
   if (!email || !password) {
     return { error: "Email and password are required" };
   }
+
+  let session;
 
   try {
     const users = await getUsersCollection();
@@ -147,6 +174,16 @@ export async function loginAction(
     }
 
     if (!user.email_verified) {
+      // Post-property accounts never had a password chosen, so "verify your
+      // email" is not something they can act on — offer the link instead.
+      if (user.provider === "post_property") {
+        return {
+          error: "This account came from posting a property. Set a password to sign in.",
+          email,
+          needsSetPassword: true,
+        };
+      }
+
       return { error: "Please verify your email first", email };
     }
 
@@ -155,15 +192,21 @@ export async function loginAction(
       return { error: "Invalid email or password" };
     }
 
-    await createSession({
+    session = {
       userId: user._id.toString(),
       email: user.email,
       name: user.name,
       role: user.role,
-    });
-
-    redirect("/dashboard");
+    };
   } catch (error) {
     return { error: getAuthDbErrorMessage(error) };
   }
+
+  await createSession(session);
+
+  // No redirect here: the modal navigates itself, so it can refresh the header
+  // session in the same step. Redirecting would also have to sit outside the
+  // try above — it signals by throwing, and the catch would report it as a
+  // database failure.
+  return { success: true };
 }

@@ -1,5 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { ObjectId } from "mongodb";
+import { getUsersCollection } from "@/lib/auth/db";
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 const COOKIE = "mm_session";
@@ -44,4 +46,32 @@ export async function getSession(): Promise<SessionPayload | null> {
 export async function deleteSession() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE);
+}
+
+/**
+ * A session that still has a user behind it.
+ *
+ * The cookie is a self-contained JWT good for seven days, so it keeps verifying
+ * long after the account it names has been removed. Anything that branches on
+ * "is this person signed in" must resolve the record, not just the signature —
+ * `getAdminSession` does the same for admins.
+ */
+export async function getLiveSession(): Promise<SessionPayload | null> {
+  const session = await getSession();
+  if (!session?.userId) return null;
+
+  if (!ObjectId.isValid(session.userId)) return null;
+
+  try {
+    const users = await getUsersCollection();
+    const user = await users.findOne(
+      { _id: new ObjectId(session.userId) },
+      { projection: { _id: 1 } },
+    );
+
+    return user ? session : null;
+  } catch {
+    // A database blip should not silently sign everyone out mid-request.
+    return session;
+  }
 }
