@@ -698,6 +698,9 @@ function LoginModal({
                   name="email"
                   type="email"
                   required
+                  // Arriving from an email link (?auth=register&email=…) should not
+                  // mean typing the address out again.
+                  defaultValue={initialEmail || ""}
                   placeholder="you@example.com"
                   className="h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/15"
                 />
