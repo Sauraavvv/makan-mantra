@@ -814,7 +814,7 @@ function MegaNavItem({
   const actionLabel = listingType === "rent" ? "Rent" : "Sale";
 
   return (
-    <div className="group relative">
+    <div className="group relative flex h-16 items-center">
       <Link
         href={href}
         className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white group-hover:bg-white/10 group-hover:text-white"
@@ -823,9 +823,9 @@ function MegaNavItem({
         <ChevronDown className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" />
       </Link>
 
-      <div className="invisible absolute right-0 top-full z-50 pt-3 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-        <div className="max-h-[72vh] w-[min(92vw,1040px)] overflow-y-auto rounded-xl border border-border bg-background p-6 text-foreground shadow-2xl">
-          <div className="grid gap-x-8 gap-y-7 md:grid-cols-4">
+      <div className="invisible fixed inset-x-0 top-16 z-50 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+        <div className="max-h-[72vh] overflow-y-auto border-t border-border bg-background px-4 py-6 text-foreground shadow-2xl">
+          <div className="mx-auto grid max-w-7xl gap-x-8 gap-y-7 md:grid-cols-4">
             {PROPERTY_GROUPS[listingType].map((group) => (
               <div key={group.slug}>
                 <h3 className="border-b border-border pb-3 text-base font-semibold">

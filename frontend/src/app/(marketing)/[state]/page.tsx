@@ -592,7 +592,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
 
       {districts.length > 0 && (
         <section id="districts" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-6 shadow-sm sm:px-7 lg:px-10 lg:py-9">
             <DistrictCarousel districts={districts} stateName={parentStateName} />
           </div>
         </section>
