@@ -15,6 +15,7 @@ import {
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { DistrictCarousel } from "@/components/site/district-carousel";
+import { ExploreSectionNav } from "@/components/site/explore-section-nav";
 import { LineClampedDescription } from "@/components/site/line-clamped-description";
 import { PriceTrendChart } from "@/components/site/price-trend-chart";
 import { SocialInfrastructureCarousel } from "@/components/site/social-infrastructure-carousel";
@@ -73,6 +74,13 @@ type StateDistrictPage = {
   district_name: string;
   state_name: string;
   slug: string;
+  route_slug?: string;
+  seo?: {
+    page_description?: string;
+    meta_description?: string;
+  };
+  overview?: Record<string, unknown>;
+  investment_angle?: Record<string, unknown>;
 };
 
 type PriceTrendPoint = {
@@ -394,7 +402,15 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       ? { latitude: coordinates.latitude, longitude: coordinates.longitude }
       : null;
   const districts = districtPages.length > 0
-    ? districtPages.map((district) => ({ name: district.district_name, slug: district.slug }))
+    ? districtPages.map((district) => ({
+        name: district.district_name,
+        stateName: district.state_name,
+        slug: district.slug,
+        routeSlug: district.route_slug,
+        seo: district.seo,
+        overview: district.overview,
+        investmentAngle: district.investment_angle,
+      }))
     : asArray(overview.districts).map((district) => ({ name: district }));
   const majorCities = uniqueItems(overview.major_cities);
   const majorTowns = uniqueItems(overview.major_towns);
@@ -558,26 +574,20 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         </div>
       </header>
 
-      <div className="sticky top-16 z-30 border-b border-black bg-black">
-        <div className="mx-auto flex max-w-7xl items-center gap-6 overflow-x-auto px-4 py-3">
-          {[
-            ["Overview", "#overview"],
-            ...(districts.length > 0 ? [["Districts", "#districts"]] : []),
-            ["Cities & Towns", "#cities-towns"],
-            ...(connectivityCards.length > 0 ? [["Connectivity", "#connectivity"]] : []),
-            ["Living", "#social"],
-            ...(topBuilders.length > 0 ? [["Top Builders", "#top-builders"]] : []),
-            ...(priceTrend.length > 1 ? [["Price Trend", "#price-trend"]] : []),
-            ...(hasInvestmentComparison ? [["Growth & Risks", "#growth-risks"]] : []),
-            ...(quickLinkGroups.length > 0 ? [["Quick Links", "#quick-links"]] : []),
-            ...(faq.length > 0 ? [["FAQ", "#faq"]] : []),
-          ].map(([label, href]) => (
-            <a key={href} href={href} className="shrink-0 text-sm font-medium text-white/85 transition-colors hover:text-white">
-              {label}
-            </a>
-          ))}
-        </div>
-      </div>
+      <ExploreSectionNav
+        items={[
+          { label: "Overview", href: "#overview" },
+          ...(districts.length > 0 ? [{ label: "Districts", href: "#districts" as const }] : []),
+          { label: "Cities & Towns", href: "#cities-towns" },
+          ...(connectivityCards.length > 0 ? [{ label: "Connectivity", href: "#connectivity" as const }] : []),
+          { label: "Living", href: "#social" },
+          ...(topBuilders.length > 0 ? [{ label: "Top Builders", href: "#top-builders" as const }] : []),
+          ...(priceTrend.length > 1 ? [{ label: "Price Trend", href: "#price-trend" as const }] : []),
+          ...(hasInvestmentComparison ? [{ label: "Growth & Risks", href: "#growth-risks" as const }] : []),
+          ...(quickLinkGroups.length > 0 ? [{ label: "Quick Links", href: "#quick-links" as const }] : []),
+          ...(faq.length > 0 ? [{ label: "FAQ", href: "#faq" as const }] : []),
+        ]}
+      />
 
       <section id="overview" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
         <div className="mx-auto max-w-[1250px] px-5 py-5">
