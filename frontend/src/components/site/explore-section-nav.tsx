@@ -53,7 +53,7 @@ export function ExploreSectionNav({ items }: { items: ExploreSectionNavItem[] })
     if (!nav || !activeItem) return;
 
     const targetLeft = activeItem.offsetLeft - (nav.clientWidth - activeItem.clientWidth) / 2;
-    nav.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+    nav.scrollTo({ left: Math.max(0, targetLeft), behavior: "auto" });
   }, [activeHref]);
 
   return (
@@ -67,14 +67,14 @@ export function ExploreSectionNav({ items }: { items: ExploreSectionNavItem[] })
               key={item.href}
               href={item.href}
               aria-current={active ? "location" : undefined}
-              onClick={() => setActiveHref(item.href)}
-              className={`relative shrink-0 py-3 text-sm font-medium transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:transition-colors ${
+              className={`flex h-11 shrink-0 flex-col items-center justify-center gap-1 text-sm font-medium ${
                 active
-                  ? "text-saffron after:bg-saffron"
-                  : "text-white/85 after:bg-transparent hover:text-saffron"
+                  ? "text-saffron"
+                  : "text-white/85 hover:text-saffron"
               }`}
             >
-              {item.label}
+              <span>{item.label}</span>
+              <span className={`h-0.5 w-5 rounded-full ${active ? "bg-saffron" : "bg-transparent"}`} />
             </a>
           );
         })}

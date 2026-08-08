@@ -6,6 +6,8 @@ import { StateExplorer } from "@/components/site/state-explorer";
 import { HeroText } from "@/components/site/hero-text";
 import { PostPropertyBanner } from "@/components/site/post-property-banner";
 import { QuickLinks, type QuickLinkGroup } from "@/components/site/quick-links";
+import { MarketSnapshot } from "@/components/site/market-snapshot";
+import { DEFAULT_SNAPSHOT_SLUG, fetchMarketSnapshot } from "@/lib/market-snapshot";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -26,7 +28,12 @@ async function getStateQuickLinks(): Promise<QuickLinkGroup[]> {
 }
 
 export default async function Home() {
-  const quickLinkGroups = await getStateQuickLinks();
+  // Delhi renders on the server so the section is never blank; the client swaps
+  // it for the visitor's state once geolocation or the header picker resolves one.
+  const [quickLinkGroups, defaultSnapshot] = await Promise.all([
+    getStateQuickLinks(),
+    fetchMarketSnapshot(DEFAULT_SNAPSHOT_SLUG),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col bg-secondary">
@@ -53,6 +60,9 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {/* Market snapshot for the visitor's state */}
+      <MarketSnapshot initial={defaultSnapshot} />
 
       {/* Browse by state */}
       <section className="bg-secondary px-4 py-4 md:py-5">

@@ -31,3 +31,6 @@ def get_state_overview_collection():
 
 def get_district_overview_collection():
     return get_database()["district_overview"]
+
+def get_market_snapshot_collection():
+    return get_database()["market_snapshot"]
