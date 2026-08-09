@@ -35,8 +35,8 @@ const TOP_STATES = [
   "Tamil Nadu", "Gujarat", "Uttar Pradesh", "Rajasthan",
 ];
 
-const TOP_STATES_SET = new Set(TOP_STATES);
-const REST_STATES = STATES.filter((s) => !TOP_STATES_SET.has(s));
+/** The picker lists every state A–Z; TOP_STATES only drives the shortcut chips. */
+const STATES_ALPHABETICAL = [...STATES].sort((a, b) => a.localeCompare(b));
 
 function StateCard({
   state,
@@ -125,9 +125,13 @@ export function Header({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filtered = STATES.filter((s) =>
+  const filtered = STATES_ALPHABETICAL.filter((s) =>
     s.toLowerCase().includes(search.toLowerCase())
   );
+  // The detected (or picked) state leads the grid; "India" means we have none.
+  const pickerStates = STATES_ALPHABETICAL.includes(meta.label)
+    ? [meta.label, ...STATES_ALPHABETICAL.filter((s) => s !== meta.label)]
+    : STATES_ALPHABETICAL;
   const shouldShowSearch = showSearchBar || showSearch;
 
   useEffect(() => {
@@ -295,7 +299,7 @@ export function Header({
                   {/* Scrollable icon grid */}
                   <div className="max-h-[286px] overflow-y-auto p-1 pt-2 pb-2">
                     <div className="grid grid-cols-3 gap-0.5">
-                      {[...TOP_STATES, ...REST_STATES].map((state) => (
+                      {pickerStates.map((state) => (
                         <StateCard
                           key={state}
                           state={state}

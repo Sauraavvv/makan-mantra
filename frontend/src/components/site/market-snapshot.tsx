@@ -24,6 +24,8 @@ import {
   type PriceBand,
 } from "@/lib/market-snapshot";
 
+const CARD_COUNT = 5;
+
 /** Each card gets its own tinted head so the carousel reads as five distinct panels. */
 const CARD_ACCENTS = [
   {
@@ -208,9 +210,16 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   const accent = CARD_ACCENTS[index % CARD_ACCENTS.length];
+  // The last card snaps by its trailing edge; a leading snap point would sit past
+  // the maximum scroll offset, so the browser would pull back and clip it.
+  const snap = index === CARD_COUNT - 1 ? "snap-end" : "snap-start";
 
   return (
-    <article className="flex h-[470px] w-[min(88vw,440px)] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+    <article
+      // 4.5rem is the page's horizontal chrome (section px-4 + panel px-5), so on
+      // phones a card fills the scroller exactly instead of overflowing it.
+      className={`flex h-[470px] w-[min(calc(100vw-4.5rem),400px)] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background ${snap}`}
+    >
       <header className={`shrink-0 px-4 pb-3 pt-3.5 ${accent.head}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -233,7 +242,9 @@ function SectionCard({
           </div>
         )}
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 no-scrollbar">{children}</div>
+      {/* No inner scroll: every card is sized so its list fits whole, and rows
+          stretch into whatever height is left so short states show no dead space. */}
+      <div className="flex min-h-0 flex-1 flex-col px-4 py-3">{children}</div>
     </article>
   );
 }
@@ -252,8 +263,8 @@ function QuarterlyTrend({ trend }: { trend: MarketSnapshot["price_trend_growth_q
   if (points.length < 2) return null;
 
   const width = 372;
-  const height = 132;
-  const padding = { top: 22, right: 14, bottom: 26, left: 14 };
+  const height = 112;
+  const padding = { top: 20, right: 14, bottom: 24, left: 14 };
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
   const values = points.map((point) => point.value);
@@ -311,15 +322,17 @@ function PriceBandRow({
   if (!value) return null;
 
   return (
-    <div className="rounded-xl border border-border p-2.5">
-      <div className="flex items-center gap-2">
-        <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${tone}`}>{icon}</span>
-        <p className="truncate text-[11px] font-semibold text-muted-foreground">{label}</p>
+    <div className="flex flex-1 items-center gap-2.5 py-1.5">
+      <span className={`grid size-9 shrink-0 place-items-center rounded-xl border border-border ${tone}`}>{icon}</span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="min-w-0 text-[11px] font-semibold leading-tight text-muted-foreground">{label}</p>
+          <p className="shrink-0 text-[11px] font-bold leading-tight text-foreground">{value}</p>
+        </div>
+        {localities && localities.length > 0 && (
+          <p className="mt-0.5 text-[9px] leading-tight text-muted-foreground">{localities.join(", ")}</p>
+        )}
       </div>
-      <p className="mt-1.5 text-sm font-bold text-foreground">{value}</p>
-      {localities && localities.length > 0 && (
-        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{localities.slice(0, 3).join(", ")}</p>
-      )}
     </div>
   );
 }
@@ -332,7 +345,6 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
   const { meta } = useLocation();
   const [snapshot, setSnapshot] = useState(initial);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const [activeDot, setActiveDot] = useState(0);
 
   // "India" means we never learned the visitor's state, so the default stands.
   const wantedSlug = meta.label === "India" ? DEFAULT_SNAPSHOT_SLUG : toSnapshotSlug(meta.label);
@@ -353,7 +365,6 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
 
   if (!snapshot) return null;
 
-  const cardCount = 5;
   const exploreHref = `/explore-${snapshot.slug}`;
   const price = snapshot.asking_price_per_sq_ft;
   const villas = price.independent_builder_floors_or_villas;
@@ -362,50 +373,73 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
   const scroll = (direction: "left" | "right") => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
-    scroller.scrollBy({
-      left: direction === "left" ? -scroller.clientWidth * 0.8 : scroller.clientWidth * 0.8,
-      behavior: "smooth",
-    });
-  };
 
-  const updateActiveDot = () => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
+    const track = scroller.firstElementChild;
+    const cards = track ? (Array.from(track.children) as HTMLElement[]) : [];
+    if (cards.length === 0) return;
+
+    const current = scroller.scrollLeft;
     const maxScroll = scroller.scrollWidth - scroller.clientWidth;
-    const progress = maxScroll > 0 ? scroller.scrollLeft / maxScroll : 0;
-    setActiveDot(Math.round(progress * (cardCount - 1)));
+    const scrollerLeft = scroller.getBoundingClientRect().left;
+    const cardWidth = cards[0].offsetWidth;
+
+    // Stops are measured off the live layout rather than assumed to be multiples
+    // of the card width — the scroller's padding offsets every snap point, and
+    // guessing leaves the browser snapping back to where it started.
+    const stops = cards
+      .map((card) => current + (card.getBoundingClientRect().left - scrollerLeft))
+      // A stop less than half a card from the end would leave the last card
+      // clipped and cost an extra click, so the end replaces it.
+      .filter((stop) => stop >= 0 && maxScroll - stop > cardWidth / 2);
+    stops.push(maxScroll);
+
+    const target =
+      direction === "left"
+        ? [...stops].reverse().find((stop) => stop < current - 2) ?? 0
+        : stops.find((stop) => stop > current + 2) ?? maxScroll;
+
+    scroller.scrollTo({ left: target, behavior: "smooth" });
   };
 
   return (
     <section className="bg-secondary px-4 py-4 md:py-5">
-      <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground md:text-3xl">
+      <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold md:text-3xl">
             {snapshot.state_name} Real Estate Market Snapshot
           </h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Explore prices, rents, top developers and projects in {snapshot.state_name}
-          </p>
+          <div className="mt-1 flex items-center justify-between gap-4">
+            <p className="min-w-0 flex-1 text-muted-foreground">
+              Explore prices, rents, top developers and projects in {snapshot.state_name}
+            </p>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                aria-label="Scroll market snapshot left"
+                onClick={() => scroll("left")}
+                className="grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-secondary"
+              >
+                <ChevronLeft className="h-4 w-4" strokeWidth={1.8} />
+              </button>
+              <button
+                type="button"
+                aria-label="Scroll market snapshot right"
+                onClick={() => scroll("right")}
+                className="grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-secondary"
+              >
+                <ChevronRight className="h-4 w-4" strokeWidth={1.8} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-center gap-1.5">
-          {Array.from({ length: cardCount }).map((_, index) => (
-            <span
-              key={index}
-              className={`h-1.5 rounded-full transition-all ${
-                index === activeDot ? "w-5 bg-foreground" : "w-1.5 bg-muted-foreground/30"
-              }`}
-            />
-          ))}
-        </div>
-
-        <div className="relative mt-4">
+        <div>
           <div
             ref={scrollerRef}
-            onScroll={updateActiveDot}
-            className="-mx-1 overflow-x-auto scroll-smooth px-1 pb-2 no-scrollbar"
+            // Snapping belongs on the scroll container, not the track inside it.
+            className="-mx-1 snap-x snap-mandatory overflow-x-auto scroll-smooth px-1 pb-2 no-scrollbar"
           >
-            <div className="flex w-max snap-x snap-mandatory gap-4">
+            <div className="flex w-max gap-4">
               <SectionCard
                 index={0}
                 title="Market Overview"
@@ -426,12 +460,12 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
                 <p className="mt-3 text-[11px] font-semibold text-foreground">
                   Price Trend <span className="font-normal text-muted-foreground">(Quarterly Growth)</span>
                 </p>
-                <div className="mt-1">
+                <div className="flex flex-1 items-center">
                   <QuarterlyTrend trend={snapshot.price_trend_growth_quarterly} />
                 </div>
 
                 {snapshot.price_trend_growth_quarterly.note && (
-                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-[11px] leading-snug text-muted-foreground">
                     {snapshot.price_trend_growth_quarterly.note}
                   </p>
                 )}
@@ -446,7 +480,7 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
                 href={exploreHref}
               >
                 <p className="text-[11px] font-bold text-foreground">Asking Price per Sq. Ft.</p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="mt-1 flex flex-1 flex-col divide-y divide-border">
                   <PriceBandRow
                     icon={<Home className="size-3.5" strokeWidth={1.9} />}
                     label="Affordable Pockets"
@@ -510,31 +544,38 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
                 href={exploreHref}
               >
                 <p className="text-[11px] font-bold text-foreground">Monthly Average Rent by BHK</p>
-                <div className="mt-2 space-y-2">
-                  {snapshot.monthly_average_rent_by_bhk.map((segment) => (
-                    <div key={segment.segment} className="rounded-xl border border-border p-2.5">
-                      <p className="truncate text-[11px] font-semibold text-foreground">{segment.segment}</p>
-                      {segment.example_localities && segment.example_localities.length > 0 && (
-                        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                          {segment.example_localities.slice(0, 3).join(", ")}
-                        </p>
-                      )}
-                      <div className="mt-2 grid grid-cols-3 gap-1.5">
-                        {(segment.bhk_configurations ?? []).slice(0, 3).map((config) => (
-                          <div key={config.bhk_type} className="rounded-lg bg-muted px-1.5 py-1.5 text-center">
-                            <p className="text-[10px] font-semibold text-muted-foreground">{config.bhk_type}</p>
-                            <p className="mt-0.5 text-[11px] font-bold text-foreground">
-                              {formatRange(config.min_rent_inr, config.max_rent_inr, formatCompactInr)}
-                            </p>
-                          </div>
-                        ))}
+                <div className="mt-1 flex flex-1 flex-col divide-y divide-border">
+                  {snapshot.monthly_average_rent_by_bhk.map((segment) => {
+                    const configs = segment.bhk_configurations ?? [];
+
+                    return (
+                      <div key={segment.segment} className="flex flex-1 flex-col justify-center py-2">
+                        <p className="text-[11px] font-semibold leading-tight text-foreground">{segment.segment}</p>
+                        {segment.example_localities && segment.example_localities.length > 0 && (
+                          <p className="mt-0.5 text-[9px] leading-snug text-muted-foreground">
+                            {segment.example_localities.join(", ")}
+                          </p>
+                        )}
+                        <div
+                          className="mt-1.5 grid gap-1.5"
+                          // One column per configuration so a 4 BHK row never wraps.
+                          style={{ gridTemplateColumns: `repeat(${Math.max(configs.length, 1)}, minmax(0, 1fr))` }}
+                        >
+                          {configs.map((config) => (
+                            <div key={config.bhk_type} className="rounded-lg bg-muted px-1 py-1 text-center">
+                              <p className="text-[9px] font-semibold leading-tight text-muted-foreground">
+                                {config.bhk_type}
+                              </p>
+                              <p className="text-[10px] font-bold leading-tight text-foreground">
+                                {formatRange(config.min_rent_inr, config.max_rent_inr, formatCompactInr)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-                <p className="mt-2 text-[10px] text-muted-foreground">
-                  Rents vary with location, furnishing, society, floor and amenities.
-                </p>
               </SectionCard>
 
               <SectionCard
@@ -545,29 +586,24 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
                 insight={developerInsight(snapshot)}
                 href={exploreHref}
               >
-                <div className="divide-y divide-border">
+                <div className="flex flex-1 flex-col divide-y divide-border">
                   {snapshot.top_developers.map((developer, index) => (
-                    <div key={developer.developer_name} className="flex gap-2.5 py-2 first:pt-0">
+                    <div key={developer.developer_name} className="flex flex-1 items-center gap-2.5 py-1.5">
                       <span
-                        className={`grid size-10 shrink-0 place-items-center rounded-xl border border-border text-[11px] font-bold ${
+                        className={`grid size-9 shrink-0 place-items-center rounded-xl border border-border text-[10px] font-bold ${
                           AVATAR_TONES[index % AVATAR_TONES.length]
                         }`}
                       >
                         {initialsOf(developer.developer_name)}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-bold text-foreground">{developer.developer_name}</p>
-                        <p className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] font-medium text-muted-foreground">
+                        <p className="text-xs font-bold leading-tight text-foreground">{developer.developer_name}</p>
+                        <p className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] font-medium leading-tight text-muted-foreground">
                           {developer.total_projects != null && <span>{developer.total_projects} Projects</span>}
                           {developer.total_experience_years != null && (
                             <span>{developer.total_experience_years} Years</span>
                           )}
                         </p>
-                        {developer.range_of_projects_offered && (
-                          <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground">
-                            {developer.range_of_projects_offered}
-                          </p>
-                        )}
                       </div>
                     </div>
                   ))}
@@ -582,11 +618,11 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
                 insight={projectInsight(snapshot)}
                 href={exploreHref}
               >
-                <div className="divide-y divide-border">
+                <div className="flex flex-1 flex-col divide-y divide-border">
                   {snapshot.top_projects.map((project, index) => (
-                    <div key={project.project_name} className="flex gap-2.5 py-2 first:pt-0">
+                    <div key={project.project_name} className="flex flex-1 items-center gap-2.5 py-1.5">
                       <span
-                        className={`grid size-10 shrink-0 place-items-center rounded-xl border border-border ${
+                        className={`grid size-9 shrink-0 place-items-center rounded-xl border border-border ${
                           AVATAR_TONES[index % AVATAR_TONES.length]
                         }`}
                       >
@@ -594,13 +630,15 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
-                          <p className="truncate text-xs font-bold text-foreground">{project.project_name}</p>
-                          <p className="shrink-0 text-[11px] font-bold text-[#C2255C]">
+                          <p className="min-w-0 text-[11px] font-bold leading-tight text-foreground">
+                            {project.project_name}
+                          </p>
+                          <p className="shrink-0 text-[11px] font-bold leading-tight text-[#C2255C]">
                             {formatRange(project.min_price_crore_inr, project.max_price_crore_inr, formatCrore)}
                           </p>
                         </div>
                         {project.location && (
-                          <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{project.location}</p>
+                          <p className="mt-0.5 text-[9px] leading-tight text-muted-foreground">{project.location}</p>
                         )}
                       </div>
                     </div>
@@ -610,22 +648,6 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => scroll("left")}
-            aria-label="Previous cards"
-            className="absolute -left-3 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full border border-border bg-background text-foreground shadow-md transition-colors hover:bg-accent md:grid"
-          >
-            <ChevronLeft className="size-4" strokeWidth={1.9} />
-          </button>
-          <button
-            type="button"
-            onClick={() => scroll("right")}
-            aria-label="Next cards"
-            className="absolute -right-3 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full border border-border bg-background text-foreground shadow-md transition-colors hover:bg-accent md:grid"
-          >
-            <ChevronRight className="size-4" strokeWidth={1.9} />
-          </button>
         </div>
       </div>
     </section>
