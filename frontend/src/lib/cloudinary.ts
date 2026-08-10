@@ -69,6 +69,16 @@ export async function markAssetsSaved(assets: UploadedAsset[], submissionId: str
   );
 }
 
+/** Keeps a profile image out of the abandoned property-upload cleanup sweep. */
+export async function markProfileImageSaved(asset: UploadedAsset, userId: string) {
+  await cloudinary.uploader.remove_tag(DRAFT_TAG, [asset.public_id], {
+    resource_type: "image",
+  });
+  await cloudinary.uploader.add_tag(`profile_${userId}`, [asset.public_id], {
+    resource_type: "image",
+  });
+}
+
 /**
  * Removes an asset from Cloudinary. An asset that is already gone counts as
  * success — the caller only wants it to not exist.

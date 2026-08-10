@@ -5,7 +5,7 @@ import {
   getUsersCollection,
 } from "@/lib/auth/db";
 import { getLiveSession } from "@/lib/auth/session";
-import { sendSetPasswordEmail } from "@/lib/auth/email";
+import { sendPropertyConfirmationEmail } from "@/lib/auth/email";
 import { normalizeEmail } from "@/lib/auth/normalize";
 import {
   createSetPasswordToken,
@@ -20,6 +20,7 @@ import {
   type UploadedAsset,
 } from "@/lib/cloudinary";
 import { PROPERTY_TYPES } from "@/lib/constants/propertyTypes";
+import { insertWithPid } from "@/lib/property-id";
 
 const LISTING_TYPES = ["buy", "rent"] as const;
 const SOURCES = ["banner", "post_property_page"] as const;
@@ -133,7 +134,8 @@ export async function POST(req: NextRequest) {
     const session = await getLiveSession();
     let userId = session?.userId ?? null;
     let accountCreated = false;
-    let setPasswordEmailSent = false;
+    // Rides along in the confirmation email rather than going out on its own.
+    let setPasswordLink: string | undefined;
     // Dev only — lets the flow be walked end to end before a sending domain is
     // verified, the same way the signup OTP falls back to `devOtp`.
     let devSetPasswordUrl: string | undefined;
@@ -166,25 +168,18 @@ export async function POST(req: NextRequest) {
 
         userId = created.insertedId.toString();
         accountCreated = true;
-
-        const link = setPasswordUrl(req.nextUrl.origin, setPassword.token);
-
-        // The listing matters more than the email — a send failure must not
-        // cost the owner their submission. It must still be visible though:
-        // swallowing it silently hides a misconfigured sending domain.
-        try {
-          await sendSetPasswordEmail(ownerEmail, ownerName, link);
-          setPasswordEmailSent = true;
-        } catch (error) {
-          console.error("[post-property] set-password email failed:", error);
-          if (process.env.NODE_ENV !== "production") devSetPasswordUrl = link;
-        }
+        setPasswordLink = setPasswordUrl(req.nextUrl.origin, setPassword.token);
       }
     }
 
     const submissions = await getPropertySubmissionsCollection();
 
-    const result = await submissions.insertOne({
+    // A signed-in owner does not retype what we already know about them.
+    const contactName = session?.name || ownerName || null;
+    const contactEmail = session?.email || ownerEmail || null;
+
+    const { pid, insertedId } = await insertWithPid(submissions, (nextPid) => ({
+      pid: nextPid,
       property_type: propertyType,
       listing_type: listingType,
       // The wizard collects location and price inside the free-text `details`
@@ -192,28 +187,54 @@ export async function POST(req: NextRequest) {
       details: details || null,
       media,
       user_type: userType || null,
-      owner_name: ownerName || null,
-      owner_email: ownerEmail || null,
+      owner_name: contactName,
+      owner_email: contactEmail,
       owner_phone: ownerPhone || null,
       account_consent: wantsAccount,
       source: (SOURCES as readonly string[]).includes(source) ? source : "banner",
       user_id: userId,
-      user_email: session?.email ?? ownerEmail ?? null,
+      user_email: contactEmail,
       status: "pending_review",
       created_at: new Date(),
-    });
+    }));
 
     // The assets are spoken for now, so drop the `draft` tag that marks them
     // as sweepable. A failure here is not worth losing the submission over.
     if (media.length > 0) {
-      await markAssetsSaved(media, result.insertedId.toString()).catch(() => {});
+      await markAssetsSaved(media, insertedId.toString()).catch(() => {});
+    }
+
+    // One receipt per submission, carrying the PID and — for an account opened
+    // by this very submission — the set-password link. The listing matters more
+    // than the mail: a send failure is logged, never fatal.
+    let confirmationEmailSent = false;
+
+    if (contactEmail) {
+      try {
+        await sendPropertyConfirmationEmail(contactEmail, contactName || "there", {
+          pid,
+          propertyType:
+            PROPERTY_TYPES[propertyType as keyof typeof PROPERTY_TYPES] ?? propertyType,
+          listingType: listingType === "rent" ? "For Rent" : "For Sale",
+          details: details || null,
+          mediaCount: media.length,
+          setPasswordLink,
+        });
+        confirmationEmailSent = true;
+      } catch (error) {
+        console.error("[post-property] confirmation email failed:", error);
+        if (process.env.NODE_ENV !== "production" && setPasswordLink) {
+          devSetPasswordUrl = setPasswordLink;
+        }
+      }
     }
 
     return NextResponse.json({
       success: true,
-      id: result.insertedId.toString(),
+      id: insertedId.toString(),
+      pid,
       account_created: accountCreated,
-      set_password_email_sent: setPasswordEmailSent,
+      confirmation_email_sent: confirmationEmailSent,
       dev_set_password_url: devSetPasswordUrl,
     });
   } catch (error) {

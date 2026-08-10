@@ -114,6 +114,107 @@ export async function sendSetPasswordEmail(email: string, name: string, link: st
   if (error) throw new Error(`Email send failed: ${error.message}`);
 }
 
+export type PropertyConfirmation = {
+  pid: string;
+  propertyType: string;
+  listingType: string;
+  details: string | null;
+  mediaCount: number;
+  /** Present only when this submission also created the owner's account. */
+  setPasswordLink?: string;
+};
+
+function detailRow(label: string, value: string) {
+  return `
+    <tr>
+      <td style="padding:7px 0;font-size:13px;color:#8a8a8a;width:150px">${label}</td>
+      <td style="padding:7px 0;font-size:13px;color:${NAVY};font-weight:600">${value}</td>
+    </tr>`;
+}
+
+/**
+ * The receipt for a posted property.
+ *
+ * This goes out for every submission, so it carries the PID the owner quotes
+ * when our team calls. When the submission also opened an account, the
+ * set-password button rides along here rather than in a second email — two
+ * mails for one action reads like a system talking to itself.
+ */
+export async function sendPropertyConfirmationEmail(
+  email: string,
+  name: string,
+  info: PropertyConfirmation,
+) {
+  const passwordSection = info.setPasswordLink
+    ? `
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+             style="margin-top:26px;border-top:1px solid #ececec">
+        <tr>
+          <td style="padding-top:24px">
+            <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:${NAVY}">
+              Activate your account
+            </p>
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#3d4654">
+              We created a Makan Mantraa account for you. Set a password to sign in
+              and follow this property.
+            </p>
+            <p style="margin:20px 0 0">
+              <a href="${info.setPasswordLink}"
+                 style="background:${NAVY};color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block">
+                Set your password
+              </a>
+            </p>
+            <p style="margin:14px 0 0;font-size:12px;color:#8a8a8a">
+              This link expires in 24 hours.
+            </p>
+          </td>
+        </tr>
+      </table>`
+    : "";
+
+  const body = `
+    <p style="margin:0 0 6px;font-size:14px;color:#3d4654">Hi ${name || "there"},</p>
+    <h1 style="margin:0 0 8px;font-size:23px;line-height:1.3;color:${NAVY};font-weight:700">
+      We have your property
+    </h1>
+    <p style="margin:0;font-size:14px;line-height:1.6;color:#3d4654">
+      Our team will call you shortly to collect the remaining details and put your
+      listing together. Keep the ID below handy for that call.
+    </p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="margin:22px 0;border:1px solid #ffe0c7;border-radius:12px;background:#fff8f2">
+      <tr>
+        <td align="center" style="padding:22px 16px">
+          <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1.4px;color:#8a8a8a">
+            YOUR PROPERTY ID
+          </p>
+          <p style="margin:0;font-size:30px;font-weight:700;letter-spacing:3px;color:${SAFFRON}">
+            ${info.pid}
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      ${detailRow("Property type", info.propertyType)}
+      ${detailRow("Listing", info.listingType)}
+      ${info.details ? detailRow("Details you shared", info.details) : ""}
+      ${info.mediaCount > 0 ? detailRow("Files uploaded", String(info.mediaCount)) : ""}
+    </table>
+
+    ${passwordSection}
+  `;
+
+  const { error } = await resend.emails.send({
+    from: "Makan Mantraa <onboarding@resend.dev>",
+    to: email,
+    subject: `Your property is with us — ID ${info.pid}`,
+    html: shell(`Property ID ${info.pid}`, body),
+  });
+  if (error) throw new Error(`Email send failed: ${error.message}`);
+}
+
 /**
  * Welcomes a newsletter subscriber and nudges them towards an account.
  *

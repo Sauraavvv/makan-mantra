@@ -111,7 +111,9 @@ export function QuickLinks({
 
   return (
     <div>
-      <h2 className="text-3xl font-bold leading-tight md:text-4xl">Quick Links in {displayName}</h2>
+      <h2 className="text-3xl font-bold leading-tight md:text-4xl">
+        Quick Links in {displayName}
+      </h2>
 
       {/* Sub-heading row: copy on the left, Sale / Rent switch on the right */}
       <div className="mt-2 flex items-center justify-between gap-4">

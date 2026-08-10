@@ -43,14 +43,14 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
 }
 
 export function HeroText() {
-  const { meta, setStateByName } = useLocation();
+  const { meta, setDetectedState } = useLocation();
 
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         const state = await reverseGeocode(coords.latitude, coords.longitude);
-        setStateByName(state);
+        setDetectedState(state);
       },
       () => {},
       { timeout: 8000 }

@@ -13,11 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "state is required" }, { status: 400 });
   }
 
-  const state = canonicalStateName(requested);
-
-  if (!state) {
-    return NextResponse.json({ error: "Unknown state" }, { status: 400 });
-  }
+  const state = canonicalStateName(requested) ?? requested;
 
   try {
     const pages = await getLocationPagesCollection();

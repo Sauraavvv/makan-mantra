@@ -13,17 +13,8 @@ import { useLocation } from "@/context/location-context";
 import { DotPattern } from "@/registry/magicui/dot-pattern";
 import { stateExploreHref, stateSlug } from "@/lib/state-routes";
 import { stateCardImage } from "@/lib/state-images";
+import { STATES } from "@/lib/states";
 
-const STATES = [
-  "Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh",
-  "Assam", "Bihar", "Chandigarh", "Chhattisgarh",
-  "Delhi", "Goa", "Gujarat",
-  "Haryana", "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand",
-  "Karnataka", "Kerala", "Ladakh", "Lakshadweep", "Madhya Pradesh",
-  "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland",
-  "Odisha", "Puducherry", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
-  "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
-];
 
 const NAV = [
   { label: "Buy", href: stateExploreHref("Maharashtra"), icon: Home },

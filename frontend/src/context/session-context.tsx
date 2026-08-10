@@ -14,6 +14,7 @@ export type SessionUser = {
   name: string;
   email: string;
   role: string;
+  profileImageUrl: string;
 };
 
 type SessionValue = {
@@ -55,7 +56,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Signing in and out both land on a different route, so following navigation
   // keeps the header honest without polling.
   useEffect(() => {
-    void refresh();
+    const timeout = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(timeout);
   }, [refresh, pathname]);
 
   const signOut = useCallback(async () => {

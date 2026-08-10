@@ -12,6 +12,8 @@ import {
   KeyRound,
   Landmark,
   Lightbulb,
+  Loader2,
+  RefreshCw,
   TrendingUp,
 } from "lucide-react";
 
@@ -344,26 +346,80 @@ function bandRange(band: PriceBand | null | undefined) {
 export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) {
   const { meta } = useLocation();
   const [snapshot, setSnapshot] = useState(initial);
+  const [requestResult, setRequestResult] = useState<{
+    slug: string;
+    status: "ready" | "unavailable";
+  }>(
+    initial
+      ? { slug: initial.slug, status: "ready" }
+      : { slug: "", status: "unavailable" },
+  );
+  const [retryKey, setRetryKey] = useState(0);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // "India" means we never learned the visitor's state, so the default stands.
   const wantedSlug = meta.label === "India" ? DEFAULT_SNAPSHOT_SLUG : toSnapshotSlug(meta.label);
 
   useEffect(() => {
-    if (!wantedSlug || wantedSlug === snapshot?.slug) return;
+    if (!wantedSlug) return;
+    if (wantedSlug === snapshot?.slug) return;
 
     let cancelled = false;
     fetchMarketSnapshot(wantedSlug).then((next) => {
-      // A state with no snapshot keeps the one already on screen.
-      if (!cancelled && next) setSnapshot(next);
+      if (cancelled) return;
+      if (next) {
+        setSnapshot(next);
+        setRequestResult({ slug: wantedSlug, status: "ready" });
+      } else {
+        setRequestResult({ slug: wantedSlug, status: "unavailable" });
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [wantedSlug, snapshot?.slug]);
+  }, [retryKey, wantedSlug, snapshot?.slug]);
 
-  if (!snapshot) return null;
+  if (!snapshot || snapshot.slug !== wantedSlug) {
+    const stateName = meta.label === "India" ? "Delhi" : meta.label;
+    const requestState =
+      requestResult.slug === wantedSlug ? requestResult.status : "loading";
+
+    return (
+      <section className="bg-secondary px-4 py-4 md:py-5">
+        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
+          <h2 className="text-2xl font-bold md:text-3xl">
+            {stateName} Real Estate Market Snapshot
+          </h2>
+          <div className="mt-4 grid min-h-40 place-items-center rounded-lg border border-dashed border-border bg-secondary/40 px-5 text-center">
+            {requestState === "loading" ? (
+              <div>
+                <Loader2 className="mx-auto size-6 animate-spin text-primary" strokeWidth={1.8} />
+                <p className="mt-2 text-sm text-muted-foreground">Loading {stateName} market data...</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {stateName} market data could not be loaded.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRequestResult({ slug: "", status: "unavailable" });
+                    setRetryKey((current) => current + 1);
+                  }}
+                  className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-background px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary"
+                >
+                  <RefreshCw className="size-3.5" strokeWidth={1.8} />
+                  Retry
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   const exploreHref = `/explore-${snapshot.slug}`;
   const price = snapshot.asking_price_per_sq_ft;

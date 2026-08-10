@@ -1,15 +1,12 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, History, Mic, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "@/context/location-context";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
-
-const RECENT_KEY = "mm-recent-searches";
-const RECENT_CHANGE_EVENT = "mm-recent-searches-change";
-const EMPTY_RECENT_SEARCHES: RecentSearch[] = [];
+import { useSearchHistory } from "@/context/search-history-context";
 
 const TABS = ["Buy", "Rent", "Commercial", "Plots"] as const;
 
@@ -20,60 +17,6 @@ const CATEGORY_BY_TAB: Record<(typeof TABS)[number], string> = {
   Plots: "Plots/Land",
 };
 
-type RecentSearch = {
-  id: string;
-  label: string;
-  tab: string;
-  category: string;
-  query: string;
-  createdAt: number;
-};
-
-let cachedRecentValue = "";
-let cachedRecentSearches: RecentSearch[] = EMPTY_RECENT_SEARCHES;
-
-function readRecentSearches(): RecentSearch[] {
-  try {
-    const value = localStorage.getItem(RECENT_KEY);
-    if (!value) return [];
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.slice(0, 8) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeRecentSearches(searches: RecentSearch[]) {
-  localStorage.setItem(RECENT_KEY, JSON.stringify(searches.slice(0, 8)));
-  window.dispatchEvent(new Event(RECENT_CHANGE_EVENT));
-}
-
-function subscribeToRecentSearches(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener(RECENT_CHANGE_EVENT, callback);
-
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener(RECENT_CHANGE_EVENT, callback);
-  };
-}
-
-function getRecentSearchesSnapshot() {
-  try {
-    const value = localStorage.getItem(RECENT_KEY) || "";
-    if (value === cachedRecentValue) return cachedRecentSearches;
-    cachedRecentValue = value;
-    cachedRecentSearches = readRecentSearches();
-    return cachedRecentSearches;
-  } catch {
-    return EMPTY_RECENT_SEARCHES;
-  }
-}
-
-function getRecentSearchesServerSnapshot() {
-  return EMPTY_RECENT_SEARCHES;
-}
-
 type HeroSearchProps = {
   align?: "center" | "left";
   showRecent?: boolean;
@@ -82,13 +25,9 @@ type HeroSearchProps = {
 
 export function HeroSearch({ align = "center", showRecent = true, locationName }: HeroSearchProps = {}) {
   const { meta } = useLocation();
+  const { items: recentSearches, track } = useSearchHistory();
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Buy");
   const [query, setQuery] = useState("");
-  const recentSearches = useSyncExternalStore(
-    subscribeToRecentSearches,
-    getRecentSearchesSnapshot,
-    getRecentSearchesServerSnapshot,
-  );
 
   const { isSupported: micSupported, status: micStatus, toggle: toggleMic } =
     useSpeechRecognition((text) => setQuery(text));
@@ -105,18 +44,13 @@ export function HeroSearch({ align = "center", showRecent = true, locationName }
 
   function saveSearch(searchQuery: string) {
     const trimmed = searchQuery.trim();
-    const label = trimmed || `${activeTab} in ${searchLabel}`;
-    const nextSearch: RecentSearch = {
-      id: `${Date.now()}-${label}`,
-      label,
+    if (!trimmed) return;
+    void track({
+      label: trimmed,
       tab: activeTab,
       category,
       query: trimmed,
-      createdAt: Date.now(),
-    };
-
-    const deduped = recentSearches.filter((item) => item.label.toLowerCase() !== label.toLowerCase());
-    writeRecentSearches([nextSearch, ...deduped].slice(0, 8));
+    });
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { useSession } from "@/context/session-context";
 import {
   ArrowLeft,
   ArrowRight,
@@ -158,9 +159,34 @@ export function PostPropertyWizard({
 
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [accountCreated, setAccountCreated] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [devSetPasswordUrl, setDevSetPasswordUrl] = useState<string | null>(null);
+
+  // A signed-in owner is already known to us: no contact fields to retype and
+  // no account to open, so those parts of the form are simply not rendered.
+  const { user } = useSession();
+  const signedIn = Boolean(user);
+
+  // Our team still calls the owner, so the number is asked for either way —
+  // but a signed-in owner who already saved one should not retype it.
+  useEffect(() => {
+    if (!signedIn) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/profile", { cache: "no-store" });
+        const data = (await res.json()) as { profile?: { phone?: string } | null };
+        const saved = data.profile?.phone;
+        if (!cancelled && saved) setOwnerPhone((current) => current || saved);
+      } catch {
+        // Without a saved number the field simply starts empty.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn]);
 
   // The confirmation art shows briefly, then the card goes back to a blank form.
   useEffect(() => {
@@ -232,8 +258,10 @@ export function PostPropertyWizard({
     if (index === 0 && !propertyType) return "Please select a property type.";
 
     if (index === 1) {
-      if (!ownerName.trim()) return "Please enter your name.";
-      if (!EMAIL_PATTERN.test(ownerEmail.trim())) return "Please enter a valid email address.";
+      if (!signedIn) {
+        if (!ownerName.trim()) return "Please enter your name.";
+        if (!EMAIL_PATTERN.test(ownerEmail.trim())) return "Please enter a valid email address.";
+      }
       if (!PHONE_PATTERN.test(ownerPhone.trim())) {
         return "Please enter a valid 10-digit phone number.";
       }
@@ -323,9 +351,6 @@ export function PostPropertyWizard({
         return;
       }
 
-      setAccountCreated(Boolean(data.account_created));
-      setEmailSent(Boolean(data.set_password_email_sent));
-      setDevSetPasswordUrl(data.dev_set_password_url || null);
       resetForm();
       setStatus("success");
     } catch {
@@ -463,38 +488,48 @@ export function PostPropertyWizard({
         </div>
       </div>
 
-      <div>
-        <label className={labelClass} htmlFor={`pp-owner-name-${variant}`}>
-          Full Name
-        </label>
-        <div className="relative">
-          <UserRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary" />
-          <input
-            id={`pp-owner-name-${variant}`}
-            value={ownerName}
-            onChange={(event) => setOwnerName(event.target.value)}
-            placeholder="Enter your name"
-            className={`${fieldClass} pl-9 pr-3`}
-          />
+      {signedIn ? (
+        <div className="rounded-lg bg-secondary/60 p-3">
+          <p className={labelClass}>Posting as</p>
+          <p className="truncate text-sm font-semibold text-foreground">{user?.name}</p>
+          <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
         </div>
-      </div>
+      ) : (
+        <>
+          <div>
+            <label className={labelClass} htmlFor={`pp-owner-name-${variant}`}>
+              Full Name
+            </label>
+            <div className="relative">
+              <UserRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary" />
+              <input
+                id={`pp-owner-name-${variant}`}
+                value={ownerName}
+                onChange={(event) => setOwnerName(event.target.value)}
+                placeholder="Enter your name"
+                className={`${fieldClass} pl-9 pr-3`}
+              />
+            </div>
+          </div>
 
-      <div>
-        <label className={labelClass} htmlFor={`pp-owner-email-${variant}`}>
-          Email
-        </label>
-        <div className="relative">
-          <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary" />
-          <input
-            id={`pp-owner-email-${variant}`}
-            type="email"
-            value={ownerEmail}
-            onChange={(event) => setOwnerEmail(event.target.value)}
-            placeholder="you@example.com"
-            className={`${fieldClass} pl-9 pr-3`}
-          />
-        </div>
-      </div>
+          <div>
+            <label className={labelClass} htmlFor={`pp-owner-email-${variant}`}>
+              Email
+            </label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary" />
+              <input
+                id={`pp-owner-email-${variant}`}
+                type="email"
+                value={ownerEmail}
+                onChange={(event) => setOwnerEmail(event.target.value)}
+                placeholder="you@example.com"
+                className={`${fieldClass} pl-9 pr-3`}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       <div>
         <label className={labelClass} htmlFor={`pp-owner-phone-${variant}`}>
@@ -637,18 +672,21 @@ export function PostPropertyWizard({
         Up to {MAX_FILES} files in total, 10MB combined.
       </p>
 
-      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg bg-secondary/60 p-3">
-        <input
-          type="checkbox"
-          checked={createAccount}
-          onChange={(event) => setCreateAccount(event.target.checked)}
-          className="mt-0.5 size-4 shrink-0 accent-[var(--primary)]"
-        />
-        <span className="text-xs leading-relaxed text-muted-foreground">
-          I allow MakanMantraa to create my account with these details so I can track this listing
-          and its enquiries.
-        </span>
-      </label>
+      {/* Nothing to opt into when the owner already has an account. */}
+      {!signedIn && (
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg bg-secondary/60 p-3">
+          <input
+            type="checkbox"
+            checked={createAccount}
+            onChange={(event) => setCreateAccount(event.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-[var(--primary)]"
+          />
+          <span className="text-xs leading-relaxed text-muted-foreground">
+            I allow MakanMantraa to create my account with these details so I can track this listing
+            and its enquiries.
+          </span>
+        </label>
+      )}
     </>
   );
 
@@ -661,7 +699,11 @@ export function PostPropertyWizard({
     <p className="text-xs font-medium text-destructive">{error}</p>
   ) : null;
 
-  /* Confirmation art holds the card for a beat, then the form returns to step 1. */
+  /*
+   * Confirmation art holds the card for a beat, then the form returns to step 1.
+   * Nothing is written here on purpose — the property ID and everything else
+   * worth keeping goes out by email, where the owner can find it again.
+   */
   const successView = (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 py-2">
       <Image
@@ -672,23 +714,6 @@ export function PostPropertyWizard({
         priority
         className="min-h-0 w-auto max-w-full flex-1 object-contain"
       />
-
-      {accountCreated && (
-        <p className="shrink-0 text-center text-xs font-medium text-muted-foreground">
-          {emailSent
-            ? "Check your email — we sent a link to set your password and activate your MakanMantraa account."
-            : "Your account is ready. We could not email your set-password link just now — request a fresh one from the sign-in panel."}
-        </p>
-      )}
-
-      {devSetPasswordUrl && (
-        <a
-          href={devSetPasswordUrl}
-          className="shrink-0 break-all text-center text-[11px] font-medium text-saffron underline"
-        >
-          Dev only — open set-password link
-        </a>
-      )}
     </div>
   );
 

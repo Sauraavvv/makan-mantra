@@ -68,7 +68,7 @@ export default async function Home() {
       <section className="bg-secondary px-4 py-4 md:py-5">
         <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold md:text-3xl">Explore your state</h2>
+            <h2 className="text-2xl font-bold md:text-3xl">Explore Other States</h2>
             <p className="mt-1 text-muted-foreground">
               Start with India&apos;s busiest real estate markets, then browse every state.
             </p>

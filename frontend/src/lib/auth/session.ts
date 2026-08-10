@@ -66,10 +66,14 @@ export async function getLiveSession(): Promise<SessionPayload | null> {
     const users = await getUsersCollection();
     const user = await users.findOne(
       { _id: new ObjectId(session.userId) },
-      { projection: { _id: 1 } },
+      { projection: { _id: 1, is_active: 1 } },
     );
 
-    return user ? session : null;
+    // A deactivated account keeps its row but must stop being a session: the
+    // cookie stays valid for days after someone closes their account.
+    if (!user || user.is_active === false) return null;
+
+    return session;
   } catch {
     // A database blip should not silently sign everyone out mid-request.
     return session;

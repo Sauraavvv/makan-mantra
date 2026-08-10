@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   BedDouble,
@@ -17,6 +18,7 @@ import {
   Sofa,
   Star,
 } from "lucide-react";
+import { useSaved } from "@/context/saved-context";
 import type { DummyProperty } from "@/lib/dummy-properties";
 import { cn } from "@/lib/utils";
 
@@ -58,8 +60,40 @@ export function PropertyCard({
   property: DummyProperty;
   cityName: string;
 }) {
-  const [saved, setSaved] = useState(false);
+  const router = useRouter();
+  const { isSaved, toggle } = useSaved();
+  const [notice, setNotice] = useState("");
+  const saved = isSaved(property.id);
   const place = `${property.locality}, ${cityName}`;
+  const snapshot = {
+    title: property.title,
+    price: property.price,
+    locality: property.locality,
+    city: cityName,
+    image: property.image,
+    config: property.config,
+    area: property.area,
+  };
+
+  const onToggleSaved = async () => {
+    const result = await toggle(property.id, {
+      ...snapshot,
+    });
+
+    if (result === "signin") {
+      // The header opens its sign-in modal off `?auth=login`, so the visitor
+      // keeps their place in the listing instead of losing it to a login page.
+      const params = new URLSearchParams(window.location.search);
+      params.set("auth", "login");
+      router.push(`${window.location.pathname}?${params.toString()}`);
+      return;
+    }
+
+    if (result === "error") {
+      setNotice("Could not update your shortlist");
+      setTimeout(() => setNotice(""), 2500);
+    }
+  };
 
   return (
     <article className="overflow-hidden rounded-xl border border-border bg-background transition-shadow hover:shadow-md">
@@ -89,13 +123,19 @@ export function PropertyCard({
 
           <button
             type="button"
-            onClick={() => setSaved((v) => !v)}
+            onClick={onToggleSaved}
             aria-label={saved ? "Remove from shortlist" : "Add to shortlist"}
             aria-pressed={saved}
             className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
           >
             <Heart className={cn("size-4", saved && "fill-saffron text-saffron")} />
           </button>
+
+          {notice && (
+            <p className="absolute inset-x-2 bottom-2 rounded-md bg-black/75 px-2 py-1 text-center text-[11px] font-medium text-white backdrop-blur-sm">
+              {notice}
+            </p>
+          )}
         </div>
 
         <div className="min-w-0 flex-1 p-4">

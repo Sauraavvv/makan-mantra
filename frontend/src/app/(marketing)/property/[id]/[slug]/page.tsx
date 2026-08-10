@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Bath,
@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { generateProperties } from "@/lib/properties";
 import { stateExploreHref } from "@/lib/state-routes";
+import { useRecentProperties } from "@/context/recent-properties-context";
 
 export default function PropertyDetailPage({ params }: { params: Promise<{ id: string; slug: string }> }) {
   const { id } = use(params);
@@ -29,7 +30,20 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
   const list = useMemo(() => generateProperties(stateFromId, 36), [stateFromId]);
   const property = list.find((item) => item.id === id) ?? list[0];
   const [active, setActive] = useState(0);
+  const { track } = useRecentProperties();
   const gallery = [property.image, ...list.slice(0, 4).map((item) => item.image)];
+
+  useEffect(() => {
+    void track(property.id, {
+      title: property.title,
+      price: property.priceLabel,
+      locality: property.locality,
+      city: property.city,
+      image: property.image,
+      config: `${property.bhk} BHK + ${property.baths} Bath`,
+      area: `${property.area} Sq.Ft.`,
+    });
+  }, [property, track]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { LocationProvider } from "@/context/location-context";
+import { SavedProvider } from "@/context/saved-context";
+import { RecentPropertiesProvider } from "@/context/recent-properties-context";
+import { SearchHistoryProvider } from "@/context/search-history-context";
 import { SessionProvider } from "@/context/session-context";
 import { Chatbot } from "@/components/site/chatbot";
 import "./globals.css";
@@ -35,7 +38,13 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <SessionProvider>
-          <LocationProvider>{children}</LocationProvider>
+          <SearchHistoryProvider>
+            <RecentPropertiesProvider>
+              <LocationProvider>
+                <SavedProvider>{children}</SavedProvider>
+              </LocationProvider>
+            </RecentPropertiesProvider>
+          </SearchHistoryProvider>
         </SessionProvider>
         <Chatbot />
       </body>
