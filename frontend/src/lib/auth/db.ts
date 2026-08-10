@@ -166,15 +166,21 @@ export type UserDoc = {
   preferred_city?: string | null;
   gender?: string | null;
   address?: string | null;
-  /** Absent means active — only a deactivation ever writes `false`. */
+  /**
+   * Absent means active. A deactivated account keeps every row it owns until a
+   * purge run collects it, so nothing here is lost by changing your mind.
+   */
   is_active?: boolean;
   deactivated_at?: Date | null;
+  /** Digest of the emailed reactivation link, and when that link stops working. */
+  reactivate_token?: string | null;
+  reactivate_expires?: Date | null;
   /**
-   * A code-gated change waiting on the mailbox: swapping the email, or closing
+   * A code-gated change waiting on the mailbox: swapping the email, or deleting
    * the account. Only one can be in flight, which is the point.
    */
   account_action?: {
-    kind: "email_change" | "deactivate";
+    kind: "email_change" | "delete_account";
     otp: string;
     expires: Date;
     new_email?: string;

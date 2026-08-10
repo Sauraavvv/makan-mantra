@@ -69,8 +69,9 @@ export async function getLiveSession(): Promise<SessionPayload | null> {
       { projection: { _id: 1, is_active: 1 } },
     );
 
-    // A deactivated account keeps its row but must stop being a session: the
-    // cookie stays valid for days after someone closes their account.
+    // The cookie stays valid for days, so it has to be checked against the
+    // account behind it: deleting removes the row, and deactivating leaves one
+    // that must stop counting as a signed-in person.
     if (!user || user.is_active === false) return null;
 
     return session;

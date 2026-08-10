@@ -133,6 +133,62 @@ function detailRow(label: string, value: string) {
 }
 
 /**
+ * Sent the moment an account is switched off.
+ *
+ * The reactivation link is the whole point of the mail: someone who acted in
+ * haste, or whose account was switched off by a session they had left open
+ * somewhere, gets a one-click way back before anything is destroyed.
+ */
+export async function sendAccountDeactivatedEmail(
+  email: string,
+  name: string,
+  info: { link: string; reactivateDays: number; purgeDays: number },
+) {
+  const body = `
+    <p style="margin:0 0 6px;font-size:14px;color:#3d4654">Hi ${name || "there"},</p>
+    <h1 style="margin:0 0 8px;font-size:23px;line-height:1.3;color:${NAVY};font-weight:700">
+      Your account is deactivated
+    </h1>
+    <p style="margin:0;font-size:14px;line-height:1.6;color:#3d4654">
+      You are signed out everywhere and your listings are no longer shown. Nothing has been
+      deleted — your properties, saved listings and profile are all still here.
+    </p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="margin:22px 0;border:1px solid #ffe0c7;border-radius:12px;background:#fff8f2">
+      <tr>
+        <td align="center" style="padding:24px 18px">
+          <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${NAVY};font-weight:600">
+            Changed your mind? You can bring it back within ${info.reactivateDays} days.
+          </p>
+          <a href="${info.link}"
+             style="background:${NAVY};color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block">
+            Reactivate my account
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#3d4654">
+      If you do nothing, everything tied to this account — the properties you posted and their
+      photos, your saved listings, your searches and your profile — is permanently deleted
+      ${info.purgeDays} days from now. That cannot be undone.
+    </p>
+    <p style="margin:14px 0 0;font-size:12px;color:#8a8a8a">
+      Did not mean to deactivate? Use the button above, or just reply to this email.
+    </p>
+  `;
+
+  const { error } = await resend.emails.send({
+    from: "Makan Mantraa <onboarding@resend.dev>",
+    to: email,
+    subject: "Your Makan Mantraa account is deactivated",
+    html: shell("Account deactivated", body),
+  });
+  if (error) throw new Error(`Email send failed: ${error.message}`);
+}
+
+/**
  * The receipt for a posted property.
  *
  * This goes out for every submission, so it carries the PID the owner quotes

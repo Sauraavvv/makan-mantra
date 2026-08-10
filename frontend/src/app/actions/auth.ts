@@ -192,6 +192,15 @@ export async function loginAction(
       return { error: "Invalid email or password" };
     }
 
+    // Checked after the password, not before: otherwise the message tells a
+    // stranger that this address has an account here.
+    if (user.is_active === false) {
+      return {
+        error:
+          "This account is deactivated. Use the reactivation link we emailed you, or write to us and we will put it back.",
+      };
+    }
+
     session = {
       userId: user._id.toString(),
       email: user.email,
