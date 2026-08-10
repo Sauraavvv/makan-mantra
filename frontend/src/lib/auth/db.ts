@@ -160,11 +160,15 @@ export type UserDoc = {
   /** Collected by the post-property wizard; editable from the profile page. */
   phone?: string | null;
   alternate_phone?: string | null;
-  /** Seeds the location picker on every device, ahead of browser geolocation. */
+  /**
+   * Where the user lives — their own State and City on the profile, not a
+   * request to be shown that market. The `preferred_` prefix is historical;
+   * nothing on the site keys its content off these.
+   */
   preferred_state?: string | null;
-  /** City preference; may be a database option or user-entered value. */
   preferred_city?: string | null;
   gender?: string | null;
+  date_of_birth?: string | null;
   address?: string | null;
   /**
    * Absent means active. A deactivated account keeps every row it owns until a

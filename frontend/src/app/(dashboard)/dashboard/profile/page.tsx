@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { UserRound } from "lucide-react";
 import { ObjectId } from "mongodb";
 import { redirect } from "next/navigation";
 
-import { Panel } from "@/components/dashboard/panel";
 import { ProfileForm, type Profile } from "@/components/dashboard/profile-form";
 import { getUsersCollection } from "@/lib/auth/db";
 import { getLiveSession } from "@/lib/auth/session";
@@ -30,6 +28,7 @@ async function loadProfile(userId: string): Promise<Profile | null> {
       preferredState: user.preferred_state ?? "",
       preferredCity: user.preferred_city ?? "",
       gender: user.gender ?? "",
+      dateOfBirth: user.date_of_birth ?? "",
       address: user.address ?? "",
       emailVerified: Boolean(user.email_verified),
       provider: user.provider,
@@ -45,17 +44,13 @@ export default async function ProfilePage() {
 
   const profile = await loadProfile(session.userId);
 
-  return (
-    <div>
-      <Panel title="Your details" icon={UserRound} tone="bg-[#0F8B8D]/10 text-[#0F8B8D]">
-        {profile ? (
-          <ProfileForm profile={profile} />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            We could not load your profile right now. Please refresh in a moment.
-          </p>
-        )}
-      </Panel>
-    </div>
+  return profile ? (
+    <ProfileForm profile={profile} />
+  ) : (
+    <section className="rounded-xl border border-border bg-card p-5">
+      <p className="text-sm text-muted-foreground">
+        We could not load your profile right now. Please refresh in a moment.
+      </p>
+    </section>
   );
 }

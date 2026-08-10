@@ -13,6 +13,7 @@ import {
 
 const NO_STORE = { "cache-control": "no-store" };
 const PHONE_PATTERN = /^[6-9]\d{9}$/;
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const GENDERS = ["male", "female", "other", "prefer_not_to_say"];
 const PROFILE_ROLES = ["broker", "owner", "builder"];
 const MAX_PROFILE_IMAGE_BYTES = 2 * 1024 * 1024;
@@ -28,6 +29,19 @@ type ProfileUpdate = string | number | null | StoredProfileImage;
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function isValidDateOfBirth(value: string) {
+  if (!DATE_PATTERN.test(value)) return false;
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const isCalendarDate =
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day;
+
+  return isCalendarDate && date.getTime() <= Date.now();
 }
 
 export async function GET() {
@@ -55,6 +69,7 @@ export async function GET() {
           preferredState: user.preferred_state ?? "",
           preferredCity: user.preferred_city ?? "",
           gender: user.gender ?? "",
+          dateOfBirth: user.date_of_birth ?? "",
           address: user.address ?? "",
           emailVerified: Boolean(user.email_verified),
           provider: user.provider,
@@ -164,6 +179,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Choose a valid option" }, { status: 400 });
     }
     updates.gender = gender || null;
+  }
+
+  if ("dateOfBirth" in body) {
+    const dateOfBirth = text(body.dateOfBirth);
+    if (dateOfBirth && !isValidDateOfBirth(dateOfBirth)) {
+      return NextResponse.json({ error: "Enter a valid date of birth" }, { status: 400 });
+    }
+    updates.date_of_birth = dateOfBirth || null;
   }
 
   if ("address" in body) {

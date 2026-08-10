@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { getStateMeta } from "@/lib/state-cities";
-import { useSession } from "@/context/session-context";
 
 type LocationMeta = {
   label: string;
@@ -10,15 +9,17 @@ type LocationMeta = {
 };
 
 type LocationContextType = {
-  /** A deliberate choice: remembered on the account and honoured everywhere. */
+  /** The state the visitor picked in the header. Remembered in this browser. */
   setStateByName: (state: string | null) => void;
   /**
    * A guess from the browser's geolocation. It fills an empty slot but never
-   * overrides a saved preference, and is never written back to the account.
+   * overrides a state the visitor picked by hand.
    */
   setDetectedState: (state: string | null) => void;
   meta: LocationMeta;
 };
+
+const STORAGE_KEY = "mm-location-state";
 
 const DEFAULT: LocationMeta = {
   label: "India",
@@ -31,57 +32,66 @@ const LocationContext = createContext<LocationContextType>({
   setDetectedState: () => {},
 });
 
+function readStoredState() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function writeStoredState(state: string | null) {
+  try {
+    if (state) localStorage.setItem(STORAGE_KEY, state);
+    else localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Private browsing can refuse writes; the pick still holds for this page.
+  }
+}
+
+/**
+ * Which state the site is showing right now.
+ *
+ * Two inputs, and only two: the browser's geolocation guess, and the header
+ * picker. The account is deliberately not one of them — the State on the
+ * profile is the visitor's own address, not a request to be shown that market.
+ *
+ * A hand-picked state is kept in `localStorage` rather than on the account, so
+ * it survives a reload without following anyone to another device or writing
+ * anything to their profile.
+ */
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const { user, loaded: sessionLoaded } = useSession();
   const [meta, setMeta] = useState<LocationMeta>(DEFAULT);
-  // Set once a deliberate choice lands — by hand or from the saved profile —
-  // so a slower geolocation callback cannot overwrite it.
+  // Set once the visitor picks by hand — or once a stored pick is restored — so
+  // a slower geolocation callback cannot drag them somewhere they left.
   const chosen = useRef(false);
 
-  function setStateByName(state: string | null) {
-    chosen.current = true;
-    setMeta(getStateMeta(state));
+  useEffect(() => {
+    // Restoring happens here rather than in the initial state so the server and
+    // the first client render agree; other tabs stay in step through `storage`.
+    const sync = () => {
+      const stored = readStoredState();
+      if (!stored) return;
 
-    // Signed-in visitors carry the choice to their other devices. Fire and
-    // forget: a failed save is not worth interrupting the browse over.
-    if (user) {
-      void fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ preferredState: state ?? "" }),
-      }).catch(() => {});
-    }
+      chosen.current = true;
+      setMeta(getStateMeta(stored));
+    };
+
+    sync();
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
+
+  function setStateByName(state: string | null) {
+    chosen.current = Boolean(state);
+    setMeta(getStateMeta(state));
+    writeStoredState(state);
   }
 
   function setDetectedState(state: string | null) {
     if (chosen.current) return;
     setMeta(getStateMeta(state));
   }
-
-  useEffect(() => {
-    if (!sessionLoaded || !user || chosen.current) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const res = await fetch("/api/profile", { cache: "no-store" });
-        const data = (await res.json()) as { profile?: { preferredState?: string } | null };
-        const preferred = data.profile?.preferredState;
-
-        if (!cancelled && preferred && !chosen.current) {
-          chosen.current = true;
-          setMeta(getStateMeta(preferred));
-        }
-      } catch {
-        // No preference simply means the browser's own guess still applies.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionLoaded, user]);
 
   return (
     <LocationContext.Provider value={{ meta, setStateByName, setDetectedState }}>
