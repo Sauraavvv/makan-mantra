@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { useLocation } from "@/context/location-context";
 
@@ -42,8 +42,66 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   }
 }
 
-export function HeroText() {
+function cityListText(backendCities: string[] | undefined, fallbackCities: [string, string, string]) {
+  const picked: string[] = [];
+  const seen = new Set<string>();
+
+  for (const city of [...(backendCities ?? []), ...fallbackCities]) {
+    const name = city.trim();
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) continue;
+
+    picked.push(name);
+    seen.add(key);
+    if (picked.length === 3) break;
+  }
+
+  if (picked.length <= 1) return picked[0] ?? fallbackCities[0];
+  if (picked.length === 2) return `${picked[0]} and ${picked[1]}`;
+  return `${picked[0]}, ${picked[1]} and ${picked[2]}`;
+}
+
+export function HeroText({
+  initialCityOverrides = {},
+}: {
+  initialCityOverrides?: Record<string, string[]>;
+}) {
   const { meta, setDetectedState } = useLocation();
+  const [backendCitiesByState, setBackendCitiesByState] =
+    useState<Record<string, string[]>>(initialCityOverrides);
+  const requestedCityStates = useRef(new Set(Object.keys(initialCityOverrides)));
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (meta.label === "India" || requestedCityStates.current.has(meta.label)) return;
+    requestedCityStates.current.add(meta.label);
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/cities?state=${encodeURIComponent(meta.label)}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+
+        const data = (await res.json()) as { cities?: string[] };
+        const cities = (data.cities ?? [])
+          .filter((city) => typeof city === "string" && city.trim())
+          .slice(0, 3);
+
+        if (mounted.current && cities.length > 0) {
+          setBackendCitiesByState((current) => ({ ...current, [meta.label]: cities }));
+        }
+      } catch {
+        // The static city list remains the fallback when the location API is unavailable.
+      }
+    })();
+  }, [meta.label]);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -55,7 +113,9 @@ export function HeroText() {
       () => {},
       { timeout: 8000 }
     );
-  }, []);
+  }, [setDetectedState]);
+
+  const fromCities = cityListText(backendCitiesByState[meta.label], meta.from);
 
   return (
     <>
@@ -68,8 +128,7 @@ export function HeroText() {
         <span className="text-saffron">{meta.label}</span>
       </h1>
       <p className="mt-1.5 whitespace-nowrap text-center text-[clamp(0.7rem,1.2vw,1.1rem)] text-white/85">
-        Search flats, villas and plots for sale or rent across {meta.label} — from{" "}
-        {meta.from[0]}, {meta.from[1]} and {meta.from[2]}.
+        Search flats, villas and plots for sale or rent across {meta.label} — from {fromCities}.
       </p>
     </>
   );

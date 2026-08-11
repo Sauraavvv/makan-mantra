@@ -11,14 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useLocation } from "@/context/location-context";
 import { DotPattern } from "@/registry/magicui/dot-pattern";
-import { stateExploreHref, stateSlug } from "@/lib/state-routes";
+import { stateSlug } from "@/lib/state-routes";
 import { stateCardImage } from "@/lib/state-images";
 import { STATES } from "@/lib/states";
 
 
 const NAV = [
-  { label: "Buy", href: stateExploreHref("Maharashtra"), icon: Home },
-  { label: "Rent", href: `${stateExploreHref("Maharashtra")}?listing=rent`, icon: BedDouble },
+  { label: "Buy", icon: Home },
+  { label: "Rent", icon: BedDouble },
 ];
 
 const TOP_STATES = [
@@ -331,7 +331,6 @@ export function Header({
                 <MegaNavItem
                   key={item.label}
                   label={item.label}
-                  href={item.href}
                   listingType={item.label === "Rent" ? "rent" : "sale"}
                 />
               ))}
@@ -401,7 +400,6 @@ export function Header({
                     <MobileNavSection
                       key={item.label}
                       label={item.label}
-                      href={item.href}
                       icon={item.icon}
                       listingType={item.label === "Rent" ? "rent" : "sale"}
                     />
@@ -799,24 +797,22 @@ function LoginModal({
 
 function MegaNavItem({
   label,
-  href,
   listingType,
 }: {
   label: string;
-  href: string;
   listingType: ListingType;
 }) {
   const actionLabel = listingType === "rent" ? "Rent" : "Sale";
 
   return (
     <div className="group relative flex h-16 items-center">
-      <Link
-        href={href}
+      <button
+        type="button"
         className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white group-hover:bg-white/10 group-hover:text-white"
       >
         {label}
         <ChevronDown className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" />
-      </Link>
+      </button>
 
       <div className="invisible fixed inset-x-0 top-16 z-50 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
         <div className="max-h-[72vh] overflow-y-auto border-t border-border bg-background px-4 py-6 text-foreground shadow-2xl">
@@ -848,12 +844,10 @@ function MegaNavItem({
 
 function MobileNavSection({
   label,
-  href,
   icon: Icon,
   listingType,
 }: {
   label: string;
-  href: string;
   icon: typeof Home;
   listingType: ListingType;
 }) {
@@ -862,13 +856,13 @@ function MobileNavSection({
 
   return (
     <div className="rounded-lg border border-border">
-      <Link
-        href={href}
-        className="flex items-center gap-3 px-3 py-3 text-sm font-semibold hover:bg-accent"
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 px-3 py-3 text-left text-sm font-semibold"
       >
         <Icon className="h-4 w-4 text-primary" />
         {label}
-      </Link>
+      </button>
       <div className="grid gap-2 border-t border-border px-3 py-3">
         {TOP_STATES.slice(0, 6).map((state) => (
           <Link

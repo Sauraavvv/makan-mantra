@@ -89,11 +89,27 @@ export function UserMenu({ user }: { user: SessionUser }) {
           </SheetDescription>
 
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 pt-0.5">
-              <p className="truncate text-base font-bold text-foreground">
-                {user.name || "Your account"}
-              </p>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</p>
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-saffron text-sm font-bold text-saffron-foreground">
+                {user.profileImageUrl ? (
+                  <Image
+                    src={user.profileImageUrl}
+                    alt={`${user.name || "User"} profile`}
+                    fill
+                    sizes="44px"
+                    className="object-cover"
+                  />
+                ) : (
+                  initials(user.name, user.email)
+                )}
+              </div>
+
+              <div className="min-w-0">
+                <p className="truncate text-base font-bold text-foreground">
+                  {user.name || "Your account"}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</p>
+              </div>
             </div>
             <button
               type="button"

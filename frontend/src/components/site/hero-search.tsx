@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, History, Mic, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +22,18 @@ type HeroSearchProps = {
   align?: "center" | "left";
   showRecent?: boolean;
   locationName?: string;
+  /** Slide the bar up into place on mount — the landing hero asks for it, inner pages don't. */
+  animateIn?: boolean;
 };
 
-export function HeroSearch({ align = "center", showRecent = true, locationName }: HeroSearchProps = {}) {
+export function HeroSearch({
+  align = "center",
+  showRecent = true,
+  locationName,
+  animateIn = false,
+}: HeroSearchProps = {}) {
   const { meta } = useLocation();
+  const shouldReduceMotion = useReducedMotion();
   const { items: recentSearches, track } = useSearchHistory();
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Buy");
   const [query, setQuery] = useState("");
@@ -53,10 +62,16 @@ export function HeroSearch({ align = "center", showRecent = true, locationName }
     });
   }
 
+  // Reduced-motion visitors get the bar in its final place, no travel.
+  const playEntry = animateIn && !shouldReduceMotion;
+
   return (
-    <div
+    <motion.div
       id="hero-search"
       className={`mt-6 w-full max-w-2xl ${align === "center" ? "mx-auto" : ""}`}
+      initial={playEntry ? { opacity: 0, y: 40 } : false}
+      animate={playEntry ? { opacity: 1, y: 0 } : undefined}
+      transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
     >
       <form
         onSubmit={(event) => {
@@ -151,6 +166,6 @@ export function HeroSearch({ align = "center", showRecent = true, locationName }
           )}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

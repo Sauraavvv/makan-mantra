@@ -27,13 +27,51 @@ async function getStateQuickLinks(): Promise<QuickLinkGroup[]> {
   }
 }
 
+function uniqueTextItems(value: unknown, limit: number) {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const items: string[] = [];
+
+  for (const item of value) {
+    const text = typeof item === "string" ? item.trim() : "";
+    const key = text.toLowerCase();
+    if (!text || seen.has(key)) continue;
+
+    items.push(text);
+    seen.add(key);
+    if (items.length === limit) break;
+  }
+
+  return items;
+}
+
+async function getMadhyaPradeshHeroCities() {
+  try {
+    const res = await fetch(`${API}/state-overview/madhya-pradesh`, {
+      next: { revalidate: 86400 },
+    });
+
+    if (!res.ok) return [];
+    const data = (await res.json()) as { overview?: { major_cities?: unknown } };
+    return uniqueTextItems(data.overview?.major_cities, 3);
+  } catch {
+    return [];
+  }
+}
+
 export default async function Home() {
   // Delhi renders on the server so the section is never blank; the client swaps
   // it for the visitor's state once geolocation or the header picker resolves one.
-  const [quickLinkGroups, defaultSnapshot] = await Promise.all([
+  const [quickLinkGroups, defaultSnapshot, madhyaPradeshHeroCities] = await Promise.all([
     getStateQuickLinks(),
     fetchMarketSnapshot(DEFAULT_SNAPSHOT_SLUG),
+    getMadhyaPradeshHeroCities(),
   ]);
+  const initialCityOverrides =
+    madhyaPradeshHeroCities.length > 0
+      ? { "Madhya Pradesh": madhyaPradeshHeroCities }
+      : undefined;
 
   return (
     <div className="flex min-h-screen flex-col bg-secondary">
@@ -55,8 +93,8 @@ export default async function Home() {
 
         <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">
           <div className="mx-auto w-full text-center">
-            <HeroText />
-            <HeroSearch />
+            <HeroText initialCityOverrides={initialCityOverrides} />
+            <HeroSearch animateIn />
           </div>
         </div>
       </section>
