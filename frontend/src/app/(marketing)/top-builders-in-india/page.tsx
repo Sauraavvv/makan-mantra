@@ -5,17 +5,12 @@ import { Building2, ChevronRight, Home, Layers, MapPin } from "lucide-react";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { BuildersDirectory } from "./builders-directory";
-import {
-  DIRECTORY_BUILDERS,
-  DIRECTORY_CATEGORIES,
-  DIRECTORY_STATES,
-  DIRECTORY_STATS,
-} from "@/lib/builders-directory";
+import { DIRECTORY_BUILDERS, DIRECTORY_STATES, DIRECTORY_STATS } from "@/lib/builders-directory";
 import { stateExploreHref } from "@/lib/state-routes";
 
 export const metadata: Metadata = {
   title: "Top Builders in India — Real Estate Developers List | Makan Mantraa",
-  description: `Browse ${DIRECTORY_STATS.builders} leading real estate builders and developers across ${DIRECTORY_STATS.states} Indian states and UTs — with their delivered projects, operating cities and segments.`,
+  description: `Browse ${DIRECTORY_STATS.builders} leading real estate builders and developers across ${DIRECTORY_STATS.states} Indian states and UTs — with their delivered projects and operating cities.`,
   // Absolute on purpose: the root layout sets no `metadataBase`, so a relative
   // canonical would resolve against localhost.
   alternates: { canonical: "https://makanmantra.com/top-builders-in-india" },
@@ -56,9 +51,9 @@ export default function TopBuildersInIndiaPage() {
             Top Builders in <span className="text-saffron">India</span>
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/75 md:text-base">
-            A state-wise directory of established real estate developers — the year they started, the
-            projects they have delivered, the cities they build in and the segments they work across.
-            Search by builder, project or city to find the right developer for your next home.
+            A state-wise directory of established real estate developers — the year they started,
+            the projects they have delivered and the cities they build in. Search by builder,
+            project or city to find the right developer for your next home.
           </p>
 
           <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl">
@@ -80,11 +75,7 @@ export default function TopBuildersInIndiaPage() {
 
       <section className="px-4 py-4 md:py-5">
         <div className="mx-auto max-w-[1250px]">
-          <BuildersDirectory
-            builders={DIRECTORY_BUILDERS}
-            states={DIRECTORY_STATES}
-            categories={DIRECTORY_CATEGORIES}
-          />
+          <BuildersDirectory builders={DIRECTORY_BUILDERS} states={DIRECTORY_STATES} />
         </div>
       </section>
 
@@ -92,8 +83,8 @@ export default function TopBuildersInIndiaPage() {
         <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-6">
           <h2 className="text-2xl font-bold leading-tight md:text-3xl">Builders by state</h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Open a state to see its top builders alongside the local market — prices, connectivity and
-            the districts buyers search most.
+            Open a state to see its top builders alongside the local market — prices, connectivity
+            and the districts buyers search most.
           </p>
 
           <ul className="mt-5 flex flex-wrap gap-2">

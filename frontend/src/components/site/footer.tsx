@@ -35,6 +35,7 @@ const EXPLORE_LINKS: Array<[string, string]> = [
   ["Buy Property", stateExploreHref("Maharashtra")],
   ["Rent Property", `${stateExploreHref("Maharashtra")}?listing=rent`],
   ["Post Property (Free)", "/post-property"],
+  ["Top Builders in India", "/top-builders-in-india"],
   ["Articles & News", "/blog"],
   ["EMI Calculator", "/tools/emi-calculator"],
   ["Stamp Duty Calculator", "/tools/stamp-duty-calculator"],

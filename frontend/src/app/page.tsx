@@ -7,7 +7,9 @@ import { HeroText } from "@/components/site/hero-text";
 import { PostPropertyBanner } from "@/components/site/post-property-banner";
 import { QuickLinks, type QuickLinkGroup } from "@/components/site/quick-links";
 import { MarketSnapshot } from "@/components/site/market-snapshot";
+import { TopBuildersShowcase } from "@/components/site/top-builders-showcase";
 import { DEFAULT_SNAPSHOT_SLUG, fetchMarketSnapshot } from "@/lib/market-snapshot";
+import { BUILDERS_BY_STATE_SLUG } from "@/lib/builders-directory";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -101,6 +103,9 @@ export default async function Home() {
 
       {/* Market snapshot for the visitor's state */}
       <MarketSnapshot initial={defaultSnapshot} />
+
+      {/* Top builders for the visitor's state — hides itself when we have none */}
+      <TopBuildersShowcase buildersByState={BUILDERS_BY_STATE_SLUG} />
 
       {/* Browse by state */}
       <section className="bg-secondary px-4 py-4 md:py-5">

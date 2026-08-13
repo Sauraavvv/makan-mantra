@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Award, Building2, Layers, MapPin, Search, X } from "lucide-react";
+import { Award, Building2, MapPin, Search, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -39,25 +39,20 @@ const PROJECT_PREVIEW = 4;
 export function BuildersDirectory({
   builders,
   states,
-  categories,
 }: {
   builders: DirectoryBuilder[];
   states: string[];
-  categories: string[];
 }) {
   const [query, setQuery] = useState("");
   const [state, setState] = useState<string>(ALL);
-  const [category, setCategory] = useState<string>(ALL);
   const [sort, setSort] = useState<SortKey>("name");
 
   const stateItems = useMemo(
-    () => ({ [ALL]: "All States & UTs", ...Object.fromEntries(states.map((item) => [item, item])) }),
+    () => ({
+      [ALL]: "All States & UTs",
+      ...Object.fromEntries(states.map((item) => [item, item])),
+    }),
     [states],
-  );
-
-  const categoryItems = useMemo(
-    () => ({ [ALL]: "All Segments", ...Object.fromEntries(categories.map((item) => [item, item])) }),
-    [categories],
   );
 
   const visible = useMemo(() => {
@@ -65,7 +60,6 @@ export function BuildersDirectory({
 
     const filtered = builders.filter((builder) => {
       if (state !== ALL && builder.state !== state) return false;
-      if (category !== ALL && !builder.categories.includes(category)) return false;
       if (!needle) return true;
 
       // Searching a project or a city is how buyers actually recall a builder.
@@ -73,7 +67,6 @@ export function BuildersDirectory({
         builder.name.toLowerCase().includes(needle) ||
         builder.state.toLowerCase().includes(needle) ||
         builder.cities.some((city) => city.toLowerCase().includes(needle)) ||
-        builder.categories.some((item) => item.toLowerCase().includes(needle)) ||
         builder.projects.some((project) => project.toLowerCase().includes(needle))
       );
     });
@@ -87,32 +80,35 @@ export function BuildersDirectory({
     }
 
     return filtered;
-  }, [builders, query, state, category, sort]);
+  }, [builders, query, state, sort]);
 
-  const filtersApplied = query.trim() !== "" || state !== ALL || category !== ALL;
+  const filtersApplied = query.trim() !== "" || state !== ALL;
 
   const clearFilters = () => {
     setQuery("");
     setState(ALL);
-    setCategory(ALL);
   };
 
   return (
     <div>
       <div className="rounded-[20px] border border-border bg-background p-4 shadow-sm sm:p-5">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search builder, project, city or segment..."
+              placeholder="Search builder, project or city..."
               aria-label="Search builders"
               className="h-11 pl-9"
             />
           </div>
 
-          <Select items={stateItems} value={state} onValueChange={(value) => setState(value as string)}>
+          <Select
+            items={stateItems}
+            value={state}
+            onValueChange={(value) => setState(value as string)}
+          >
             <SelectTrigger className="h-11 w-full lg:w-[200px]" aria-label="Filter by state">
               <span className="flex min-w-0 items-center gap-2">
                 <MapPin className="size-4 shrink-0 text-primary" />
@@ -121,26 +117,6 @@ export function BuildersDirectory({
             </SelectTrigger>
             <SelectContent>
               {Object.entries(stateItems).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            items={categoryItems}
-            value={category}
-            onValueChange={(value) => setCategory(value as string)}
-          >
-            <SelectTrigger className="h-11 w-full lg:w-[180px]" aria-label="Filter by segment">
-              <span className="flex min-w-0 items-center gap-2">
-                <Layers className="size-4 shrink-0 text-primary" />
-                <SelectValue />
-              </span>
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(categoryItems).map(([value, label]) => (
                 <SelectItem key={value} value={value}>
                   {label}
                 </SelectItem>
@@ -189,9 +165,11 @@ export function BuildersDirectory({
       {visible.length === 0 ? (
         <div className="mt-4 rounded-[20px] border border-dashed border-border bg-background px-6 py-16 text-center">
           <Building2 className="mx-auto size-8 text-muted-foreground" strokeWidth={1.6} />
-          <p className="mt-3 text-base font-semibold text-foreground">No builders match this search</p>
+          <p className="mt-3 text-base font-semibold text-foreground">
+            No builders match this search
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Try a different city, segment or builder name.
+            Try a different city, project or builder name.
           </p>
         </div>
       ) : (
@@ -217,6 +195,7 @@ function BuilderCard({
   accent: (typeof ACCENTS)[number];
 }) {
   const [showAllProjects, setShowAllProjects] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   const projects = showAllProjects ? builder.projects : builder.projects.slice(0, PROJECT_PREVIEW);
   const hiddenProjects = builder.projects.length - projects.length;
@@ -226,27 +205,36 @@ function BuilderCard({
       <div className="flex items-start gap-3">
         {builder.logo ? (
           <div className="relative size-14 shrink-0">
-            <Image src={builder.logo} alt={builder.name} fill sizes="56px" className="object-contain" />
+            <Image
+              src={builder.logo}
+              alt={builder.name}
+              fill
+              sizes="56px"
+              className="object-contain"
+            />
           </div>
         ) : (
-          <div className={`grid size-14 shrink-0 place-items-center rounded-xl ${accent.bg} ${accent.text}`}>
+          <div
+            className={`grid size-14 shrink-0 place-items-center rounded-xl ${accent.bg} ${accent.text}`}
+          >
             <div className="text-center">
               <Building2 className="mx-auto size-5" strokeWidth={1.8} />
               <span className="mt-0.5 block text-sm font-extrabold leading-none">
-                {getInitials(builder.name)}
+                {getInitials(builder.displayName)}
               </span>
             </div>
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-extrabold leading-snug text-foreground">
+          {/* Registered name on hover; the card itself drops the company form. */}
+          <h2 title={builder.name} className="text-base font-extrabold leading-snug text-foreground">
             {builder.href ? (
               <Link href={builder.href} className="hover:text-primary">
-                {builder.name}
+                {builder.displayName}
               </Link>
             ) : (
-              builder.name
+              builder.displayName
             )}
           </h2>
           <Link
@@ -266,7 +254,10 @@ function BuilderCard({
           label={builder.experience ? "Years" : "Since"}
         />
         <Stat value={String(builder.projects.length)} label="Projects" />
-        <Stat value={String(builder.cities.length)} label={builder.cities.length === 1 ? "City" : "Cities"} />
+        <Stat
+          value={String(builder.cities.length)}
+          label={builder.cities.length === 1 ? "City" : "Cities"}
+        />
       </dl>
 
       <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -274,7 +265,9 @@ function BuilderCard({
       </p>
 
       <div className="mt-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projects</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Projects
+        </p>
         <ul className="mt-1.5 flex flex-wrap gap-1.5">
           {projects.map((project) => (
             <li
@@ -297,21 +290,30 @@ function BuilderCard({
       </div>
 
       <div className="mt-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cities</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Cities
+        </p>
         <p className="mt-1 text-sm leading-relaxed text-foreground">{builder.cities.join(", ")}</p>
       </div>
 
       <div className="mt-auto pt-4">
-        <ul className="flex flex-wrap gap-1.5">
-          {builder.categories.map((item) => (
-            <li
-              key={item}
-              className={`rounded-full ${accent.bg} ${accent.text} px-2.5 py-1 text-xs font-semibold`}
-            >
-              {item}
-            </li>
-          ))}
-        </ul>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">About</p>
+        {/* Clamped rather than sliced: the summaries all run well past three
+            lines, and the line count holds whatever the card's width is. */}
+        <p
+          className={`mt-1.5 text-sm leading-relaxed text-foreground ${
+            showSummary ? "" : "line-clamp-3"
+          }`}
+        >
+          {builder.summary}
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowSummary((open) => !open)}
+          className={`mt-2 text-xs font-semibold ${accent.text} hover:underline`}
+        >
+          {showSummary ? "Show less" : "Show more"}
+        </button>
       </div>
     </article>
   );
