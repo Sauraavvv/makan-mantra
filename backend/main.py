@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mongodb import connect_db, close_db
-from routers import district_overview, gone, location_pages, market_snapshot, state_overview
+from routers import district_overview, gone, location_pages, market_snapshot, news, state_overview
 
 
 @asynccontextmanager
@@ -31,6 +31,7 @@ app.include_router(location_pages.router)
 app.include_router(state_overview.router)
 app.include_router(district_overview.router)
 app.include_router(market_snapshot.router)
+app.include_router(news.router)
 
 
 @app.get("/health")

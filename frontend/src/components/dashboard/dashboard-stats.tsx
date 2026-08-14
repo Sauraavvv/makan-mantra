@@ -27,14 +27,14 @@ export function DashboardStats({
       value: loaded ? items.length : "-",
       note: "Properties shortlisted",
       icon: Bookmark,
-      tone: "bg-[#eef2ff] text-[#4f63e9]",
+      tone: "bg-primary/10 text-primary",
     },
     {
       label: "Inquiries",
       value: 0,
       note: "Feature coming soon",
       icon: MessageCircle,
-      tone: "bg-[#f3efff] text-[#7558e8]",
+      tone: "bg-primary/10 text-primary",
     },
     {
       label: "Properties Posted",
@@ -72,7 +72,7 @@ export function DashboardStats({
               <div className="mt-3">
                 <div className="h-1.5 overflow-hidden rounded-full bg-[#e8edf5]">
                   <span
-                    className="block h-full rounded-full bg-[#5e66e8]"
+                    className="block h-full rounded-full bg-primary"
                     style={{ width: `${Math.max(0, Math.min(100, stat.progress))}%` }}
                   />
                 </div>

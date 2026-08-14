@@ -77,7 +77,7 @@ export function RecentSearchesList() {
                 className="grid min-h-[78px] min-w-0 flex-1 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1fr)_160px_auto] sm:px-5"
               >
                 <span className="flex min-w-0 items-center gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#eef3ff] text-[#536de4]">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                     <Search className="size-[18px]" strokeWidth={1.8} />
                   </span>
                   <span className="min-w-0">

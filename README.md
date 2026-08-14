@@ -70,4 +70,20 @@ python backend/database/scripts/import_state_overview_mongo.py
 node   backend/database/scripts/import_district_overview_mongo.js
 ```
 
+### News
+
+News documents are stored in the `news` collection. Import or update the CMS-shaped
+JSON source with an idempotent upsert:
+
+```bash
+python backend/database/scripts/import_news_mongo.py
+```
+
+To upload a directory of local news banners to Cloudinary's `blog` folder and save
+their secure URLs with their MongoDB documents, run from `frontend/`:
+
+```bash
+node --env-file=.env.local scripts/import-news-to-cloudinary.mjs
+```
+
 Collection backups are written to `backend/database/backups/`.

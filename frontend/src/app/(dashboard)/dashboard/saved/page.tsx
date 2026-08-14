@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Bookmark } from "lucide-react";
-
 import { Panel } from "@/components/dashboard/panel";
 import { SavedList } from "@/components/dashboard/saved-list";
 
@@ -18,7 +16,7 @@ export default function SavedPage() {
         </p>
       </div>
 
-      <Panel title="Your shortlist" icon={Bookmark} tone="bg-saffron/10 text-saffron">
+      <Panel title="Your shortlist">
         <SavedList />
       </Panel>
     </div>

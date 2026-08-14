@@ -58,7 +58,7 @@ export function DashboardAccountMenu({
         aria-expanded={open}
         className="flex h-11 items-center gap-2.5 rounded-lg px-1.5 text-left hover:bg-secondary sm:pr-2.5"
       >
-        <span className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[#f1e7ff] text-xs font-bold text-[#7c3aed]">
+        <span className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-xs font-bold text-primary">
           {profileImageUrl ? (
             <Image
               src={profileImageUrl}

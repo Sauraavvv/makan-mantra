@@ -120,7 +120,9 @@ export function DashboardNav({ propertiesCount }: { propertiesCount: number }) {
     <aside className="z-40 bg-[#071a33] text-white lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:h-dvh lg:w-[250px] lg:flex-col lg:overflow-y-auto">
       <div className="flex h-16 shrink-0 items-center px-4 lg:h-[88px] lg:px-6">
         <Link href="/" aria-label="Makan Mantraa home">
-          <span className="text-xl font-bold text-white">
+          {/* Sized to the rail: at 26px the wordmark still clears the 250px
+              sidebar's padding, so it never wraps or clips. */}
+          <span className="text-2xl font-bold text-white lg:text-[26px]">
             Makan<span className="text-saffron">Mantraa</span>
           </span>
         </Link>

@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Search } from "lucide-react";
-
 import { Panel } from "@/components/dashboard/panel";
 import { RecentSearchesClearAction } from "@/components/dashboard/recent-searches-clear-action";
 import { RecentSearchesList } from "@/components/dashboard/recent-searches-list";
@@ -21,12 +19,7 @@ export default function RecentSearchesPage() {
         </p>
       </div>
 
-      <Panel
-        title="Search history"
-        icon={Search}
-        tone="bg-[#eef3ff] text-[#536de4]"
-        headerAction={<RecentSearchesClearAction />}
-      >
+      <Panel title="Search history" headerAction={<RecentSearchesClearAction />}>
         <RecentSearchesList />
       </Panel>
     </div>

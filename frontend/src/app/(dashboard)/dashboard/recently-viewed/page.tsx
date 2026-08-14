@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Eye } from "lucide-react";
-
 import { Panel } from "@/components/dashboard/panel";
 import { RecentlyViewedList } from "@/components/dashboard/recently-viewed-list";
 
@@ -20,7 +18,7 @@ export default function RecentlyViewedPage() {
         </p>
       </div>
 
-      <Panel title="Viewed properties" icon={Eye} tone="bg-[#eef7ff] text-[#3786c9]">
+      <Panel title="Viewed properties">
         <RecentlyViewedList />
       </Panel>
     </div>

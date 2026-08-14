@@ -3,14 +3,10 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  Bookmark,
   Building2,
   CalendarDays,
   Clock3,
-  Eye,
-  FileText,
   Heart,
-  Home,
   Images,
   MapPin,
   Scaling,
@@ -47,14 +43,15 @@ function ActivitySection({
   subtitle,
   icon: Icon,
   iconClassName,
-  actionClassName = "text-[#4f5df3] hover:text-[#3946d8]",
+  actionClassName = "text-primary hover:text-primary/80",
   action,
   children,
 }: {
   title: string;
   subtitle: string;
-  icon: LucideIcon;
-  iconClassName: string;
+  /** Optional: the property sections run without one, on the title alone. */
+  icon?: LucideIcon;
+  iconClassName?: string;
   actionClassName?: string;
   action: { label: string; href: string };
   children: React.ReactNode;
@@ -62,11 +59,11 @@ function ActivitySection({
   return (
     <section className="min-w-0 rounded-xl border border-border bg-card px-4 py-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:px-6 sm:py-6">
       <header className="mb-5 flex min-w-0 items-center gap-4 sm:mb-6">
-        <span
-          className={`grid size-14 shrink-0 place-items-center rounded-xl ${iconClassName}`}
-        >
-          <Icon className="size-7" strokeWidth={1.8} />
-        </span>
+        {Icon && (
+          <span className={`grid size-14 shrink-0 place-items-center rounded-xl ${iconClassName}`}>
+            <Icon className="size-7" strokeWidth={1.8} />
+          </span>
+        )}
 
         <div className="min-w-0 flex-1">
           <h2 className="text-[19px] font-bold leading-tight text-foreground sm:text-[21px]">
@@ -224,51 +221,30 @@ function LoadingRow() {
 }
 
 function EmptyActivity({
-  type,
   title,
   description,
   accent,
 }: {
-  type: "viewed" | "saved";
   title: string;
   description: string;
-  accent: "blue" | "orange";
+  /** `navy` is the theme's own primary; `orange` stays the shortlist accent. */
+  accent: "navy" | "orange";
 }) {
-  const isBlue = accent === "blue";
+  const isNavy = accent === "navy";
 
   return (
     <div
-      className={`grid min-h-[250px] place-items-center rounded-lg border border-dashed px-5 py-8 text-center ${
-        isBlue ? "border-[#bfc8ff] bg-[#fbfbff]" : "border-[#ffd0bb] bg-[#fffdfb]"
+      className={`grid min-h-[150px] place-items-center rounded-lg border border-dashed px-5 py-6 text-center ${
+        isNavy ? "border-primary/25 bg-primary/[0.03]" : "border-[#ffd0bb] bg-[#fffdfb]"
       }`}
     >
       <div>
-        {type === "viewed" ? (
-          <div className="relative mx-auto h-[76px] w-[92px] text-[#5967ef]">
-            <span className="absolute left-2 top-0 grid size-[66px] place-items-center rounded-full border-[6px] border-[#7783f3] bg-[#f4f5ff]">
-              <Home className="size-8" strokeWidth={1.8} />
-            </span>
-            <Search
-              className="absolute bottom-0 right-1 size-8 rounded-full bg-[#fbfbff]"
-              strokeWidth={2.6}
-            />
-          </div>
-        ) : (
-          <div className="relative mx-auto grid h-[76px] w-[92px] place-items-center text-[#ff6d2d]">
-            <FileText className="size-[70px] text-[#ffd6c4]" strokeWidth={1.5} />
-            <Bookmark
-              className="absolute right-[23px] top-[14px] size-6 fill-[#ff6d2d] text-[#ff6d2d]"
-              strokeWidth={1.8}
-            />
-          </div>
-        )}
-
-        <p className="mt-3 text-[15px] font-bold text-foreground sm:text-base">{title}</p>
+        <p className="text-[15px] font-bold text-foreground sm:text-base">{title}</p>
         <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{description}</p>
         <Link
           href="/"
           className={`mt-5 inline-flex h-10 items-center justify-center rounded-lg px-6 text-sm font-semibold text-white transition-opacity hover:opacity-90 ${
-            isBlue ? "bg-[#4f5df3]" : "bg-[#ff6422]"
+            isNavy ? "bg-primary" : "bg-[#ff6422]"
           }`}
         >
           Browse properties
@@ -312,8 +288,6 @@ export function DashboardPropertyActivity({
       <ActivitySection
         title="Recent Searches"
         subtitle="Quick access to your latest searches"
-        icon={Search}
-        iconClassName="bg-[#f0efff] text-[#4f5df3]"
         action={{ label: "View all", href: "/dashboard/recent-searches" }}
       >
         {!searches.loaded ? (
@@ -331,9 +305,9 @@ export function DashboardPropertyActivity({
               <Link
                 key={search.id}
                 href={`/?q=${encodeURIComponent(search.query || search.label)}`}
-                className="flex h-[76px] min-w-0 items-center gap-3 rounded-lg border border-border bg-background px-3 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-colors hover:border-[#c6cbff] hover:bg-[#fbfbff]"
+                className="flex h-[76px] min-w-0 items-center gap-3 rounded-lg border border-border bg-background px-3 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-colors hover:border-primary/30 hover:bg-primary/[0.03]"
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#f0efff] text-[#4f5df3]">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
                   <Search className="size-5" strokeWidth={1.8} />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -352,12 +326,11 @@ export function DashboardPropertyActivity({
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-[#c8ceff] bg-[#fbfbff] px-6 py-10 text-center">
-            <Search className="mx-auto size-7 text-[#6572ee]" strokeWidth={1.6} />
-            <p className="mt-2 text-sm font-bold text-foreground">No recent searches</p>
+          <div className="rounded-lg border border-dashed border-primary/25 bg-primary/[0.03] px-6 py-6 text-center">
+            <p className="text-sm font-bold text-foreground">No recent searches</p>
             <Link
               href="/"
-              className="mt-3 inline-flex text-xs font-semibold text-[#4f5df3] hover:underline"
+              className="mt-3 inline-flex text-xs font-semibold text-primary hover:underline"
             >
               Browse properties
             </Link>
@@ -368,8 +341,7 @@ export function DashboardPropertyActivity({
       <ActivitySection
         title="Recently Viewed Properties"
         subtitle="Continue where you left off"
-        icon={Eye}
-        iconClassName="bg-[#f0efff] text-[#4f5df3]"
+        actionClassName="text-primary hover:text-primary/80"
         action={{ label: "Browse properties", href: "/" }}
       >
         {!recent.loaded ? (
@@ -382,10 +354,9 @@ export function DashboardPropertyActivity({
           </div>
         ) : (
           <EmptyActivity
-            type="viewed"
             title="No recently viewed properties"
             description="Properties you open or interact with will appear here."
-            accent="blue"
+            accent="navy"
           />
         )}
       </ActivitySection>
@@ -394,8 +365,6 @@ export function DashboardPropertyActivity({
         <ActivitySection
           title="Shortlisted Properties"
           subtitle="Save your favourite properties"
-          icon={Bookmark}
-          iconClassName="bg-[#fff2eb] text-[#ff6422]"
           actionClassName="text-[#ff6422] hover:text-[#e74f10]"
           action={{ label: "View all", href: "/dashboard/saved" }}
         >
@@ -416,7 +385,6 @@ export function DashboardPropertyActivity({
             </div>
           ) : (
             <EmptyActivity
-              type="saved"
               title="No shortlisted properties"
               description="Save properties to compare them later."
               accent="orange"
