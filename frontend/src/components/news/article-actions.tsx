@@ -1,11 +1,85 @@
 "use client";
 
 import { Bookmark, Check, Eye, Link2, MessageCircle, Share2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { NEWS_COMMENTS_CHANGED_EVENT } from "@/components/news/article-comments";
 
-export function ArticleActions({ compact = false }: { compact?: boolean }) {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const VIEWER_STORAGE_KEY = "makan-mantra:news-viewer-id";
+
+function getViewerId() {
+  const existing = localStorage.getItem(VIEWER_STORAGE_KEY);
+  if (existing) return existing;
+
+  const viewerId = crypto.randomUUID();
+  localStorage.setItem(VIEWER_STORAGE_KEY, viewerId);
+  return viewerId;
+}
+
+export function ArticleActions({ compact = false, articleSlug }: { compact?: boolean; articleSlug?: string }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
+  const [viewCount, setViewCount] = useState(0);
+
+  useEffect(() => {
+    if (!articleSlug || compact) return;
+    const slug = articleSlug;
+    let current = true;
+
+    async function recordView() {
+      try {
+        const response = await fetch(`${API_URL}/news/${encodeURIComponent(slug)}/views`, {
+          method: "POST",
+          headers: { "X-News-Visitor": getViewerId() },
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as { count?: number };
+        if (current && typeof data.count === "number") setViewCount(data.count);
+      } catch {
+        // View reporting should never block the article UI.
+      }
+    }
+
+    void recordView();
+    return () => {
+      current = false;
+    };
+  }, [articleSlug, compact]);
+
+  useEffect(() => {
+    if (!articleSlug || compact) return;
+    const slug = articleSlug;
+
+    let current = true;
+    async function loadCommentCount() {
+      try {
+        const response = await fetch(`${API_URL}/news/${encodeURIComponent(slug)}/comments/count`, { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as { count?: number };
+        if (current && typeof data.count === "number") setCommentCount(data.count);
+      } catch {
+        // A count should never block the rest of the article actions.
+      }
+    }
+
+    void loadCommentCount();
+    return () => {
+      current = false;
+    };
+  }, [articleSlug, compact]);
+
+  useEffect(() => {
+    if (!articleSlug || compact) return;
+    const updateCommentCount = (event: Event) => {
+      const detail = (event as CustomEvent<{ articleSlug?: string; commentCount?: number }>).detail;
+      if (detail?.articleSlug === articleSlug && typeof detail.commentCount === "number") {
+        setCommentCount(detail.commentCount);
+      }
+    };
+    window.addEventListener(NEWS_COMMENTS_CHANGED_EVENT, updateCommentCount);
+    return () => window.removeEventListener(NEWS_COMMENTS_CHANGED_EVENT, updateCommentCount);
+  }, [articleSlug, compact]);
 
   async function share() {
     const shareData = { title: document.title, url: window.location.href };
@@ -22,6 +96,10 @@ export function ArticleActions({ compact = false }: { compact?: boolean }) {
     await navigator.clipboard?.writeText(window.location.href);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  function openComments() {
+    window.dispatchEvent(new Event("makan-mantra:open-news-comments"));
   }
 
   const actionClass = compact
@@ -46,8 +124,11 @@ export function ArticleActions({ compact = false }: { compact?: boolean }) {
       </button>
       {!compact && (
         <>
-          <span className={actionClass} title="Views" aria-label="Views"><Eye className="size-4" /></span>
-          <span className={actionClass} title="Comments" aria-label="Comments"><MessageCircle className="size-4" /></span>
+          <span className={`${actionClass} relative`} title={`${viewCount} views`} aria-label={`${viewCount} views`}><Eye className="size-4" /><span className="absolute -right-1.5 -top-1.5 grid min-w-4 place-items-center rounded-full bg-[#242424] px-1 text-[9px] font-bold leading-4 text-white">{viewCount > 99 ? "99+" : viewCount}</span></span>
+          <button type="button" onClick={openComments} className={`${actionClass} relative`} title={`${commentCount} comments`} aria-label={`Open comments (${commentCount})`}>
+            <MessageCircle className="size-4" />
+            <span className="absolute -right-1.5 -top-1.5 grid min-w-4 place-items-center rounded-full bg-[#bb432a] px-1 text-[9px] font-bold leading-4 text-white">{commentCount > 99 ? "99+" : commentCount}</span>
+          </button>
         </>
       )}
       {compact && copied && <Link2 className="size-3.5 text-[#b53a22]" aria-hidden="true" />}

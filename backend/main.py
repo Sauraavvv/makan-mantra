@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from mongodb import connect_db, close_db
+from mongodb import close_db, connect_db, get_news_views_collection
 from routers import district_overview, gone, location_pages, market_snapshot, news, state_overview
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_db()
+    await get_news_views_collection().create_index([("article_slug", 1), ("visitor_hash", 1)], unique=True)
     yield
     await close_db()
 

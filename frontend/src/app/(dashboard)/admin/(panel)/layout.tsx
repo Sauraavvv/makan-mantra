@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Inbox, LayoutDashboard, LogOut, MapPin, Users } from "lucide-react";
+import { Inbox, LayoutDashboard, LogOut, MapPin, Newspaper, Users } from "lucide-react";
 import { adminLogoutAction } from "@/app/actions/admin-auth";
 import { requireAdminPage } from "@/lib/auth/admin";
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/post-property", label: "Post Property", icon: Inbox },
+  { href: "/admin/news", label: "News Review", icon: Newspaper },
   { href: "/admin/locations", label: "Locations", icon: MapPin },
   { href: "/admin/team", label: "Admins", icon: Users },
 ];

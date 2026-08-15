@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, Clock3, Home, MapPin, Tag } from "lucide-react";
 import { ArticleActions } from "@/components/news/article-actions";
+import { ArticleComments, NewsCommentForm } from "@/components/news/article-comments";
 import { NewsCard } from "@/components/news/news-card";
 import { NewsSearch } from "@/components/news/news-search";
 import { Footer } from "@/components/site/footer";
@@ -34,7 +35,10 @@ export default async function BlogPostPage({ params }: PageProps) {
   const paragraphs = article.body?.length
     ? article.body
     : [article.hook, ...article.content.map((section) => section.description), article.conclusion].filter(Boolean);
-  const related = (await fetchNewsArticles()).filter((item) => item.slug !== article.slug).slice(0, 3);
+  const otherNews = (await fetchNewsArticles()).filter((item) => item.slug !== article.slug);
+  const moreFromCategory = otherNews.filter((item) => item.category === article.category).slice(0, 4);
+  const recentPosts = otherNews.slice(0, 4);
+  const related = otherNews.slice(0, 3);
   const author = article.author?.name || "Makan Mantraa News Desk";
 
   return (
@@ -78,34 +82,34 @@ export default async function BlogPostPage({ params }: PageProps) {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-stone-500">
                 <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-[#bb432a]" aria-hidden="true" />{article.location}</span>
                 <span className="inline-flex items-center gap-1.5"><Clock3 className="size-3.5 text-[#bb432a]" aria-hidden="true" />{getReadingTime(article)} min read</span>
-                <ArticleActions compact />
+                <ArticleActions compact articleSlug={article.slug} />
               </div>
             </div>
           </header>
 
-          <figure className="mt-7 overflow-hidden bg-[#d9d2ca]">
-            <Image
-              src={article.image}
-              alt={article.imageAlt}
-              width={article.imageWidth || 1600}
-              height={article.imageHeight || 1067}
-              priority
-              className="h-auto w-full"
-              sizes="(max-width: 1280px) 100vw, 1220px"
-            />
-            <figcaption className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-300 bg-white px-3 py-2 text-xs text-stone-500 sm:px-4">
-              <span>{article.imageAlt}</span>
-              <span className="shrink-0 font-medium text-stone-600">Makan Mantraa</span>
-            </figcaption>
-          </figure>
-
-          <div className="mt-8 grid gap-10 xl:grid-cols-[56px_minmax(0,720px)_minmax(250px,1fr)]">
+          <div className="mt-7 grid gap-10 xl:grid-cols-[56px_minmax(0,720px)_minmax(250px,1fr)]">
             <aside className="hidden xl:block">
-              <div className="sticky top-28"><ArticleActions /></div>
+              <div className="sticky top-28"><ArticleActions articleSlug={article.slug} /></div>
             </aside>
 
             <div className="min-w-0">
-              <p className="border-l-4 border-[#bb432a] bg-[#f0e8e0] px-5 py-4 font-serif text-base leading-relaxed text-stone-800">
+              <figure className="overflow-hidden bg-[#d9d2ca]">
+                <Image
+                  src={article.image}
+                  alt={article.imageAlt}
+                  width={article.imageWidth || 1600}
+                  height={article.imageHeight || 1067}
+                  priority
+                  className="h-auto w-full"
+                  sizes="(max-width: 1280px) 100vw, 720px"
+                />
+                <figcaption className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-300 bg-white px-3 py-2 text-xs text-stone-500 sm:px-4">
+                  <span>{article.imageAlt}</span>
+                  <span className="shrink-0 font-medium text-stone-600">Makan Mantraa</span>
+                </figcaption>
+              </figure>
+
+              <p className="mt-8 border-l-4 border-[#bb432a] bg-[#f0e8e0] px-5 py-4 font-serif text-base leading-relaxed text-stone-800">
                 <span className="font-bold">The big picture: </span>{article.hook}
               </p>
 
@@ -126,22 +130,41 @@ export default async function BlogPostPage({ params }: PageProps) {
             </div>
 
             <aside className="space-y-8 border-t border-stone-300 pt-6 xl:sticky xl:top-24 xl:self-start xl:border-l xl:border-t-0 xl:pl-7 xl:pt-0">
-              <section aria-labelledby="latest-news" className="border-t-2 border-[#242424] pt-3">
+              {moreFromCategory.length > 0 && <section aria-labelledby="more-category-news" className="border-t-2 border-[#242424] pt-3">
                 <div className="flex items-baseline justify-between gap-3">
-                  <h2 id="latest-news" className="font-serif text-2xl font-bold">Latest real estate news</h2>
-                  <Link href="/blog" className="text-xs font-bold uppercase tracking-wider text-[#b53a22] hover:underline">All news</Link>
+                  <h2 id="more-category-news" className="font-serif text-2xl font-bold">More from {article.category}</h2>
+                  <Link href={`/blog?category=${encodeURIComponent(article.category)}`} className="text-xs font-bold uppercase tracking-wider text-[#b53a22] hover:underline">View all</Link>
                 </div>
                 <ol className="mt-3 divide-y divide-stone-300">
-                  {related.map((item) => (
+                  {moreFromCategory.map((item) => (
                     <li key={item.slug} className="py-4 first:pt-1">
                       <Link href={`/blog/${item.slug}`} className="group block">
                         <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500">{item.category}</span>
                         <span className="mt-1.5 block text-[0.98rem] font-semibold leading-[1.35] tracking-[-0.01em] text-stone-900 transition-colors group-hover:text-[#b53a22]">{item.title}</span>
+                        <time className="mt-2 block text-[11px] text-stone-500">{formatNewsDate(item.publishedAt)}</time>
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              </section>}
+              <section aria-labelledby="recent-posts" className="border-t-2 border-[#242424] pt-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 id="recent-posts" className="font-serif text-2xl font-bold">Recent posts</h2>
+                  <Link href="/blog" className="text-xs font-bold uppercase tracking-wider text-[#b53a22] hover:underline">All news</Link>
+                </div>
+                <ol className="mt-3 divide-y divide-stone-300">
+                  {recentPosts.map((item) => (
+                    <li key={item.slug} className="py-4 first:pt-1">
+                      <Link href={`/blog/${item.slug}`} className="group block">
+                        <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500">{item.category}</span>
+                        <span className="mt-1.5 block text-[0.98rem] font-semibold leading-[1.35] tracking-[-0.01em] text-stone-900 transition-colors group-hover:text-[#b53a22]">{item.title}</span>
+                        <time className="mt-2 block text-[11px] text-stone-500">{formatNewsDate(item.publishedAt)}</time>
                       </Link>
                     </li>
                   ))}
                 </ol>
               </section>
+              <NewsCommentForm articleSlug={article.slug} />
             </aside>
           </div>
         </article>
@@ -152,21 +175,30 @@ export default async function BlogPostPage({ params }: PageProps) {
               <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#bb432a]">Keep reading</p><h2 id="more-news" className="mt-1 font-serif text-3xl font-bold">More from Makan Mantraa News</h2></div>
               <Link href="/blog" className="hidden text-sm font-bold text-[#b53a22] hover:underline sm:block">Browse all news →</Link>
             </div>
-            <div className="mt-5 grid gap-5 md:grid-cols-3">{related.map((item) => <NewsCard key={item.slug} article={item} monochrome />)}</div>
+            <div className="mt-5 grid gap-5 md:grid-cols-3">{related.map((item) => <NewsCard key={item.slug} article={item} monochrome clampTitle darkCategory />)}</div>
           </section>
         )}
       </main>
+      <ArticleComments articleTitle={article.title} articleSlug={article.slug} />
       <Footer />
     </div>
   );
 }
 
 function NewsMasthead() {
+  const currentDate = new Intl.DateTimeFormat("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).format(new Date());
+
   return (
     <section className="bg-white text-[#1d1d1d] shadow-sm">
       <div className="mx-auto max-w-[1220px] px-4 sm:px-6 lg:px-8">
         <div className="flex h-9 items-center justify-between border-b border-stone-200 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
-          <span className="hidden sm:inline">Friday, August 14, 2026</span>
+          <span className="hidden sm:inline">{currentDate}</span>
           <span className="sm:hidden">Real estate, decoded</span>
           <span className="flex items-center gap-1.5"><MapPin className="size-3 text-[#bb432a]" aria-hidden="true" />India Edition</span>
         </div>

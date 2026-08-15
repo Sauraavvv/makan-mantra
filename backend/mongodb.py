@@ -38,3 +38,11 @@ def get_market_snapshot_collection():
 
 def get_news_collection():
     return get_database()["news"]
+
+
+def get_news_comments_collection():
+    return get_database()["news_comments"]
+
+
+def get_news_views_collection():
+    return get_database()["news_views"]

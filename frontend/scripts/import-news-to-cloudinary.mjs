@@ -8,6 +8,7 @@
  * Usage:
  *   node --env-file=.env.local scripts/import-news-to-cloudinary.mjs
  *   node --env-file=.env.local scripts/import-news-to-cloudinary.mjs --dry-run
+ *   node --env-file=.env.local scripts/import-news-to-cloudinary.mjs --skip-missing-banners
  */
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -21,6 +22,7 @@ const projectRoot = resolve(frontendRoot, "..");
 const workspaceRoot = resolve(projectRoot, "..");
 const newsDirectory = resolve(workspaceRoot, "chatgpt news data");
 const dryRun = process.argv.includes("--dry-run");
+const skipMissingBanners = process.argv.includes("--skip-missing-banners");
 
 const requiredEnvironment = [
   "CLOUDINARY_CLOUD_NAME",
@@ -60,11 +62,27 @@ async function findNewsEntries() {
     const sourceDirectory = join(newsDirectory, directory.name);
     const jsonPath = join(sourceDirectory, "news.json");
     const bannerPath = join(sourceDirectory, "banner.png");
-    const [raw, banner] = await Promise.all([
-      readFile(jsonPath, "utf8"),
-      stat(bannerPath),
-    ]);
-    if (!banner.isFile()) throw new Error(`${bannerPath}: banner image is not a file`);
+    let raw;
+    let banner;
+    try {
+      [raw, banner] = await Promise.all([
+        readFile(jsonPath, "utf8"),
+        stat(bannerPath),
+      ]);
+    } catch (error) {
+      if (skipMissingBanners && error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+        console.warn(`  skipped (missing banner): ${directory.name}`);
+        continue;
+      }
+      throw error;
+    }
+    if (!banner.isFile()) {
+      if (skipMissingBanners) {
+        console.warn(`  skipped (banner is not a file): ${directory.name}`);
+        continue;
+      }
+      throw new Error(`${bannerPath}: banner image is not a file`);
+    }
 
     const news = JSON.parse(raw);
     assertNewsPayload(news, jsonPath);

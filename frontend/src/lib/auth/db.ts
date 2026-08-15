@@ -89,6 +89,34 @@ export async function getPropertySubmissionsCollection() {
   return c.db("makan_mantraa").collection("property_submissions");
 }
 
+/**
+ * Articles the news generator staged for review. Nothing here is public — a
+ * story only reaches `news` once an admin approves it.
+ *
+ * `_id` is the string `news:<slug>`, the same id the article keeps once it is
+ * published, so approving is a move rather than a re-creation.
+ */
+export async function getTempNewsCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection("temp_news");
+}
+
+export async function getNewsCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection("news");
+}
+
+/** Reader activity, keyed by `article_slug` rather than by the article's id. */
+export async function getNewsCommentsCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection("news_comments");
+}
+
+export async function getNewsViewsCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection("news_views");
+}
+
 /** One shortlist document per user; listing details resolve from these IDs. */
 export type PropertySnapshot = {
   title: string;
