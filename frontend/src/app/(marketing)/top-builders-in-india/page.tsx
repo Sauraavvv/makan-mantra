@@ -5,8 +5,7 @@ import { Building2, ChevronRight, Home, Layers, MapPin } from "lucide-react";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { BuildersDirectory } from "./builders-directory";
-import { DIRECTORY_BUILDERS, DIRECTORY_STATES, DIRECTORY_STATS } from "@/lib/builders-directory";
-import { stateExploreHref } from "@/lib/state-routes";
+import { DIRECTORY_BUILDERS, DIRECTORY_STATS } from "@/lib/builders-directory";
 
 export const metadata: Metadata = {
   title: "Top Builders in India — Real Estate Developers List | Makan Mantraa",
@@ -52,8 +51,7 @@ export default function TopBuildersInIndiaPage() {
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/75 md:text-base">
             A state-wise directory of established real estate developers — the year they started,
-            the projects they have delivered and the cities they build in. Search by builder,
-            project or city to find the right developer for your next home.
+            the projects they have delivered and the cities they build in.
           </p>
 
           <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl">
@@ -73,34 +71,7 @@ export default function TopBuildersInIndiaPage() {
         </div>
       </header>
 
-      <section className="px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-[1250px]">
-          <BuildersDirectory builders={DIRECTORY_BUILDERS} states={DIRECTORY_STATES} />
-        </div>
-      </section>
-
-      <section className="px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-6">
-          <h2 className="text-2xl font-bold leading-tight md:text-3xl">Builders by state</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Open a state to see its top builders alongside the local market — prices, connectivity
-            and the districts buyers search most.
-          </p>
-
-          <ul className="mt-5 flex flex-wrap gap-2">
-            {DIRECTORY_STATES.map((state) => (
-              <li key={state}>
-                <Link
-                  href={stateExploreHref(state)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary hover:bg-primary/5"
-                >
-                  <MapPin className="size-3.5 text-primary" /> Builders in {state}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      <BuildersDirectory builders={DIRECTORY_BUILDERS} />
 
       <Footer />
     </div>

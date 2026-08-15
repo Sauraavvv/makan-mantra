@@ -54,7 +54,12 @@ const LEGAL_SUFFIX = /[\s,.]*\b(?:(?:private|pvt\.?)\s+)?(?:limited|ltd\.?|llp|i
 
 /** Most builders carry one, and none of them read well on a card. */
 function withoutLegalSuffix(name: string) {
-  const trimmed = name.replace(LEGAL_SUFFIX, "").trim();
+  const trimmed = name
+    .replace(/\s+Corporation\s+Limited\s+\(ZIDCO\)\s*$/i, "")
+    .replace(/\s*\([^()]*\)/g, " ")
+    .replace(LEGAL_SUFFIX, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 
   // A name that is nothing but its suffix stays as it was.
   return trimmed || name;
