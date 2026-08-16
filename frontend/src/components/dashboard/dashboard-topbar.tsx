@@ -8,10 +8,12 @@ export function DashboardTopbar({
   name,
   email,
   profileImageUrl,
+  guest = false,
 }: {
   name: string;
   email: string;
   profileImageUrl: string;
+  guest?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-30 w-full max-w-full border-b border-border bg-card/95 backdrop-blur-sm">
@@ -26,7 +28,7 @@ export function DashboardTopbar({
             <Plus className="size-4" strokeWidth={2} />
             <span className="hidden sm:inline">Post Property</span>
           </Link>
-          <DashboardAccountMenu name={name} email={email} profileImageUrl={profileImageUrl} />
+          <DashboardAccountMenu name={name} email={email} profileImageUrl={profileImageUrl} guest={guest} />
         </div>
       </div>
     </header>

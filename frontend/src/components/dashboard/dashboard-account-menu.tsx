@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Home, LogOut, Settings, UserRound } from "lucide-react";
+import { ChevronDown, Home, LogIn, LogOut, Settings, UserRound } from "lucide-react";
 
 import { useSession } from "@/context/session-context";
+import { openAuthModal } from "@/lib/auth-modal";
 
 function initials(name: string, email: string) {
   const parts = (name.trim() || email).split(/\s+/).filter(Boolean);
@@ -18,10 +19,13 @@ export function DashboardAccountMenu({
   name,
   email,
   profileImageUrl,
+  guest = false,
 }: {
   name: string;
   email: string;
   profileImageUrl: string;
+  /** No account behind the menu: it offers the way into one instead of out of it. */
+  guest?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -75,7 +79,9 @@ export function DashboardAccountMenu({
           <span className="block max-w-36 truncate text-[13px] font-bold leading-5 text-foreground">
             {name || "Your account"}
           </span>
-          <span className="block text-[11px] leading-4 text-muted-foreground">Member account</span>
+          <span className="block text-[11px] leading-4 text-muted-foreground">
+            {guest ? "Not signed in" : "Member account"}
+          </span>
         </span>
         <ChevronDown className="hidden size-4 text-muted-foreground sm:block" strokeWidth={1.8} />
       </button>
@@ -87,34 +93,59 @@ export function DashboardAccountMenu({
         >
           <div className="border-b border-border px-4 py-3">
             <p className="truncate text-sm font-bold text-foreground">{name || "Your account"}</p>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">{email}</p>
+            {email && <p className="mt-0.5 truncate text-xs text-muted-foreground">{email}</p>}
           </div>
-          <Link href="/dashboard/profile" onClick={() => setOpen(false)} role="menuitem" className={menuItemClass}>
-            <UserRound className="size-4" strokeWidth={1.8} />
-            Profile
-          </Link>
-          <Link href="/dashboard/settings" onClick={() => setOpen(false)} role="menuitem" className={menuItemClass}>
-            <Settings className="size-4" strokeWidth={1.8} />
-            Settings
-          </Link>
+
+          {/* A guest is offered none of the account's own pages — Profile and
+              Settings would only put them in front of the sign-in gate, and
+              there is no session to sign out of. */}
+          {!guest && (
+            <>
+              <Link href="/dashboard/profile" onClick={() => setOpen(false)} role="menuitem" className={menuItemClass}>
+                <UserRound className="size-4" strokeWidth={1.8} />
+                Profile
+              </Link>
+              <Link href="/dashboard/settings" onClick={() => setOpen(false)} role="menuitem" className={menuItemClass}>
+                <Settings className="size-4" strokeWidth={1.8} />
+                Settings
+              </Link>
+            </>
+          )}
+
           <Link href="/" onClick={() => setOpen(false)} role="menuitem" className={menuItemClass}>
             <Home className="size-4" strokeWidth={1.8} />
             Back to website
           </Link>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={async () => {
-              setOpen(false);
-              await signOut();
-              router.push("/");
-              router.refresh();
-            }}
-            className={`${menuItemClass} border-t border-border text-destructive hover:bg-destructive/5`}
-          >
-            <LogOut className="size-4" strokeWidth={1.8} />
-            Sign out
-          </button>
+
+          {guest ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                openAuthModal("login");
+              }}
+              className={`${menuItemClass} border-t border-border font-bold text-[#0A2036]`}
+            >
+              <LogIn className="size-4" strokeWidth={1.8} />
+              Login / Sign up
+            </button>
+          ) : (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={async () => {
+                setOpen(false);
+                await signOut();
+                router.push("/");
+                router.refresh();
+              }}
+              className={`${menuItemClass} border-t border-border text-destructive hover:bg-destructive/5`}
+            >
+              <LogOut className="size-4" strokeWidth={1.8} />
+              Sign out
+            </button>
+          )}
         </div>
       )}
     </div>

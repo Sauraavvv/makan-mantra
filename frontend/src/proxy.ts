@@ -2,12 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
-const COOKIE = "mm_session";
 const ADMIN_COOKIE = "mm_admin";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-const PUBLIC_PATHS = ["/login", "/register", "/verify-email"];
 
 /** Reachable without an admin session — otherwise nobody could ever sign in. */
 const PUBLIC_ADMIN_PATHS = ["/admin/login", "/admin/setup"];
@@ -73,16 +70,19 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/admin/login", req.url));
   }
 
+  /**
+   * The dashboard is no longer gated here. A signed-out visitor has two pages
+   * in it worth reading — the searches and views their own device recorded —
+   * and bouncing them to /login took those away along with everything else.
+   *
+   * What replaces this is not weaker, only later: every dashboard page reads
+   * the session itself and returns a placeholder instead of fetching an
+   * account's data, and `DashboardGuestGate` puts the sign-in ask over the
+   * pages that are not theirs to read. A new page under /dashboard must do the
+   * same — there is no longer a redirect here to catch one that forgets.
+   */
   if (pathname.startsWith("/dashboard")) {
-    if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-      return NextResponse.next();
-    }
-
-    if (await isValid(req.cookies.get(COOKIE)?.value)) {
-      return NextResponse.next();
-    }
-
-    return NextResponse.redirect(new URL("/login", req.url));
+    return NextResponse.next();
   }
 
   // A deactivated location page must answer 410 at its own URL — a redirect

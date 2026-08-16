@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 import {
   DashboardPropertyActivity,
   type DashboardPostedProperty,
 } from "@/components/dashboard/dashboard-property-activity";
+import { DashboardGuestPlaceholder } from "@/components/dashboard/dashboard-guest-placeholder";
 import { getPropertySubmissionsCollection } from "@/lib/auth/db";
 import { getLiveSession } from "@/lib/auth/session";
 import { PROPERTY_TYPES } from "@/lib/constants/propertyTypes";
@@ -74,7 +74,9 @@ async function loadPostedProperties(
 
 export default async function DashboardPage() {
   const session = await getLiveSession();
-  if (!session) redirect("/?auth=login");
+  // A guest is not sent away: the dashboard layout keeps them here behind
+  // `DashboardGuestGate`, which blurs this shell and asks them to sign in.
+  if (!session) return <DashboardGuestPlaceholder />;
 
   const firstName = (session.name || "").trim().split(/\s+/)[0];
   const postedProperties = await loadPostedProperties(session.userId, session.email);

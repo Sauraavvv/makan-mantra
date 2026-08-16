@@ -566,10 +566,6 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                   placeholder="House / street, locality, city"
                   className="w-full resize-none rounded-lg border border-[#e8ecf4] bg-white px-3 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/10"
                 />
-                <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="size-3.5" strokeWidth={1.9} />
-                  This is visible only to your account and property workflows.
-                </p>
               </div>
             </div>
           </EditSection>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ObjectId } from "mongodb";
-import { redirect } from "next/navigation";
 
+import { DashboardGuestPlaceholder } from "@/components/dashboard/dashboard-guest-placeholder";
 import { ProfileForm, type Profile } from "@/components/dashboard/profile-form";
 import { getUsersCollection } from "@/lib/auth/db";
 import { getLiveSession } from "@/lib/auth/session";
@@ -40,7 +40,9 @@ async function loadProfile(userId: string): Promise<Profile | null> {
 
 export default async function ProfilePage() {
   const session = await getLiveSession();
-  if (!session) redirect("/?auth=login");
+  // A guest is not sent away: the dashboard layout keeps them here behind
+  // `DashboardGuestGate`, which blurs this shell and asks them to sign in.
+  if (!session) return <DashboardGuestPlaceholder />;
 
   const profile = await loadProfile(session.userId);
 

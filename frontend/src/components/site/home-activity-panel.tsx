@@ -81,13 +81,11 @@ export function HomeActivityPanel({ className = "" }: { className?: string }) {
           count={searches.length}
           label="Searched"
           href="/dashboard/recent-searches"
-          signedIn={Boolean(user)}
         />
         <StatCard
           count={viewed.length}
           label="Viewed"
           href="/dashboard/recently-viewed"
-          signedIn={Boolean(user)}
         />
       </div>
 
@@ -109,6 +107,7 @@ export function HomeActivityPanel({ className = "" }: { className?: string }) {
           Login / Sign up
         </button>
       )}
+
     </aside>
   );
 }
@@ -131,23 +130,11 @@ const STAT_CLASS =
 /**
  * One trail: how much of it there is, and what it is.
  *
- * A signed-out reader gets the real count — what they did on this device counts
- * whether or not they have an account yet — but the card does not open, and does
- * not ask them to sign in either. Sign-in is asked for once, by the button that
- * says so; a count that quietly turns into a login prompt is a card that lied
- * about what clicking it does.
+ * The same link either way. These two pages read from the device, so a guest
+ * opens the real thing — it is the rest of the dashboard that asks them to sign
+ * in, and only once they go looking for it.
  */
-function StatCard({
-  count,
-  label,
-  href,
-  signedIn,
-}: {
-  count: number;
-  label: string;
-  href: string;
-  signedIn: boolean;
-}) {
+function StatCard({ count, label, href }: { count: number; label: string; href: string }) {
   const body = (
     <>
       <span className="flex items-start justify-between gap-2">
@@ -158,11 +145,9 @@ function StatCard({
     </>
   );
 
-  return signedIn ? (
+  return (
     <Link href={href} className={`${STAT_CLASS} transition-colors hover:bg-[#FBEBD2]`}>
       {body}
     </Link>
-  ) : (
-    <div className={STAT_CLASS}>{body}</div>
   );
 }

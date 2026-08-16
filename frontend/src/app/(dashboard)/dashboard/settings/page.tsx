@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ShieldCheck } from "lucide-react";
-import { redirect } from "next/navigation";
 
+import { DashboardGuestPlaceholder } from "@/components/dashboard/dashboard-guest-placeholder";
 import { DeactivateAccount } from "@/components/dashboard/deactivate-account";
 import { DeleteAccount } from "@/components/dashboard/delete-account";
 import { Panel } from "@/components/dashboard/panel";
@@ -14,7 +14,9 @@ export const metadata: Metadata = {
 
 export default async function SettingsPage() {
   const session = await getLiveSession();
-  if (!session) redirect("/?auth=login");
+  // A guest is not sent away: the dashboard layout keeps them here behind
+  // `DashboardGuestGate`, which blurs this shell and asks them to sign in.
+  if (!session) return <DashboardGuestPlaceholder />;
 
   return (
     <div className="space-y-5">

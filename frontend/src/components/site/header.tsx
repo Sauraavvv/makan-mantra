@@ -42,18 +42,35 @@ function StateCard({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 rounded-xl p-1 text-center transition-all duration-150 hover:scale-105 hover:brightness-95 ${
-        selected ? "ring-2 ring-saffron/50" : ""
-      }`}
-      style={{ backgroundColor: "#F4F4F4" }}
+      /*
+       * Ruled apart rather than spaced apart: the tiles sit flush and a short
+       * hairline stands between them — half the height of a cell down its right
+       * edge, half the width along its foot. Stopping the lines short keeps the
+       * grid from reading as a table, which is what full rules would make of it.
+       *
+       * `nth-child(3n)` is the last tile of a row at three columns; its right
+       * rule would hang on the panel's inner edge with nothing beyond it.
+       */
+      className={`group relative flex flex-col items-center p-1 text-center transition-colors duration-150 hover:brightness-95
+        after:absolute after:right-0 after:top-1/4 after:h-1/2 after:w-px after:bg-black/10 after:content-['']
+        before:absolute before:bottom-0 before:left-1/4 before:h-px before:w-1/2 before:bg-black/10 before:content-['']
+        [&:nth-child(3n)]:after:hidden ${selected ? "ring-2 ring-inset ring-saffron/50" : ""}`}
     >
+      {/* Grey until it is pointed at, so the grid reads as one field of shapes
+          and the state under the cursor is the only one wearing colour. The one
+          already picked keeps its colour — it is not waiting to be found. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={stateCardImage(state)}
         alt={state}
         width={150}
         height={100}
-        className="aspect-[3/2] w-full rounded-lg object-contain"
+        // A set height, not one derived from the tile's width: the row height is
+        // what the grid below is measured in, and deriving it from the width
+        // made that measurement drift with the panel's border and padding.
+        className={`h-16 w-full rounded-lg object-contain transition-[filter] duration-150 group-hover:grayscale-0 ${
+          selected ? "grayscale-0" : "grayscale"
+        }`}
       />
     </button>
   );
@@ -235,7 +252,7 @@ export function Header({
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 mt-3 w-[min(calc(100vw-2rem),25rem)] overflow-hidden rounded-xl border border-border bg-popover text-foreground shadow-2xl">
+            <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 mt-3 w-[min(calc(100vw-2rem),19rem)] overflow-hidden rounded-xl border border-border bg-popover text-foreground shadow-2xl">
               {/* Search */}
               <div className="bg-muted p-2">
                 <div className="relative">
@@ -265,22 +282,24 @@ export function Header({
 
               {search ? (
                 /* List mode when searching */
-                <div className="max-h-72 overflow-y-auto p-1.5">
+                <div className="max-h-[360px] overflow-y-auto p-1.5">
                   {filtered.map((state) => {
                     const selected = meta.label === state;
                     return (
                       <button
                         key={state}
                         onClick={() => { setStateByName(state); setDropdownOpen(false); }}
-                        className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent ${selected ? "bg-saffron/10 font-semibold text-saffron" : "text-foreground"}`}
+                        className={`group flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent ${selected ? "bg-saffron/10 font-semibold text-saffron" : "text-foreground"}`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={stateCardImage(state)}
                           alt={state}
-                          width={42}
-                          height={28}
-                          className="h-7 w-[42px] shrink-0 rounded object-contain"
+                          width={36}
+                          height={24}
+                          className={`h-6 w-9 shrink-0 rounded object-contain transition-[filter] duration-150 group-hover:grayscale-0 ${
+                            selected ? "grayscale-0" : "grayscale"
+                          }`}
                         />
                         <span>{state}</span>
                       </button>
@@ -291,11 +310,17 @@ export function Header({
                   )}
                 </div>
               ) : (
-                /* Grid mode */
-                <div className="flex flex-col" style={{ backgroundColor: "#F4F4F4" }}>
-                  {/* Scrollable icon grid */}
-                  <div className="max-h-[286px] overflow-y-auto p-1 pt-2 pb-2">
-                    <div className="grid grid-cols-3 gap-0.5">
+                /* Grid mode. White, the same ground the icons are drawn on, so
+                   a tile ends at its rule rather than at a change of colour. */
+                <div className="flex flex-col bg-white">
+                  {/* Four whole rows and nothing of the fifth.
+                      A tile is a 64px icon in 4px of padding either side, so a
+                      row is 72px, and the rows are flush now that rules divide
+                      them: four rows (288) plus this box's own 16px of padding
+                      is 304. That holds at any panel width, the icon's height
+                      being fixed rather than taken from its width. */}
+                  <div className="h-[304px] overflow-y-auto p-1 pt-2 pb-2">
+                    <div className="grid grid-cols-3">
                       {pickerStates.map((state) => (
                         <StateCard
                           key={state}

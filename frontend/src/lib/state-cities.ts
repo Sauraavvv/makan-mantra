@@ -1,3 +1,5 @@
+import { STATES } from "@/lib/states";
+
 export const stateCities: Record<string, [string, string, string]> = {
   "andaman and nicobar islands": ["Port Blair", "Havelock Island", "Diglipur"],
   maharashtra: ["Mumbai", "Pune", "Nagpur"],
@@ -37,6 +39,19 @@ export const stateCities: Record<string, [string, string, string]> = {
   sikkim: ["Gangtok", "Namchi", "Gyalshing"],
 };
 
+/**
+ * The canonical spelling of a state, matched however it was written.
+ *
+ * Title-casing every word instead — which this used to do — turned "Jammu and
+ * Kashmir" into "Jammu And Kashmir", a name that matches nothing in `STATES`.
+ * Everything keyed on the label then quietly failed: the picker could not tell
+ * which tile was the current one, so it never floated it to the top.
+ */
+function canonicalStateName(state: string) {
+  const key = state.toLowerCase().trim();
+  return STATES.find((name) => name.toLowerCase() === key) ?? state.trim();
+}
+
 export function getStateMeta(state: string | null): {
   label: string;
   from: [string, string, string];
@@ -45,9 +60,6 @@ export function getStateMeta(state: string | null): {
   const key = state.toLowerCase().trim();
   const cities = stateCities[key];
   if (!cities) return { label: "India", from: ["Mumbai", "Bangalore", "Delhi"] };
-  const label = state
-    .split(" ")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-  return { label, from: cities };
+
+  return { label: canonicalStateName(state), from: cities };
 }

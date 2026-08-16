@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Building2, CalendarDays, Images } from "lucide-react";
 
+import { DashboardGuestPlaceholder } from "@/components/dashboard/dashboard-guest-placeholder";
 import { Panel } from "@/components/dashboard/panel";
 import { PropertyActions } from "@/components/dashboard/property-actions";
 import { getPropertySubmissionsCollection } from "@/lib/auth/db";
@@ -54,7 +54,9 @@ async function loadProperties(userId: string, email: string): Promise<PostedProp
 
 export default async function PropertiesPage() {
   const session = await getLiveSession();
-  if (!session) redirect("/?auth=login");
+  // A guest is not sent away: the dashboard layout keeps them here behind
+  // `DashboardGuestGate`, which blurs this shell and asks them to sign in.
+  if (!session) return <DashboardGuestPlaceholder />;
 
   const properties = await loadProperties(session.userId, session.email);
 
