@@ -153,10 +153,23 @@ export async function getRecentPropertiesCollection() {
   return c.db("makan_mantraa").collection<RecentPropertyDoc>("recent_properties");
 }
 
+/**
+ * One search as it is stored today. Documents written before this shape existed
+ * hold plain label strings instead, so readers have to handle both — see
+ * `normalizeSearch` in the recent-searches route.
+ */
+export type RecentSearchEntry = {
+  label: string;
+  tab: string;
+  category: string;
+  query: string;
+  searched_at: Date;
+};
+
 export type RecentSearchesDoc = {
   _id?: ObjectId;
   user_id: string;
-  searches: string[];
+  searches: (RecentSearchEntry | string)[];
   updated_at: Date;
 };
 

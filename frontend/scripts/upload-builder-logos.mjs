@@ -70,6 +70,13 @@ const DARK_TILE_SLUGS = new Set([
   "janta-land-promoters",
 ]);
 
+/**
+ * Logos saved with their frame still on, and the fraction of the image worth
+ * keeping. Raheja's carries a hairline along its top edge; cropping 4% from the
+ * centre trims it away. Delivered as a crop, so the upload itself stays whole.
+ */
+const ZOOM_BY_SLUG = new Map([["raheja-developers", 0.96]]);
+
 const requiredEnvironment = [
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
@@ -227,6 +234,7 @@ async function run() {
 
     logoMap[name] = { id: uploadedBySlug.get(logo.slug) };
     if (DARK_TILE_SLUGS.has(logo.slug)) logoMap[name].tile = "dark";
+    if (ZOOM_BY_SLUG.has(logo.slug)) logoMap[name].zoom = ZOOM_BY_SLUG.get(logo.slug);
   }
 
   if (dryRun) return;

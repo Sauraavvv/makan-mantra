@@ -168,21 +168,32 @@ function BuilderCard({
 }) {
   return (
     <article className="flex h-full flex-col rounded-[18px] border border-border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-start gap-3">
-        <BuilderLogo builder={builder} className="size-14" />
+      {/* Name and state sit against the middle of the logo, so a one-line name
+          and a two-line one both read as belonging to the mark beside them. */}
+      <div className="flex items-center gap-3">
+        <BuilderLogo builder={builder} className="size-20" />
 
         <div className="min-w-0 flex-1">
           {/* Registered name on hover; the card itself drops the company form. */}
-          <div className="flex items-start justify-between gap-3">
-            <h2 title={builder.name} className="min-w-0 text-base font-extrabold leading-snug text-foreground">
-              {builder.href ? (
-                <Link href={builder.href} className="hover:text-primary">
-                  {builder.displayName}
-                </Link>
-              ) : (
-                builder.displayName
-              )}
-            </h2>
+          <h2 title={builder.name} className="min-w-0 text-base font-extrabold leading-snug text-foreground">
+            {builder.href ? (
+              <Link href={builder.href} className="hover:text-primary">
+                {builder.displayName}
+              </Link>
+            ) : (
+              builder.displayName
+            )}
+          </h2>
+          {/* Shares the state's row rather than the name's: it costs the card
+              no extra height, and the name gets the full width to wrap in. */}
+          <div className="mt-1.5 flex items-center justify-between gap-3">
+            <Link
+              href={builder.stateHref}
+              className="inline-flex min-w-0 items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-primary/10"
+            >
+              <MapPin className="size-3 shrink-0" />
+              <span className="truncate">{builder.state}</span>
+            </Link>
             <button
               type="button"
               onClick={onViewDetails}
@@ -191,15 +202,8 @@ function BuilderCard({
               View details
             </button>
           </div>
-          <Link
-            href={builder.stateHref}
-            className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-primary/10"
-          >
-            <MapPin className="size-3" /> {builder.state}
-          </Link>
         </div>
       </div>
-
     </article>
   );
 }
@@ -235,7 +239,7 @@ function BuilderDetailsDrawer({ builder, onClose }: { builder: DirectoryBuilder 
         aria-labelledby="builder-details-heading"
         className="absolute right-0 top-0 flex h-[100dvh] w-[min(100vw,32rem)] flex-col overflow-hidden border-l border-stone-200 bg-[#fbfaf8] shadow-2xl"
       >
-        <header className="relative shrink-0 overflow-hidden bg-[radial-gradient(circle_at_12%_15%,#fbfaf8_0%,#f5efe8_58%,#e7eef7_100%)] px-6 pb-[calc(6dvh+0.75rem)] pt-5 sm:px-8 sm:pt-6 [@media(max-height:720px)]:px-5 [@media(max-height:720px)]:pt-4">
+        <header className="relative shrink-0 overflow-hidden bg-[radial-gradient(circle_at_12%_15%,#fdf4e9_0%,#f4e3d0_58%,#e4eaf4_100%)] px-6 pb-[calc(6dvh+0.75rem)] pt-5 sm:px-8 sm:pt-6 [@media(max-height:720px)]:px-5 [@media(max-height:720px)]:pt-4">
           <div className="relative z-10 min-w-0 pr-14">
             <p className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.16em] text-[#f97316]">
               <span>Builder profile</span>
@@ -244,7 +248,7 @@ function BuilderDetailsDrawer({ builder, onClose }: { builder: DirectoryBuilder 
             <div className="mt-3 flex items-center gap-3 [@media(max-height:720px)]:mt-2">
               <BuilderLogo
                 builder={builder}
-                className="size-16 shadow-sm [@media(max-height:720px)]:size-14"
+                className="size-20 shadow-sm [@media(max-height:720px)]:size-16"
               />
               <h2
                 id="builder-details-heading"

@@ -61,7 +61,7 @@ export function PropertyCard({
   cityName: string;
 }) {
   const router = useRouter();
-  const { isSaved, toggle } = useSaved();
+  const { isSaved, toggle, isGuest } = useSaved();
   const [notice, setNotice] = useState("");
   const saved = isSaved(property.id);
   const place = `${property.locality}, ${cityName}`;
@@ -81,8 +81,10 @@ export function PropertyCard({
     });
 
     if (result === "signin") {
-      // The header opens its sign-in modal off `?auth=login`, so the visitor
-      // keeps their place in the listing instead of losing it to a login page.
+      // Only a session that expired mid-visit lands here now — a signed-out
+      // visitor keeps their shortlist on the device. The header opens its
+      // sign-in modal off `?auth=login`, so they keep their place in the
+      // listing instead of losing it to a login page.
       const params = new URLSearchParams(window.location.search);
       params.set("auth", "login");
       router.push(`${window.location.pathname}?${params.toString()}`);
@@ -92,6 +94,14 @@ export function PropertyCard({
     if (result === "error") {
       setNotice("Could not update your shortlist");
       setTimeout(() => setNotice(""), 2500);
+      return;
+    }
+
+    // Said once, on the way in: the shortlist is real but only on this device
+    // until they have an account to keep it in.
+    if (result === "saved" && isGuest) {
+      setNotice("Saved on this device — sign in to keep it");
+      setTimeout(() => setNotice(""), 3000);
     }
   };
 

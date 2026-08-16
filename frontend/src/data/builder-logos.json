@@ -346,7 +346,8 @@
     "tile": "dark"
   },
   "Raheja Developers Limited": {
-    "id": "builders/raheja-developers"
+    "id": "builders/raheja-developers",
+    "zoom": 0.96
   },
   "Rajapushpa Properties Private Limited": {
     "id": "builders/rajapushpa-properties"

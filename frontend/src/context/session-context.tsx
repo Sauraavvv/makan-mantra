@@ -10,6 +10,8 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 
+import { claimGuestActivity } from "@/lib/guest-activity";
+
 export type SessionUser = {
   name: string;
   email: string;
@@ -45,7 +47,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch("/api/auth/me", { cache: "no-store" });
       const data = (await res.json()) as { user: SessionUser | null };
-      setUser(data.user ?? null);
+      const nextUser = data.user ?? null;
+
+      // Before the account is announced, not after: everything downstream reads
+      // its history the moment `user` appears, and a claim that landed later
+      // would leave those reads a step behind what the account now holds. It is
+      // a no-op with nothing stored, which is every load but the first after a
+      // sign-in.
+      if (nextUser) await claimGuestActivity();
+
+      setUser(nextUser);
     } catch {
       // Leave the last known state alone — a blip should not look like a sign-out.
     } finally {

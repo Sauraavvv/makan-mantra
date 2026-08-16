@@ -4,6 +4,7 @@ import { Footer } from "@/components/site/footer";
 import { HeroSearch } from "@/components/site/hero-search";
 import { StateExplorer } from "@/components/site/state-explorer";
 import { HeroText } from "@/components/site/hero-text";
+import { HomeActivityPanel } from "@/components/site/home-activity-panel";
 import { PostPropertyBanner } from "@/components/site/post-property-banner";
 import { QuickLinks, type QuickLinkGroup } from "@/components/site/quick-links";
 import { MarketSnapshot } from "@/components/site/market-snapshot";
@@ -79,27 +80,60 @@ export default async function Home() {
     <div className="flex min-h-screen flex-col bg-secondary">
       <Header />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border">
-        <Image
-          src="/hero-home.jpg"
-          alt="Modern residential buildings in India"
-          fill
-          priority
-          quality={100}
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/15 to-black/45" />
+      {/* The hero and the section under it share the first screen: the hero takes
+          the height it needs, and the section below fills whatever is left of the
+          viewport. A fixed height, not a minimum: the point is that the section
+          below is on screen without scrolling, and a minimum would let the hero
+          push it under the fold. 4rem is the header's own height, which sits
+          above this box.
 
-        <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">
-          <div className="mx-auto w-full text-center">
-            <HeroText initialCityOverrides={initialCityOverrides} />
-            <HeroSearch animateIn />
+          `svh` rather than `dvh` on purpose — with `dvh` the section would grow
+          and shrink as a mobile browser's address bar hides, which reads as the
+          page shifting under the reader. The header is deliberately outside this
+          box: it is `sticky`, and an element only sticks within its own parent,
+          so wrapping it here would unstick it after the first screen. */}
+      <div className="flex h-[calc(100svh-4rem)] flex-col">
+        {/* Hero */}
+        <section className="relative min-h-0 shrink overflow-hidden border-b border-border">
+          <Image
+            src="/hero-home.jpg"
+            alt="Modern residential buildings in India"
+            fill
+            priority
+            quality={100}
+            className="object-cover"
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/15 to-black/45" />
+
+          <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">
+            <div className="mx-auto w-full text-center">
+              <HeroText initialCityOverrides={initialCityOverrides} />
+              <HeroSearch animateIn />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* Placeholder — holds the rest of the first screen until we fill it,
+            in the same card the sections below it use: gutter, rounded box,
+            centred on the same max width.
+
+            `flex-1` with no height of its own, and `min-h-0` down every level
+            below it: a flex item defaults to refusing to shrink under its own
+            content, so without it whatever ends up in these cards would push
+            the first screen past the viewport instead of fitting inside it. */}
+        <section className="flex min-h-0 flex-1 flex-col bg-secondary px-4 py-4 md:py-5">
+          {/* 75 / 25 by flex ratio rather than widths, so the gap between the two
+              comes out of the row instead of pushing the pair past 100%. They
+              stack below `md`, where a quarter of a phone is too narrow to hold
+              anything. */}
+          <div className="mx-auto flex w-full min-h-0 max-w-[1250px] flex-1 flex-col gap-4 md:flex-row">
+            <div className="flex-[3] rounded-[20px] border border-border bg-background" />
+            <HomeActivityPanel className="flex-1" />
+          </div>
+        </section>
+      </div>
 
       {/* Market snapshot for the visitor's state */}
       <MarketSnapshot initial={defaultSnapshot} />

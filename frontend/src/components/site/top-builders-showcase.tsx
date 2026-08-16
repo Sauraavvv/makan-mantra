@@ -28,13 +28,6 @@ import { stateSlug } from "@/lib/state-routes";
  * component import the whole thing into the browser.
  */
 
-const ACCENTS = [
-  { text: "text-[#1160F0]", bar: "bg-[#1160F0]", bg: "bg-[#1160F0]/10" },
-  { text: "text-[#7A1FD1]", bar: "bg-[#7A1FD1]", bg: "bg-[#7A1FD1]/10" },
-  { text: "text-[#F97316]", bar: "bg-[#F97316]", bg: "bg-[#F97316]/10" },
-  { text: "text-[#0F8B8D]", bar: "bg-[#0F8B8D]", bg: "bg-[#0F8B8D]/10" },
-] as const;
-
 /** How long the profile takes to build itself up, and the beat between its rows. */
 const REVEAL_MS = 700;
 const REVEAL_STEP_MS = 110;
@@ -319,7 +312,6 @@ function BuildersCarousel({ builders }: { builders: DirectoryBuilder[] }) {
                   >
                     <CompactBuilderCard
                       builder={builder}
-                      accent={ACCENTS[(head + 1 + index) % ACCENTS.length]}
                       // Clicking the third card walks the two ahead of it off to
                       // the left as well, so the queue always advances forward.
                       onSelect={() => slide(index + 1)}
@@ -374,14 +366,17 @@ function FeaturedBuilder({ builder }: { builder: DirectoryBuilder }) {
           is fixed by the reserve below, so as the queue turns it renders
           identically and reads as part of the panel rather than as something
           that arrives with each builder — only the name inside moves. */}
-      <div className="-mx-6 -mt-5 bg-[#E9EDF3] px-6 py-4 lg:-mx-7 lg:-mt-6 lg:px-7">
+      {/* The same wash the builder profile drawer wears on the Top Builders
+          page, so arriving there from this panel feels like the same surface. */}
+      <div className="-mx-6 -mt-5 bg-[radial-gradient(circle_at_12%_15%,#fdf4e9_0%,#f4e3d0_58%,#e4eaf4_100%)] px-6 py-4 lg:-mx-7 lg:-mt-6 lg:px-7">
         <Reveal step={0}>
-          {/* Two lines of headroom — several names wrap at this column width,
-              and without the reserve the section jolts as the queue turns past
-              them. The one-line names centre in it rather than hanging from the
-              top, which also keeps the band a constant height. */}
-          <div className="flex min-h-[3.75rem] items-center gap-3 xl:min-h-[4.5rem]">
-            <BuilderLogo builder={builder} className="size-14 shadow-sm" />
+          {/* The logo sets the row's height, and it is the same 80px for every
+              builder — which is also more headroom than the two lines a long
+              name wraps to. So the band stays a constant height and the section
+              no longer needs a reserve of its own to keep from jolting as the
+              queue turns. Names centre against the logo either way. */}
+          <div className="flex items-center gap-3">
+            <BuilderLogo builder={builder} className="size-20 shadow-sm" />
             <h3
               title={builder.name}
               className="min-w-0 text-2xl font-bold leading-tight tracking-tight text-[#0A2036] xl:text-[28px]"
@@ -622,11 +617,9 @@ function Reveal({
 
 function CompactBuilderCard({
   builder,
-  accent,
   onSelect,
 }: {
   builder: DirectoryBuilder;
-  accent: (typeof ACCENTS)[number];
   onSelect: () => void;
 }) {
   return (
@@ -634,45 +627,50 @@ function CompactBuilderCard({
       type="button"
       onClick={onSelect}
       title={`Show ${builder.displayName} in full`}
-      className="flex h-full min-h-[265px] w-full flex-col rounded-md border border-[#DCE5F3] bg-white px-4 py-4 text-left transition-transform duration-300 hover:-translate-y-1 hover:border-[#1160F0]"
+      className="flex h-full min-h-[265px] w-full flex-col overflow-hidden rounded-md border border-[#DCE5F3] bg-white px-4 py-4 text-left transition-transform duration-300 hover:-translate-y-1 hover:border-[#1160F0]"
     >
-      {/* The accent colour lives on the rule below rather than the tile once a
-          logo takes the tile's place, so the cards stay colour-coded either
-          way. */}
-      {builder.logo ? (
-        <BuilderLogo builder={builder} className="mx-auto size-14" />
-      ) : (
-        <div
-          className={`mx-auto grid size-14 place-items-center rounded-md ${accent.bg} ${accent.text}`}
-        >
-          <div className="text-center">
-            <Building2 className="mx-auto size-5" strokeWidth={1.8} />
-            <span className="mt-0.5 block text-sm font-extrabold leading-none">
-              {getInitials(builder.displayName)}
-            </span>
+      {/* Logo and name wear the left panel's wash, bled out to the card's own
+          edges by the padding above. Its bottom edge is the rule that parts the
+          builder from its details — full width, where the old accent dash sat
+          under the name and parted nothing. */}
+      <div className="-mx-4 -mt-4 border-b border-[#DCE5F3] bg-[radial-gradient(circle_at_12%_15%,#fdf4e9_0%,#f4e3d0_58%,#e4eaf4_100%)] px-4 pb-2 pt-3">
+        {builder.logo ? (
+          <BuilderLogo builder={builder} className="mx-auto size-20" />
+        ) : (
+          <div
+            className="mx-auto grid size-20 place-items-center rounded-md bg-saffron/10 text-saffron"
+          >
+            <div className="text-center">
+              <Building2 className="mx-auto size-5" strokeWidth={1.8} />
+              <span className="mt-0.5 block text-sm font-extrabold leading-none">
+                {getInitials(builder.displayName)}
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <h3 className="mt-3 min-h-12 text-center text-sm font-extrabold leading-snug text-[#071B45]">
-        {builder.displayName}
-      </h3>
-
-      <div className={`mx-auto mt-1 h-1 w-12 rounded-full ${accent.bar}`} />
+        {/* Two lines of reserve so the rows below line up across cards whatever
+            the name does — but held to exactly two lines of this type, and the
+            name centred in it, so a one-line name leaves a few pixels of slack
+            above the rule rather than half a row of it. */}
+        <h3 className="mt-1.5 flex min-h-10 items-center justify-center text-center text-sm font-extrabold leading-snug text-[#071B45]">
+          {builder.displayName}
+        </h3>
+      </div>
 
       <div className="mt-4 space-y-3 text-xs font-semibold leading-snug text-[#071B45]">
         {builder.experience && (
-          <Row icon={Award} accent={accent}>
+          <Row icon={Award}>
             {builder.experience}+ Years of Experience
           </Row>
         )}
-        <Row icon={CalendarDays} accent={accent}>
+        <Row icon={CalendarDays}>
           Since {builder.since}
         </Row>
-        <Row icon={Building2} accent={accent}>
+        <Row icon={Building2}>
           {builder.projects.length} {builder.projects.length === 1 ? "Project" : "Projects"}
         </Row>
-        <Row icon={MapPin} accent={accent}>
+        <Row icon={MapPin}>
           <span className="line-clamp-1">
             {builder.cities[0]}
             {builder.cities.length > 1 && ` +${builder.cities.length - 1}`}
@@ -685,16 +683,14 @@ function CompactBuilderCard({
 
 function Row({
   icon: Icon,
-  accent,
   children,
 }: {
   icon: typeof Award;
-  accent: (typeof ACCENTS)[number];
   children: React.ReactNode;
 }) {
   return (
     <div className="flex items-center gap-2.5">
-      <Icon className={`size-4 shrink-0 ${accent.text}`} strokeWidth={1.9} />
+      <Icon className="size-4 shrink-0 text-saffron" strokeWidth={1.9} />
       <span className="min-w-0">{children}</span>
     </div>
   );

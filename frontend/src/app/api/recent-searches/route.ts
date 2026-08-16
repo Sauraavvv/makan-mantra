@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getRecentSearchesCollection } from "@/lib/auth/db";
+import { getRecentSearchesCollection, type RecentSearchEntry } from "@/lib/auth/db";
 import { getLiveSession } from "@/lib/auth/session";
+import { mergeSearches, readSearches } from "@/lib/recent-searches";
 
-const HISTORY_LIMIT = 10;
 const NO_STORE = { "cache-control": "no-store" };
 
 function text(value: unknown) {
@@ -17,17 +17,20 @@ export async function GET() {
   try {
     const searches = await getRecentSearchesCollection();
     const doc = await searches.findOne({ user_id: session.userId });
-    const history = Array.isArray(doc?.searches) ? doc.searches.slice(0, HISTORY_LIMIT) : [];
+    const history = readSearches(doc?.searches);
 
     return NextResponse.json(
       {
-        items: history.map((label, index) => ({
+        items: history.map((entry, index) => ({
           id: `search-${index}`,
-          label,
-          tab: "Buy",
-          category: "All Residential",
-          query: label,
-          searchedAt: "",
+          label: entry.label,
+          tab: entry.tab,
+          category: entry.category,
+          query: entry.query,
+          // Epoch stands for "we never recorded this", which the client reads as
+          // an unknown time rather than as 1970.
+          searchedAt:
+            entry.searched_at.getTime() === 0 ? "" : entry.searched_at.toISOString(),
         })),
       },
       { headers: NO_STORE },
@@ -51,35 +54,28 @@ export async function POST(request: NextRequest) {
   const label = text(body.label);
   if (!label) return NextResponse.json({ error: "Missing search keyword" }, { status: 400 });
 
+  const searchedAt = new Date(text(body.searchedAt) || Date.now());
+
+  const entry: RecentSearchEntry = {
+    label,
+    tab: text(body.tab),
+    category: text(body.category),
+    query: text(body.query) || label,
+    searched_at: Number.isNaN(searchedAt.getTime()) ? new Date() : searchedAt,
+  };
+
   try {
     const searches = await getRecentSearchesCollection();
+
+    // Read then write, rather than one update pipeline: the stored array mixes
+    // entries with the older plain strings, and normalizing both inside Mongo
+    // costs more than reading ten items back.
+    const doc = await searches.findOne({ user_id: session.userId });
+    const next = mergeSearches([entry], readSearches(doc?.searches));
+
     await searches.updateOne(
       { user_id: session.userId },
-      [
-        {
-          $set: {
-            user_id: session.userId,
-            searches: {
-              $slice: [
-                {
-                  $concatArrays: [
-                    [label],
-                    {
-                      $filter: {
-                        input: { $ifNull: ["$searches", []] },
-                        as: "search",
-                        cond: { $ne: [{ $toLower: "$$search" }, label.toLowerCase()] },
-                      },
-                    },
-                  ],
-                },
-                HISTORY_LIMIT,
-              ],
-            },
-            updated_at: "$$NOW",
-          },
-        },
-      ],
+      { $set: { user_id: session.userId, searches: next, updated_at: new Date() } },
       { upsert: true },
     );
 
@@ -104,24 +100,15 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const searches = await getRecentSearchesCollection();
+    const doc = await searches.findOne({ user_id: session.userId });
+    const current = readSearches(doc?.searches);
+    const next = clearAll
+      ? []
+      : current.filter((entry) => entry.label.toLowerCase() !== label.toLowerCase());
+
     const result = await searches.updateOne(
       { user_id: session.userId },
-      [
-        {
-          $set: {
-            searches: clearAll
-              ? []
-              : {
-                  $filter: {
-                    input: { $ifNull: ["$searches", []] },
-                    as: "search",
-                    cond: { $ne: [{ $toLower: "$$search" }, label.toLowerCase()] },
-                  },
-                },
-            updated_at: "$$NOW",
-          },
-        },
-      ],
+      { $set: { searches: next, updated_at: new Date() } },
     );
 
     return NextResponse.json({ updated: result.modifiedCount > 0 }, { headers: NO_STORE });

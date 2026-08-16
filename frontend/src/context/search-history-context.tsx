@@ -3,8 +3,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useSession } from "@/context/session-context";
+import {
+  readGuestSearches,
+  subscribeGuestActivity,
+  writeGuestSearches,
+  type GuestSearch,
+} from "@/lib/guest-activity";
 
-const STORAGE_KEY = "mm-recent-searches";
 const HISTORY_LIMIT = 10;
 
 export type SearchHistoryInput = {
@@ -14,10 +19,8 @@ export type SearchHistoryInput = {
   query: string;
 };
 
-export type SearchHistoryItem = SearchHistoryInput & {
-  id: string;
-  searchedAt: string;
-};
+/** Same shape the device store keeps, so one is the other with no mapping. */
+export type SearchHistoryItem = GuestSearch;
 
 type SearchHistoryValue = {
   items: SearchHistoryItem[];
@@ -34,27 +37,6 @@ const SearchHistoryContext = createContext<SearchHistoryValue>({
   remove: async () => false,
   clearAll: async () => false,
 });
-
-function readLocalSearches(): SearchHistoryItem[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as Array<Record<string, unknown>>;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.slice(0, HISTORY_LIMIT).map((item) => ({
-      id: String(item.id || Date.now()),
-      label: String(item.label || ""),
-      tab: String(item.tab || "Buy"),
-      category: String(item.category || "All Residential"),
-      query: String(item.query || ""),
-      searchedAt: String(item.searchedAt || item.createdAt || new Date().toISOString()),
-    })).filter((item) => item.label);
-  } catch {
-    return [];
-  }
-}
-
-function writeLocalSearches(items: SearchHistoryItem[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, HISTORY_LIMIT)));
-}
 
 function newestFirst(items: SearchHistoryItem[]) {
   return [...items].sort(
@@ -80,12 +62,11 @@ export function SearchHistoryProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const syncLocal = () => {
-      setLocalItems(readLocalSearches());
+      setLocalItems(readGuestSearches());
       setLocalLoaded(true);
     };
     syncLocal();
-    window.addEventListener("storage", syncLocal);
-    return () => window.removeEventListener("storage", syncLocal);
+    return subscribeGuestActivity(syncLocal);
   }, []);
 
   useEffect(() => {
@@ -132,12 +113,21 @@ export function SearchHistoryProvider({ children }: { children: ReactNode }) {
       id: `${Date.now()}-${label}`,
       searchedAt: new Date().toISOString(),
     };
-    setLocalItems((current) => {
-      const next = [item, ...current.filter((entry) => entry.label.toLowerCase() !== label.toLowerCase())]
-        .slice(0, HISTORY_LIMIT);
-      writeLocalSearches(next);
-      return next;
-    });
+    // Only a signed-out search goes to the device store. Writing one there while
+    // signed in would leave something for the next sign-in to claim on every
+    // page it visits, when the account already has it.
+    // Read the store rather than the state to build the next list: the write
+    // below announces itself to every provider listening, and doing that inside
+    // a state updater would have React setting state mid-render.
+    if (!user) {
+      const next = [
+        item,
+        ...readGuestSearches().filter((entry) => entry.label.toLowerCase() !== label.toLowerCase()),
+      ].slice(0, HISTORY_LIMIT);
+
+      writeGuestSearches(next);
+      setLocalItems(next);
+    }
 
     if (user) {
       setServerItems((current) => [item, ...current.filter((entry) => entry.label.toLowerCase() !== label.toLowerCase())]
@@ -163,14 +153,12 @@ export function SearchHistoryProvider({ children }: { children: ReactNode }) {
       }
 
       const normalizedLabel = search.label.trim().toLowerCase();
-      setLocalItems((current) => {
-        const next = current.filter(
-          (item) =>
-            item.id !== search.id && item.label.trim().toLowerCase() !== normalizedLabel,
-        );
-        writeLocalSearches(next);
-        return next;
-      });
+      const next = readGuestSearches().filter(
+        (item) => item.id !== search.id && item.label.trim().toLowerCase() !== normalizedLabel,
+      );
+
+      writeGuestSearches(next);
+      setLocalItems(next);
       setServerItems((current) =>
         current.filter(
           (item) =>
@@ -194,7 +182,7 @@ export function SearchHistoryProvider({ children }: { children: ReactNode }) {
 
     setLocalItems([]);
     setServerItems([]);
-    writeLocalSearches([]);
+    writeGuestSearches([]);
     return true;
   }, [user]);
 

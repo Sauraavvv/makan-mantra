@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useLocation } from "@/context/location-context";
 import { DotPattern } from "@/registry/magicui/dot-pattern";
+import { subscribeAuthModal } from "@/lib/auth-modal";
 import { stateSlug } from "@/lib/state-routes";
 import { stateCardImage } from "@/lib/state-images";
 import { STATES } from "@/lib/states";
@@ -155,6 +156,11 @@ export function Header({
     setAuthInitial({ mode });
     setLoginOpen(true);
   }
+
+  // Anything on the page can ask for the modal, which the `?auth=` read above
+  // cannot serve: that runs once, on mount, and a button on the page the header
+  // is already mounted on never gets a second one.
+  useEffect(() => subscribeAuthModal((mode) => openAuthModal(mode)), []);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

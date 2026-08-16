@@ -11,6 +11,12 @@ import {
 } from "react";
 
 import { useSession } from "@/context/session-context";
+import {
+  readGuestSaves,
+  subscribeGuestActivity,
+  writeGuestSaves,
+  type GuestSave,
+} from "@/lib/guest-activity";
 
 export type SavedSnapshot = {
   title: string;
@@ -35,6 +41,8 @@ type SavedValue = {
   toggle: (propertyId: string, snapshot: SavedSnapshot) => Promise<ToggleResult>;
   /** False until the first read settles, so hearts do not flicker off then on. */
   loaded: boolean;
+  /** True while the shortlist lives on this device rather than in an account. */
+  isGuest: boolean;
 };
 
 const SavedContext = createContext<SavedValue>({
@@ -43,10 +51,15 @@ const SavedContext = createContext<SavedValue>({
   isSaved: () => false,
   toggle: async () => "signin",
   loaded: false,
+  isGuest: false,
 });
 
 export function useSaved() {
   return useContext(SavedContext);
+}
+
+function fromGuest(save: GuestSave): SavedItem {
+  return { propertyId: save.propertyId, ...save.snapshot };
 }
 
 export function SavedProvider({ children }: { children: ReactNode }) {
@@ -54,13 +67,27 @@ export function SavedProvider({ children }: { children: ReactNode }) {
   const [fetched, setFetched] = useState<SavedItem[]>([]);
   const [fetchedIds, setFetchedIds] = useState<string[]>([]);
   const [fetchSettled, setFetchSettled] = useState(false);
+  const [guest, setGuest] = useState<GuestSave[]>([]);
 
-  // Signed-out visitors have no shortlist to speak of, so it is derived rather
-  // than stored — no effect has to race the session to clear it.
+  // A signed-out visitor still has a shortlist — it just lives on the device
+  // until they sign in, when it is handed to the account. Asking them to sign in
+  // before they may keep anything loses the save and usually the visitor.
   const signedOut = sessionLoaded && !user;
-  const items = useMemo(() => (signedOut ? [] : fetched), [signedOut, fetched]);
-  const ids = useMemo(() => (signedOut ? [] : fetchedIds), [signedOut, fetchedIds]);
+  const items = useMemo(
+    () => (signedOut ? guest.map(fromGuest) : fetched),
+    [signedOut, guest, fetched],
+  );
+  const ids = useMemo(
+    () => (signedOut ? guest.map((save) => save.propertyId) : fetchedIds),
+    [signedOut, guest, fetchedIds],
+  );
   const loaded = signedOut || fetchSettled;
+
+  useEffect(() => {
+    const syncGuest = () => setGuest(readGuestSaves());
+    syncGuest();
+    return subscribeGuestActivity(syncGuest);
+  }, []);
 
   useEffect(() => {
     if (!sessionLoaded || !user) return;
@@ -87,14 +114,24 @@ export function SavedProvider({ children }: { children: ReactNode }) {
     };
   }, [sessionLoaded, user]);
 
-  const isSaved = useCallback(
-    (propertyId: string) => ids.includes(propertyId),
-    [ids],
-  );
+  const isSaved = useCallback((propertyId: string) => ids.includes(propertyId), [ids]);
 
   const toggle = useCallback(
     async (propertyId: string, snapshot: SavedSnapshot): Promise<ToggleResult> => {
-      if (!user) return "signin";
+      if (!user) {
+        const current = readGuestSaves();
+        const wasSaved = current.some((save) => save.propertyId === propertyId);
+        const next = wasSaved
+          ? current.filter((save) => save.propertyId !== propertyId)
+          : [
+              { propertyId, snapshot, savedAt: new Date().toISOString() },
+              ...current.filter((save) => save.propertyId !== propertyId),
+            ];
+
+        writeGuestSaves(next);
+        setGuest(next);
+        return wasSaved ? "removed" : "saved";
+      }
 
       const wasSaved = ids.includes(propertyId);
       const previousItems = items;
@@ -143,7 +180,9 @@ export function SavedProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <SavedContext.Provider value={{ items, ids, isSaved, toggle, loaded }}>
+    <SavedContext.Provider
+      value={{ items, ids, isSaved, toggle, loaded, isGuest: signedOut }}
+    >
       {children}
     </SavedContext.Provider>
   );

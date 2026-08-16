@@ -1,9 +1,25 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
-import type { SavedSnapshot } from "@/context/saved-context";
 import { useSession } from "@/context/session-context";
+import type { SavedSnapshot } from "@/context/saved-context";
+import {
+  readGuestViews,
+  subscribeGuestActivity,
+  writeGuestViews,
+  type GuestView,
+} from "@/lib/guest-activity";
+
+const HISTORY_LIMIT = 12;
 
 export type RecentPropertyItem = SavedSnapshot & {
   propertyId: string;
@@ -26,13 +42,31 @@ export function useRecentProperties() {
   return useContext(RecentPropertiesContext);
 }
 
+function fromGuest(view: GuestView): RecentPropertyItem {
+  return { propertyId: view.propertyId, viewedAt: view.viewedAt, ...view.snapshot };
+}
+
 export function RecentPropertiesProvider({ children }: { children: ReactNode }) {
   const { user, loaded: sessionLoaded } = useSession();
   const [fetched, setFetched] = useState<RecentPropertyItem[]>([]);
   const [fetchSettled, setFetchSettled] = useState(false);
+  const [guest, setGuest] = useState<GuestView[]>([]);
   const signedOut = sessionLoaded && !user;
-  const items = useMemo(() => (signedOut ? [] : fetched), [signedOut, fetched]);
+
+  // Signed out, the history is whatever this device recorded; the account's own
+  // copy takes over the moment there is one, and the device's copy is handed to
+  // it on sign-in rather than shown alongside.
+  const items = useMemo(
+    () => (signedOut ? guest.map(fromGuest) : fetched),
+    [signedOut, guest, fetched],
+  );
   const loaded = signedOut || fetchSettled;
+
+  useEffect(() => {
+    const syncGuest = () => setGuest(readGuestViews());
+    syncGuest();
+    return subscribeGuestActivity(syncGuest);
+  }, []);
 
   useEffect(() => {
     if (!sessionLoaded || !user) return;
@@ -57,14 +91,25 @@ export function RecentPropertiesProvider({ children }: { children: ReactNode }) 
 
   const track = useCallback(
     async (propertyId: string, snapshot: SavedSnapshot) => {
-      if (!user || !propertyId) return;
+      if (!propertyId) return;
 
-      const next: RecentPropertyItem = {
-        propertyId,
-        viewedAt: new Date().toISOString(),
-        ...snapshot,
-      };
-      setFetched((current) => [next, ...current.filter((item) => item.propertyId !== propertyId)].slice(0, 12));
+      const viewedAt = new Date().toISOString();
+
+      if (!user) {
+        const next = [
+          { propertyId, snapshot, viewedAt },
+          ...readGuestViews().filter((view) => view.propertyId !== propertyId),
+        ].slice(0, HISTORY_LIMIT);
+
+        writeGuestViews(next);
+        setGuest(next);
+        return;
+      }
+
+      const next: RecentPropertyItem = { propertyId, viewedAt, ...snapshot };
+      setFetched((current) =>
+        [next, ...current.filter((item) => item.propertyId !== propertyId)].slice(0, HISTORY_LIMIT),
+      );
 
       await fetch("/api/recent-properties", {
         method: "POST",
