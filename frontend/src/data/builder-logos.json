@@ -1,0 +1,506 @@
+{
+  "8 Boundaries Builders Private Limited": {
+    "id": "builders/8-boundaries-builders"
+  },
+  "99Builders Pvt. Ltd.": {
+    "id": "builders/99builders"
+  },
+  "Aastha Group": {
+    "id": "builders/aastha-group"
+  },
+  "ABAD Builders Private Limited": {
+    "id": "builders/abad-builders"
+  },
+  "ACE Group India": {
+    "id": "builders/ace-group-india"
+  },
+  "Acron Developers Private Limited": {
+    "id": "builders/acron-developers"
+  },
+  "Adani Realty": {
+    "id": "builders/adani-realty"
+  },
+  "Adarsh Buildestate Limited": {
+    "id": "builders/adarsh-buildestate"
+  },
+  "Agrawal Construction Co.": {
+    "id": "builders/agrawal-construction-co"
+  },
+  "Akshaya Private Limited": {
+    "id": "builders/akshaya"
+  },
+  "Ambuja Neotia Holdings Private Limited": {
+    "id": "builders/ambuja-neotia-holdings"
+  },
+  "Amitus Infra": {
+    "id": "builders/amitus-infra"
+  },
+  "Ansal Housing Limited": {
+    "id": "builders/ansal-housing"
+  },
+  "Anukampa Builders Private Limited": {
+    "id": "builders/anukampa-builders"
+  },
+  "Aparna Constructions and Estates Private Limited": {
+    "id": "builders/aparna-constructions-and-estates"
+  },
+  "Appaswamy Real Estates Limited": {
+    "id": "builders/appaswamy-real-estates"
+  },
+  "APS Construction & Builders": {
+    "id": "builders/aps-construction-builders"
+  },
+  "Asasa Builders & Contractor": {
+    "id": "builders/asasa-builders-contractor"
+  },
+  "Ashiana Housing Limited": {
+    "id": "builders/ashiana-housing",
+    "tile": "dark"
+  },
+  "Ashiana Housing Ltd.": {
+    "id": "builders/ashiana-housing",
+    "tile": "dark"
+  },
+  "Ashray Real Estate Developers": {
+    "id": "builders/ashray-real-estate-developers"
+  },
+  "Asset Homes Private Limited": {
+    "id": "builders/asset-homes"
+  },
+  "Avinash Developers Private Limited": {
+    "id": "builders/avinash-developers"
+  },
+  "BCM Group": {
+    "id": "builders/bcm-group"
+  },
+  "Blue Wave Design And Construction": {
+    "id": "builders/blue-wave-design-and-construction"
+  },
+  "Brigade Enterprises Limited": {
+    "id": "builders/brigade-enterprises"
+  },
+  "BRL Home Builder & Design Pvt. Ltd.": {
+    "id": "builders/brl-home-builder-design"
+  },
+  "Casagrand Premier Builder Limited": {
+    "id": "builders/casagrand-premier-builder"
+  },
+  "Chester Hills Group": {
+    "id": "builders/chester-hills-group"
+  },
+  "Commonwealth Developers Private Limited": {
+    "id": "builders/commonwealth-developers"
+  },
+  "Denzong Construction and Infra Projects Pvt. Ltd": {
+    "id": "builders/denzong-construction-and-infra-projects"
+  },
+  "Desai Homes": {
+    "id": "builders/desai-homes"
+  },
+  "Dhar Construction Company": {
+    "id": "builders/dhar-construction-company"
+  },
+  "DLF Limited": {
+    "id": "builders/dlf"
+  },
+  "Economic Constructions": {
+    "id": "builders/economic-constructions"
+  },
+  "Eldeco Infrastructure and Properties Limited": {
+    "id": "builders/eldeco-infrastructure-and-properties"
+  },
+  "Emami Realty Limited": {
+    "id": "builders/emami-realty"
+  },
+  "Escala Realty India Private Limited": {
+    "id": "builders/escala-realty-india"
+  },
+  "Eswari Builders": {
+    "id": "builders/eswari-builders"
+  },
+  "EVOS Buildcon Private Limited": {
+    "id": "builders/evos-buildcon"
+  },
+  "Fauz Properties Private Limited": {
+    "id": "builders/fauz-properties"
+  },
+  "Fortune Builders": {
+    "id": "builders/fortune-builders"
+  },
+  "Ganesh Housing Corporation Limited": {
+    "id": "builders/ganesh-housing-corporation"
+  },
+  "Gaurs Group": {
+    "id": "builders/gaurs-group"
+  },
+  "Gillco Developers & Builders Private Limited": {
+    "id": "builders/gillco-developers-builders"
+  },
+  "GNS Builders": {
+    "id": "builders/gns-builders"
+  },
+  "Godrej Properties Limited": {
+    "id": "builders/godrej-properties"
+  },
+  "Hiranandani Constructions Private Limited": {
+    "id": "builders/hiranandani-constructions"
+  },
+  "HN Safal Group": {
+    "id": "builders/hn-safal-group"
+  },
+  "Homeland Group": {
+    "id": "builders/homeland-group",
+    "tile": "dark"
+  },
+  "Honeyy Group": {
+    "id": "builders/honeyy-group"
+  },
+  "Icon Architects and Builders": {
+    "id": "builders/icon-architects-and-builders"
+  },
+  "Ilance Developers Private Limited": {
+    "id": "builders/ilance-developers"
+  },
+  "Imperial Realty and Developments Private Limited": {
+    "id": "builders/imperial-realty-and-developments"
+  },
+  "Inbuild Construction Company": {
+    "id": "builders/inbuild-construction-company"
+  },
+  "Jain Housing & Constructions Limited": {
+    "id": "builders/jain-housing-constructions",
+    "tile": "dark"
+  },
+  "Jammu & Kashmir Housing Board": {
+    "id": "builders/jammu-kashmir-housing-board"
+  },
+  "Janta Land Promoters Private Limited": {
+    "id": "builders/janta-land-promoters",
+    "tile": "dark"
+  },
+  "Jeno Maran Builders Pvt. Ltd.": {
+    "id": "builders/jeno-maran-builders"
+  },
+  "Jordan Construction": {
+    "id": "builders/jordan-construction"
+  },
+  "K Raheja Corp": {
+    "id": "builders/k-raheja-corp"
+  },
+  "Kanglei Construction & Consultant Pvt. Ltd.": {
+    "id": "builders/kanglei-construction-consultant",
+    "tile": "dark"
+  },
+  "Kenge Construction Company": {
+    "id": "builders/kenge-construction-company"
+  },
+  "Khiangte Construction Pvt. Ltd.": {
+    "id": "builders/khiangte-construction"
+  },
+  "L.B. Associates": {
+    "id": "builders/l-b-associates"
+  },
+  "Lakshadweep Development Corporation Limited (LDCL)": {
+    "id": "builders/lakshadweep-development-corporation"
+  },
+  "Lushai Engineers Pvt. Ltd.": {
+    "id": "builders/lushai-engineers"
+  },
+  "M/s Rinya Yangfo Construction": {
+    "id": "builders/rinya-yangfo-construction"
+  },
+  "M/S Tripureswari Developers": {
+    "id": "builders/tripureswari-developers"
+  },
+  "M3M India Private Limited": {
+    "id": "builders/m3m-india"
+  },
+  "Macrotech Developers Limited": {
+    "id": "builders/macrotech-developers"
+  },
+  "Mahalaxmi Buildwell India Private Limited": {
+    "id": "builders/mahalaxmi-buildwell-india"
+  },
+  "Mahima Real Estate Private Limited": {
+    "id": "builders/mahima-real-estate"
+  },
+  "Mangang Constructions Pvt. Ltd.": {
+    "id": "builders/mangang-constructions"
+  },
+  "Manglam Build-Developers Limited": {
+    "id": "builders/manglam-build-developers",
+    "tile": "dark"
+  },
+  "Maurya Homes Pvt. Ltd.": {
+    "id": "builders/maurya-homes"
+  },
+  "Mentok Ri Projects Private Limited": {
+    "id": "builders/mentok-ri-projects"
+  },
+  "Merlin Projects Limited": {
+    "id": "builders/merlin-projects"
+  },
+  "Metro Group": {
+    "id": "builders/metro-group"
+  },
+  "MK Builders and Developers": {
+    "id": "builders/mk-builders-and-developers"
+  },
+  "Models Construction Private Limited": {
+    "id": "builders/models-construction"
+  },
+  "Modi Builders": {
+    "id": "builders/modi-builders"
+  },
+  "Moulana Trading And Contracting Private Limited": {
+    "id": "builders/moulana-trading-and-contracting"
+  },
+  "Mundeshwari Builders And Developers Pvt Ltd": {
+    "id": "builders/mundeshwari-builders-and-developers"
+  },
+  "Mungipa Trade Links Pvt Ltd": {
+    "id": "builders/mungipa-trade-links"
+  },
+  "Muskan Realty": {
+    "id": "builders/muskan-realty"
+  },
+  "MVV Builders": {
+    "id": "builders/mvv-builders"
+  },
+  "My Home Constructions Private Limited": {
+    "id": "builders/my-home-constructions"
+  },
+  "N.N. Construction & Decor": {
+    "id": "builders/n-n-construction-decor"
+  },
+  "Naagaamii Infratech Private Limited": {
+    "id": "builders/naagaamii-infratech"
+  },
+  "Nazcon": {
+    "id": "builders/nazcon"
+  },
+  "Nideja Properties Private Limited": {
+    "id": "builders/nideja-properties"
+  },
+  "Noel Villas and Apartments": {
+    "id": "builders/noel-villas-and-apartments"
+  },
+  "Nongrum Developers and Builders": {
+    "id": "builders/nongrum-developers-and-builders"
+  },
+  "Nutan Construction": {
+    "id": "builders/nutan-construction"
+  },
+  "Oberoi Realty Limited": {
+    "id": "builders/oberoi-realty"
+  },
+  "Ocean Emperor Private Limited": {
+    "id": "builders/ocean-emperor"
+  },
+  "Okaville Developers": {
+    "id": "builders/okaville-developers",
+    "tile": "dark"
+  },
+  "Omaxe Limited": {
+    "id": "builders/omaxe"
+  },
+  "Orien Realty LLP": {
+    "id": "builders/orien-realty"
+  },
+  "Pacific Development Corporation Limited": {
+    "id": "builders/pacific-development-corporation"
+  },
+  "Panchmukhi Infra Rescon Private Limited": {
+    "id": "builders/panchmukhi-infra-rescon"
+  },
+  "Pioneer Buildcon": {
+    "id": "builders/pioneer-buildcon"
+  },
+  "Pragjyotish Housing Pvt. Ltd.": {
+    "id": "builders/pragjyotish-housing"
+  },
+  "Prakruti Avenues Pvt Ltd": {
+    "id": "builders/prakruti-avenues"
+  },
+  "Pranami Group": {
+    "id": "builders/pranami-group",
+    "tile": "dark"
+  },
+  "Prestige Estate Projects Limited": {
+    "id": "builders/prestige-estate-projects"
+  },
+  "Protech Group": {
+    "id": "builders/protech-group"
+  },
+  "PS Group Realty Private Limited": {
+    "id": "builders/ps-group-realty"
+  },
+  "Puravankara Limited": {
+    "id": "builders/puravankara"
+  },
+  "R&T Builders": {
+    "id": "builders/r-t-builders"
+  },
+  "Rahaman Construction": {
+    "id": "builders/rahaman-construction",
+    "tile": "dark"
+  },
+  "Raheja Developers Limited": {
+    "id": "builders/raheja-developers"
+  },
+  "Rajapushpa Properties Private Limited": {
+    "id": "builders/rajapushpa-properties"
+  },
+  "Ramani Realtors Private Limited": {
+    "id": "builders/ramani-realtors"
+  },
+  "Ramky Estates & Farms Limited": {
+    "id": "builders/ramky-estates-farms"
+  },
+  "RCP Infratech Private Limited": {
+    "id": "builders/rcp-infratech"
+  },
+  "Ridhi Sidhi Group": {
+    "id": "builders/ridhi-sidhi-group"
+  },
+  "Rishabh Builders": {
+    "id": "builders/rishabh-builders"
+  },
+  "RK Fortune Developers Pvt. Ltd.": {
+    "id": "builders/rk-fortune-developers"
+  },
+  "Roy Elite Constructions": {
+    "id": "builders/roy-elite-constructions"
+  },
+  "RPD Constructions": {
+    "id": "builders/rpd-constructions"
+  },
+  "Ryzkaka Business Group": {
+    "id": "builders/ryzkaka-business-group"
+  },
+  "Saakaar Constructions Pvt Ltd": {
+    "id": "builders/saakaar-constructions"
+  },
+  "SAGE Realty": {
+    "id": "builders/sage-realty",
+    "tile": "dark"
+  },
+  "Sankalp Infra Realties Private Limited": {
+    "id": "builders/sankalp-infra-realties"
+  },
+  "Savvy Infrastructure Private Limited": {
+    "id": "builders/savvy-infrastructure"
+  },
+  "SBP Group": {
+    "id": "builders/sbp-group"
+  },
+  "Sevvi Construction": {
+    "id": "builders/sevvi-construction",
+    "tile": "dark"
+  },
+  "Shalimar Corp Limited": {
+    "id": "builders/shalimar-corp",
+    "tile": "dark"
+  },
+  "Shalimar Infrastructure Developers": {
+    "id": "builders/shalimar-infrastructure-developers"
+  },
+  "Shivalik Group": {
+    "id": "builders/shivalik-group"
+  },
+  "Shuvam Construction Private Limited": {
+    "id": "builders/shuvam-construction"
+  },
+  "Signature Global (India) Limited": {
+    "id": "builders/signature-global"
+  },
+  "Silk Route Construction Company": {
+    "id": "builders/silk-route-construction-company"
+  },
+  "Singhania Buildcon Private Limited": {
+    "id": "builders/singhania-buildcon"
+  },
+  "Singla Builders and Promoters": {
+    "id": "builders/singla-builders-and-promoters"
+  },
+  "Skyline Builders": {
+    "id": "builders/skyline-builders"
+  },
+  "SM Developers": {
+    "id": "builders/sm-developers"
+  },
+  "Sobha Limited": {
+    "id": "builders/sobha"
+  },
+  "Srijan Realty Private Limited": {
+    "id": "builders/srijan-realty"
+  },
+  "Studio Aesthetic Ladakh": {
+    "id": "builders/studio-aesthetic-ladakh"
+  },
+  "Subham Group": {
+    "id": "builders/subham-group"
+  },
+  "Supertech Limited": {
+    "id": "builders/supertech"
+  },
+  "Surya Nestbuild Ltd": {
+    "id": "builders/surya-nestbuild"
+  },
+  "Sushma Buildtech Limited": {
+    "id": "builders/sushma-buildtech"
+  },
+  "Swapnoneer Realtors Pvt. Ltd.": {
+    "id": "builders/swapnoneer-realtors"
+  },
+  "T.K. Engineering Consortium Private Limited": {
+    "id": "builders/t-k-engineering-consortium"
+  },
+  "TARC Limited": {
+    "id": "builders/tarc"
+  },
+  "Taru Enterprises Pvt. Ltd.": {
+    "id": "builders/taru-enterprises"
+  },
+  "TATA Housing Development Company Limited": {
+    "id": "builders/tata-housing-development-company"
+  },
+  "Total Environment Building Systems Private Limited": {
+    "id": "builders/total-environment-building-systems"
+  },
+  "Ura Builders Pvt. Ltd.": {
+    "id": "builders/ura-builders"
+  },
+  "Utkal Builders Limited": {
+    "id": "builders/utkal-builders"
+  },
+  "Uttarayan Group": {
+    "id": "builders/uttarayan-group"
+  },
+  "Vaisakhi Developers": {
+    "id": "builders/vaisakhi-developers"
+  },
+  "Venus Star Construction Pvt Ltd": {
+    "id": "builders/venus-star-construction"
+  },
+  "Verma Engineers & Builders": {
+    "id": "builders/verma-engineers-builders"
+  },
+  "Vinco Construction (Vinco Group)": {
+    "id": "builders/vinco-construction",
+    "tile": "dark"
+  },
+  "Wallfort Properties Private Limited": {
+    "id": "builders/wallfort-properties"
+  },
+  "Windlass Developers Private Limited": {
+    "id": "builders/windlass-developers"
+  },
+  "Z Estates Private Limited": {
+    "id": "builders/z-estates",
+    "tile": "dark"
+  },
+  "Zoram Infrastructure and Industrial Development Corporation Limited (ZIDCO)": {
+    "id": "builders/zoram-infrastructure-and-industrial-development-co"
+  }
+}

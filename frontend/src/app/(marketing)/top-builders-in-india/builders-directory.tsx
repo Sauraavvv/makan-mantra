@@ -11,7 +11,9 @@ import {
   X,
 } from "lucide-react";
 
+import { BuilderLogo } from "@/components/site/builder-logo";
 import type { DirectoryBuilder } from "@/lib/builders-directory";
+import { stateSlug } from "@/lib/state-routes";
 
 const INITIAL_FILTERS = ["ALL", "0-9", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"] as const;
 type InitialFilter = (typeof INITIAL_FILTERS)[number];
@@ -24,9 +26,62 @@ function builderInitial(name: string): InitialFilter {
     : "0-9";
 }
 
+/** The card a `?builder=…&state=…` link points at, or null for a bare visit. */
+function builderFromQuery(builders: DirectoryBuilder[], query: URLSearchParams) {
+  const slug = query.get("builder");
+  if (!slug) return null;
+
+  const state = query.get("state");
+  const matches = builders.filter((builder) => builder.slug === slug);
+
+  // A builder listed in several states has a card in each; `state` picks one,
+  // and without it any of them beats opening nothing.
+  return matches.find((builder) => stateSlug(builder.state) === state) ?? matches[0] ?? null;
+}
+
 export function BuildersDirectory({ builders }: { builders: DirectoryBuilder[] }) {
   const [activeInitial, setActiveInitial] = useState<InitialFilter>("ALL");
   const [selectedBuilder, setSelectedBuilder] = useState<DirectoryBuilder | null>(null);
+
+  /**
+   * Opens the profile a link arrived on — the home page's "Explore builder"
+   * lands here with the builder named in the query.
+   *
+   * Read off `window.location` rather than through `useSearchParams`, which
+   * would drop this whole component out of the prerender and leave 163 cards of
+   * indexable content to client-side rendering. The effect runs on mount, and a
+   * client-side navigation from the home page mounts it fresh, so a link always
+   * lands on the right profile.
+   *
+   * It has to be an effect, not a lazy initial state: the page is prerendered
+   * with the drawer closed, so opening it during the first client render would
+   * be a hydration mismatch. Hence the rule below is off for this one line.
+   */
+  useEffect(() => {
+    const target = builderFromQuery(builders, new URLSearchParams(window.location.search));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (target) setSelectedBuilder(target);
+  }, [builders]);
+
+  /**
+   * Keeps the address bar on the open profile, so the page can be shared or
+   * reloaded as it stands. `replaceState` rather than a router push: the drawer
+   * is a view of this page, not a place of its own to go back to.
+   */
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+
+    if (selectedBuilder) {
+      query.set("builder", selectedBuilder.slug);
+      query.set("state", stateSlug(selectedBuilder.state));
+    } else {
+      query.delete("builder");
+      query.delete("state");
+    }
+
+    const search = query.toString();
+    window.history.replaceState(null, "", search ? `?${search}` : window.location.pathname);
+  }, [selectedBuilder]);
 
   const availableInitials = useMemo(
     () => new Set(builders.map((builder) => builderInitial(builder.displayName))),
@@ -113,32 +168,36 @@ function BuilderCard({
 }) {
   return (
     <article className="flex h-full flex-col rounded-[18px] border border-border bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
-      <div>
-        {/* Registered name on hover; the card itself drops the company form. */}
-        <div className="flex items-start justify-between gap-3">
-          <h2 title={builder.name} className="min-w-0 text-base font-extrabold leading-snug text-foreground">
-            {builder.href ? (
-              <Link href={builder.href} className="hover:text-primary">
-                {builder.displayName}
-              </Link>
-            ) : (
-              builder.displayName
-            )}
-          </h2>
-          <button
-            type="button"
-            onClick={onViewDetails}
-            className="shrink-0 text-xs font-semibold text-[#f97316] hover:underline"
+      <div className="flex items-start gap-3">
+        <BuilderLogo builder={builder} className="size-14" />
+
+        <div className="min-w-0 flex-1">
+          {/* Registered name on hover; the card itself drops the company form. */}
+          <div className="flex items-start justify-between gap-3">
+            <h2 title={builder.name} className="min-w-0 text-base font-extrabold leading-snug text-foreground">
+              {builder.href ? (
+                <Link href={builder.href} className="hover:text-primary">
+                  {builder.displayName}
+                </Link>
+              ) : (
+                builder.displayName
+              )}
+            </h2>
+            <button
+              type="button"
+              onClick={onViewDetails}
+              className="shrink-0 text-xs font-semibold text-[#f97316] hover:underline"
+            >
+              View details
+            </button>
+          </div>
+          <Link
+            href={builder.stateHref}
+            className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-primary/10"
           >
-            View details
-          </button>
+            <MapPin className="size-3" /> {builder.state}
+          </Link>
         </div>
-        <Link
-          href={builder.stateHref}
-          className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-primary/10"
-        >
-          <MapPin className="size-3" /> {builder.state}
-        </Link>
       </div>
 
     </article>
@@ -182,12 +241,18 @@ function BuilderDetailsDrawer({ builder, onClose }: { builder: DirectoryBuilder 
               <span>Builder profile</span>
               <span className="h-px w-9 bg-[#f97316]" />
             </p>
-            <h2
-              id="builder-details-heading"
-              className="mt-3 break-words text-[1.75rem] font-semibold leading-tight text-[#0c182a] [@media(max-height:720px)]:mt-2 [@media(max-height:720px)]:text-2xl"
-            >
-              {builder.displayName}
-            </h2>
+            <div className="mt-3 flex items-center gap-3 [@media(max-height:720px)]:mt-2">
+              <BuilderLogo
+                builder={builder}
+                className="size-16 shadow-sm [@media(max-height:720px)]:size-14"
+              />
+              <h2
+                id="builder-details-heading"
+                className="min-w-0 break-words text-[1.75rem] font-semibold leading-tight text-[#0c182a] [@media(max-height:720px)]:text-2xl"
+              >
+                {builder.displayName}
+              </h2>
+            </div>
             <Link
               href={builder.stateHref}
               className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-orange-200 bg-white/80 px-3 py-1.5 text-xs font-bold text-[#1d293a] transition-colors hover:bg-white [@media(max-height:720px)]:mt-2"

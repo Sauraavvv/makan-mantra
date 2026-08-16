@@ -11,6 +11,7 @@ import {
   MapPin,
 } from "lucide-react";
 
+import { BuilderLogo } from "@/components/site/builder-logo";
 import { useLocation } from "@/context/location-context";
 import type { DirectoryBuilder } from "@/lib/builders-directory";
 import { stateSlug } from "@/lib/state-routes";
@@ -379,12 +380,15 @@ function FeaturedBuilder({ builder }: { builder: DirectoryBuilder }) {
               and without the reserve the section jolts as the queue turns past
               them. The one-line names centre in it rather than hanging from the
               top, which also keeps the band a constant height. */}
-          <h3
-            title={builder.name}
-            className="flex min-h-[3.75rem] items-center text-2xl font-bold leading-tight tracking-tight text-[#0A2036] xl:min-h-[4.5rem] xl:text-[28px]"
-          >
-            {builder.displayName}
-          </h3>
+          <div className="flex min-h-[3.75rem] items-center gap-3 xl:min-h-[4.5rem]">
+            <BuilderLogo builder={builder} className="size-14 shadow-sm" />
+            <h3
+              title={builder.name}
+              className="min-w-0 text-2xl font-bold leading-tight tracking-tight text-[#0A2036] xl:text-[28px]"
+            >
+              {builder.displayName}
+            </h3>
+          </div>
         </Reveal>
       </div>
 
@@ -423,11 +427,14 @@ function FeaturedBuilder({ builder }: { builder: DirectoryBuilder }) {
       </Reveal>
 
       <Reveal step={5} className="mt-auto pt-4">
+        {/* Names the builder in the query, which the directory reads to open
+            this same profile in its drawer — the reader carries on where they
+            left off instead of hunting the card down in a list of 163. */}
         <Link
-          href="/top-builders-in-india"
+          href={`/top-builders-in-india?builder=${builder.slug}&state=${stateSlug(builder.state)}`}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0A2036] hover:underline"
         >
-          View all builders <ArrowRight className="size-4 text-saffron" strokeWidth={2} />
+          Explore builder <ArrowRight className="size-4 text-saffron" strokeWidth={2} />
         </Link>
       </Reveal>
     </article>
@@ -629,16 +636,23 @@ function CompactBuilderCard({
       title={`Show ${builder.displayName} in full`}
       className="flex h-full min-h-[265px] w-full flex-col rounded-md border border-[#DCE5F3] bg-white px-4 py-4 text-left transition-transform duration-300 hover:-translate-y-1 hover:border-[#1160F0]"
     >
-      <div
-        className={`mx-auto grid size-14 place-items-center rounded-md ${accent.bg} ${accent.text}`}
-      >
-        <div className="text-center">
-          <Building2 className="mx-auto size-5" strokeWidth={1.8} />
-          <span className="mt-0.5 block text-sm font-extrabold leading-none">
-            {getInitials(builder.displayName)}
-          </span>
+      {/* The accent colour lives on the rule below rather than the tile once a
+          logo takes the tile's place, so the cards stay colour-coded either
+          way. */}
+      {builder.logo ? (
+        <BuilderLogo builder={builder} className="mx-auto size-14" />
+      ) : (
+        <div
+          className={`mx-auto grid size-14 place-items-center rounded-md ${accent.bg} ${accent.text}`}
+        >
+          <div className="text-center">
+            <Building2 className="mx-auto size-5" strokeWidth={1.8} />
+            <span className="mt-0.5 block text-sm font-extrabold leading-none">
+              {getInitials(builder.displayName)}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       <h3 className="mt-3 min-h-12 text-center text-sm font-extrabold leading-snug text-[#071B45]">
         {builder.displayName}
