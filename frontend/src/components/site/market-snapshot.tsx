@@ -62,7 +62,7 @@ const CARD_ACCENTS = [
   },
 ] as const;
 
-/** Colours the initials bubbles so a list of developers reads as distinct rows. */
+/** Colours the project tiles so the rows in that card read as distinct. */
 const AVATAR_TONES = [
   "bg-[#1160F0]/12 text-[#1160F0]",
   "bg-[#0F8B8D]/12 text-[#0F8B8D]",
@@ -103,23 +103,13 @@ function formatRange(
   return `${format(min)} – ${format(max)}`;
 }
 
-/** "+1.8%" and "1.8%" both mean 1.8. */
+/** "+4.2%" → 4.2; anything unparseable is treated as no reading at all. */
 function parsePercent(value: string | null | undefined) {
   if (!value) return null;
   const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function initialsOf(name: string) {
-  const words = name
-    .replace(/[^A-Za-z\s&]/g, " ")
-    .split(/\s+/)
-    .filter((word) => word.length > 1 && !/^(and|the|group|india|ltd|limited|pvt|private)$/i.test(word));
-
-  if (words.length === 0) return name.slice(0, 2).toUpperCase();
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return `${words[0][0]}${words[1][0]}`.toUpperCase();
-}
 
 /**
  * The headline fact for each card, derived from the same data the card lists —
@@ -166,18 +156,6 @@ function rentInsight(snapshot: MarketSnapshot) {
   return `Rents peak at ${formatCompactInr(best.rent)} a month for ${best.bhk} homes in ${best.where}.`;
 }
 
-function developerInsight(snapshot: MarketSnapshot) {
-  const leader = snapshot.top_developers[0];
-  if (!leader) return null;
-
-  const credentials = [
-    leader.total_projects ? `${leader.total_projects} projects` : null,
-    leader.total_experience_years ? `${leader.total_experience_years} years of experience` : null,
-  ].filter(Boolean);
-
-  const base = `${leader.developer_name} leads in ${snapshot.state_name}`;
-  return credentials.length === 0 ? `${base}.` : `${base} with ${credentials.join(" and ")}.`;
-}
 
 function projectInsight(snapshot: MarketSnapshot) {
   const priciest = snapshot.top_projects.reduce<MarketSnapshot["top_projects"][number] | null>(
@@ -220,25 +198,25 @@ function SectionCard({
     <article
       // 4.5rem is the page's horizontal chrome (section px-4 + panel px-5), so on
       // phones a card fills the scroller exactly instead of overflowing it.
-      className={`flex h-[470px] w-[min(calc(100vw-4.5rem),400px)] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background ${snap}`}
+      className={`flex h-[470px] w-[min(calc(100vw-4.5rem),352px)] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background ${snap}`}
     >
-      <header className={`shrink-0 px-4 pb-3 pt-3.5 ${accent.head}`}>
+      <header className={`shrink-0 px-3.5 pb-3 pt-3.5 ${accent.head}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-lg font-bold leading-tight text-foreground">{title}</h3>
+            <h3 className="truncate text-base font-bold leading-tight text-foreground">{title}</h3>
             <p className="truncate text-xs text-muted-foreground">in {stateName}</p>
           </div>
           <Link
             href={href}
             aria-label={`${title} in ${stateName} — explore more`}
-            className={`grid size-11 shrink-0 place-items-center rounded-xl transition-opacity hover:opacity-80 ${accent.tile} ${accent.text}`}
+            className={`grid size-10 shrink-0 place-items-center rounded-xl transition-opacity hover:opacity-80 ${accent.tile} ${accent.text}`}
           >
             {icon}
           </Link>
         </div>
 
         {insight && (
-          <div className={`mt-2.5 flex items-start gap-2 rounded-xl border px-2.5 py-2 ${accent.insight}`}>
+          <div className={`mt-2.5 flex items-start gap-2 rounded-xl border px-2 py-2 ${accent.insight}`}>
             <Lightbulb className={`mt-0.5 size-4 shrink-0 ${accent.text}`} strokeWidth={1.9} />
             <p className="text-[11px] font-medium leading-snug text-foreground/85">{insight}</p>
           </div>
@@ -246,7 +224,7 @@ function SectionCard({
       </header>
       {/* No inner scroll: every card is sized so its list fits whole, and rows
           stretch into whatever height is left so short states show no dead space. */}
-      <div className="flex min-h-0 flex-1 flex-col px-4 py-3">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col px-3.5 py-3">{children}</div>
     </article>
   );
 }
@@ -636,38 +614,6 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
 
               <SectionCard
                 index={3}
-                title="Top Developers"
-                stateName={snapshot.state_name}
-                icon={<Building2 className="size-5" strokeWidth={1.9} />}
-                insight={developerInsight(snapshot)}
-                href={exploreHref}
-              >
-                <div className="flex flex-1 flex-col divide-y divide-border">
-                  {snapshot.top_developers.map((developer, index) => (
-                    <div key={developer.developer_name} className="flex flex-1 items-center gap-2.5 py-1.5">
-                      <span
-                        className={`grid size-9 shrink-0 place-items-center rounded-xl border border-border text-[10px] font-bold ${
-                          AVATAR_TONES[index % AVATAR_TONES.length]
-                        }`}
-                      >
-                        {initialsOf(developer.developer_name)}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold leading-tight text-foreground">{developer.developer_name}</p>
-                        <p className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] font-medium leading-tight text-muted-foreground">
-                          {developer.total_projects != null && <span>{developer.total_projects} Projects</span>}
-                          {developer.total_experience_years != null && (
-                            <span>{developer.total_experience_years} Years</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </SectionCard>
-
-              <SectionCard
-                index={4}
                 title="Top Projects"
                 stateName={snapshot.state_name}
                 icon={<Landmark className="size-5" strokeWidth={1.9} />}
@@ -676,9 +622,9 @@ export function MarketSnapshot({ initial }: { initial: MarketSnapshot | null }) 
               >
                 <div className="flex flex-1 flex-col divide-y divide-border">
                   {snapshot.top_projects.map((project, index) => (
-                    <div key={project.project_name} className="flex flex-1 items-center gap-2.5 py-1.5">
+                    <div key={project.project_name} className="flex flex-1 items-center gap-2 py-1.5">
                       <span
-                        className={`grid size-9 shrink-0 place-items-center rounded-xl border border-border ${
+                        className={`grid size-8 shrink-0 place-items-center rounded-xl border border-border ${
                           AVATAR_TONES[index % AVATAR_TONES.length]
                         }`}
                       >

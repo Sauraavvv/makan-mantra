@@ -30,7 +30,7 @@ export function HomeActivityPanel({ className = "" }: { className?: string }) {
 
   return (
     <aside
-      className={`flex min-h-0 flex-col overflow-hidden rounded-[20px] border border-border bg-background p-4 ${className}`}
+      className={`flex flex-col overflow-hidden rounded-[20px] border border-border bg-background p-4 ${className}`}
     >
       <header className="flex items-center gap-3">
         {/* The photo where there is one, initials where there is not — a guest
@@ -72,11 +72,11 @@ export function HomeActivityPanel({ className = "" }: { className?: string }) {
 
       <p className="mt-3 text-[11px] font-bold text-[#0A2036]">Your Recent Activity</p>
 
-      {/* The stats divide whatever height the card has, with the button under
-          them — so the card fills as it did before. `min-h-0` is what keeps that
-          from working the other way round: without it a stat would insist on its
-          own content height and push the whole section past the viewport. */}
-      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2">
+      {/* The stats divide whatever height the card has, and never shrink under
+          their own content: on a short window they keep their size and the
+          section grows past the fold, rather than the numbers being squeezed
+          into a sliver with their labels cut off. */}
+      <div className="mt-2 flex flex-1 flex-col gap-2">
         <StatCard
           count={searches.length}
           label="Searched"
@@ -124,8 +124,9 @@ function initials(name?: string) {
     .join(" ");
 }
 
+/** `min-h` is the floor a stat may not shrink past: number plus label plus padding. */
 const STAT_CLASS =
-  "flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-lg bg-[#FDF3E3] px-3 py-2 text-left";
+  "flex min-h-[3.25rem] flex-1 flex-col justify-between gap-1 overflow-hidden rounded-lg bg-[#FDF3E3] px-3 py-2 text-left";
 
 /**
  * One trail: how much of it there is, and what it is.

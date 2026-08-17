@@ -82,19 +82,23 @@ export default async function Home() {
 
       {/* The hero and the section under it share the first screen: the hero takes
           the height it needs, and the section below fills whatever is left of the
-          viewport. A fixed height, not a minimum: the point is that the section
-          below is on screen without scrolling, and a minimum would let the hero
-          push it under the fold. 4rem is the header's own height, which sits
+          viewport. A minimum, not a fixed height: on a short window the pair is
+          allowed to run past the fold rather than squeezing the section's
+          contents into what is left. 4rem is the header's own height, which sits
           above this box.
+
+          The 52rem ceiling is for tall screens — a monitor stood on its end has
+          close to 1900px of viewport, and without it the two of them would
+          stretch to fill all of it, leaving the cards below acres of nothing.
 
           `svh` rather than `dvh` on purpose — with `dvh` the section would grow
           and shrink as a mobile browser's address bar hides, which reads as the
           page shifting under the reader. The header is deliberately outside this
           box: it is `sticky`, and an element only sticks within its own parent,
           so wrapping it here would unstick it after the first screen. */}
-      <div className="flex h-[calc(100svh-4rem)] flex-col">
+      <div className="flex min-h-[min(calc(100svh-4rem),52rem)] flex-col">
         {/* Hero */}
-        <section className="relative min-h-0 shrink overflow-hidden border-b border-border">
+        <section className="relative overflow-hidden border-b border-border">
           <Image
             src="/hero-home.jpg"
             alt="Modern residential buildings in India"
@@ -119,16 +123,15 @@ export default async function Home() {
             in the same card the sections below it use: gutter, rounded box,
             centred on the same max width.
 
-            `flex-1` with no height of its own, and `min-h-0` down every level
-            below it: a flex item defaults to refusing to shrink under its own
-            content, so without it whatever ends up in these cards would push
-            the first screen past the viewport instead of fitting inside it. */}
-        <section className="flex min-h-0 flex-1 flex-col bg-secondary px-4 py-4 md:py-5">
+            `flex-1` with no height of its own, so it takes the rest of the first
+            screen where there is room and its own content's height where there
+            is not. */}
+        <section className="flex flex-1 flex-col bg-secondary px-4 py-4 md:py-5">
           {/* 75 / 25 by flex ratio rather than widths, so the gap between the two
               comes out of the row instead of pushing the pair past 100%. They
               stack below `md`, where a quarter of a phone is too narrow to hold
               anything. */}
-          <div className="mx-auto flex w-full min-h-0 max-w-[1250px] flex-1 flex-col gap-4 md:flex-row">
+          <div className="mx-auto flex w-full max-w-[1250px] flex-1 flex-col gap-4 md:flex-row">
             <div className="flex-[3] rounded-[20px] border border-border bg-background" />
             <HomeActivityPanel className="flex-1" />
           </div>
@@ -156,7 +159,13 @@ export default async function Home() {
       </section>
 
       {/* Post your property banner */}
-      <section className="bg-secondary px-4 py-4 md:py-5 lg:py-16">
+      {/*
+       * The extra room from `lg` is for the form that floats over the banner: it
+       * is a fixed-height card and the banner's height follows its width, so the
+       * card hangs out of both ends — about 72px at `lg`, 74px at `xl`. Without
+       * it the card touches the sections either side.
+       */}
+      <section className="bg-secondary px-4 py-4 md:py-5 lg:py-16 xl:py-20">
         <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background p-2 md:p-3">
           <PostPropertyBanner />
         </div>

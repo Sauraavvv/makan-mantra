@@ -192,18 +192,16 @@ export function QuickLinks({
         </div>
       )}
 
-      {/* Highlight bar — skyline illustration sits flush at the bottom-right */}
-      <div className="relative mt-4 overflow-hidden rounded-xl border border-border bg-white">
-        <Image
-          src="/quick-links-skyline.webp"
-          alt=""
-          width={1819}
-          height={558}
-          aria-hidden
-          className="pointer-events-none absolute bottom-0 right-[1%] hidden h-full w-auto max-w-[52%] select-none object-contain object-bottom lg:block"
-        />
+      {/* Highlight bar — skyline illustration sits flush at the bottom-right.
 
-        <div className="relative grid grid-cols-1 gap-y-5 px-5 py-5 sm:grid-cols-2 sm:gap-x-5 lg:w-[60%] lg:grid-cols-3 lg:gap-x-0 lg:divide-x lg:divide-border">
+          A row from `lg`, not an absolute image over a 60%-wide list: the
+          illustration is `h-full w-auto`, so its width is whatever the bar's
+          height happens to be times its 3.26 aspect. On a narrower screen the
+          text wraps, the bar grows taller, the illustration grows wider with it
+          — and at some width it reached back under the text. Sharing a row means
+          the two divide the width instead of both claiming their own slice. */}
+      <div className="relative mt-4 flex overflow-hidden rounded-xl border border-border bg-white">
+        <div className="relative grid min-w-0 flex-1 grid-cols-1 gap-y-5 px-5 py-5 sm:grid-cols-2 sm:gap-x-5 lg:grid-cols-3 lg:gap-x-0 lg:divide-x lg:divide-border">
           {HIGHLIGHTS.map((item) => (
             <div
               key={item.title ?? "coverage"}
@@ -225,6 +223,17 @@ export function QuickLinks({
             </div>
           ))}
         </div>
+
+        {/* Capped so a tall bar cannot hand it half the width; `object-contain`
+            then letterboxes it against the bottom rather than cropping it. */}
+        <Image
+          src="/quick-links-skyline.webp"
+          alt=""
+          width={1819}
+          height={558}
+          aria-hidden
+          className="pointer-events-none hidden max-w-[38%] shrink select-none self-stretch object-contain object-bottom lg:block lg:h-auto lg:w-auto"
+        />
       </div>
     </div>
   );

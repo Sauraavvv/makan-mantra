@@ -455,7 +455,11 @@ export function PostPropertyWizard({
           className={cn(
             fieldClass,
             "resize-y px-3 py-2",
-            variant === "compact" ? "min-h-[72px] flex-1" : "h-auto",
+            // The box is shrunk to fit the card, so six rows of text scroll
+            // inside it — but its own bar sat right beside the form's, which is
+            // the one the previous field already hides. Typing still tracks the
+            // caret; only the bar is gone.
+            variant === "compact" ? "min-h-[72px] flex-1 no-scrollbar" : "h-auto",
           )}
         />
       </div>
@@ -720,12 +724,12 @@ export function PostPropertyWizard({
   if (variant === "compact") {
     if (status === "success") {
       return (
-        <div className={cn(cardClass, "flex flex-col lg:h-[600px]", className)}>{successView}</div>
+        <div className={cn(cardClass, "flex flex-col lg:h-[500px] xl:h-[600px]", className)}>{successView}</div>
       );
     }
 
     return (
-      <div className={cn(cardClass, "flex flex-col lg:h-[600px]", className)}>
+      <div className={cn(cardClass, "flex flex-col lg:h-[500px] xl:h-[600px]", className)}>
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-xl font-extrabold tracking-tight text-primary">POST YOUR PROPERTY</h3>
           <span className="shrink-0 text-xs font-semibold text-muted-foreground">
@@ -747,7 +751,11 @@ export function PostPropertyWizard({
         </p>
 
         <form onSubmit={handleFormSubmit} className="mt-4 flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col justify-between gap-4 overflow-y-auto">
+          {/* Scrolls without showing for it: the card is a fixed height, so on a
+              shorter one a step's fields overflow — but a bar down the middle of
+              a five-field form reads as a defect rather than as an affordance.
+              `no-scrollbar` is the same utility the carousels here use. */}
+          <div className="flex min-h-0 flex-1 flex-col justify-between gap-4 overflow-y-auto no-scrollbar">
             {stepFields[step]}
           </div>
 

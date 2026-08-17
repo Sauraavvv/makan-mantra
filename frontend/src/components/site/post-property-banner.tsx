@@ -9,6 +9,9 @@ import { PostPropertyWizard } from "@/components/site/post-property-wizard";
 export function PostPropertyBanner() {
   return (
     <div className="relative">
+      {/* Whole, at its own 2.71:1 — the artwork runs the full width and any crop
+          takes a bite out of it. What gives instead is the form's height and the
+          room around this section; see the two comments those changes carry. */}
       <div className="relative overflow-hidden rounded-[20px]">
         <Image
           src="/post-property-banner.webp"

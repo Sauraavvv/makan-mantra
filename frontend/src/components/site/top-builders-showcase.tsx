@@ -111,7 +111,7 @@ export function TopBuildersShowcase({
           <h2 className="text-3xl font-bold leading-tight text-foreground md:text-4xl">
             {/* The data's own spelling, not the picker's: the picker title-cases
                 what it stores, which turns "Jammu and Kashmir" into "... And ...". */}
-            Top Builders in {state}
+            Top Developers in {state}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
             {builders.length} established {builders.length === 1 ? "developer" : "developers"} in{" "}
