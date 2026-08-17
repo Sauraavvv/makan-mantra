@@ -551,7 +551,13 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
             <h1 className="text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
               Explore Your <span className="text-saffron">{displayName}</span>
             </h1>
-            <HeroSearch align="left" locationName={displayName} />
+            <HeroSearch
+              align="left"
+              alignTabsWithHeading
+              locationName={displayName}
+              areaStateName={parentStateName}
+              areaDistrictName={isDistrictPage ? displayName : undefined}
+            />
           </div>
 
           <AnimatedList

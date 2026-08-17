@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { HeroSearch } from "@/components/site/hero-search";
@@ -11,8 +10,30 @@ import { MarketSnapshot } from "@/components/site/market-snapshot";
 import { TopBuildersShowcase } from "@/components/site/top-builders-showcase";
 import { DEFAULT_SNAPSHOT_SLUG, fetchMarketSnapshot } from "@/lib/market-snapshot";
 import { BUILDERS_BY_STATE_SLUG } from "@/lib/builders-directory";
+import { cldUrl } from "@/lib/cloudinary-url";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+/**
+ * The hero photograph, served straight from Cloudinary rather than through the
+ * Next optimizer.
+ *
+ * It is the page's largest element and the one the visitor is waiting on, so it
+ * is asked for at full quality — `q_auto:best` is the setting that keeps a dusk
+ * sky free of banding, which `q_auto` does not. The widths below are the
+ * original's own steps down to a laptop's; `c_limit` never enlarges, so a screen
+ * wider than the source simply gets the source.
+ *
+ * Optimizing it twice would be the alternative — Cloudinary encodes it, then
+ * Next re-encodes what Cloudinary sent — and re-encoding a photograph is where
+ * its quality goes.
+ */
+const HERO_IMAGE = "site/hero-home";
+const HERO_WIDTHS = [1280, 1920, 2560, 3548];
+
+const heroSrcSet = HERO_WIDTHS.map(
+  (width) => `${cldUrl(HERO_IMAGE, `f_auto,q_auto:best,w_${width},c_limit`)} ${width}w`,
+).join(", ");
 
 /** State-level pages only — the district and city blocks live on state pages. */
 async function getStateQuickLinks(): Promise<QuickLinkGroup[]> {
@@ -30,51 +51,11 @@ async function getStateQuickLinks(): Promise<QuickLinkGroup[]> {
   }
 }
 
-function uniqueTextItems(value: unknown, limit: number) {
-  if (!Array.isArray(value)) return [];
-
-  const seen = new Set<string>();
-  const items: string[] = [];
-
-  for (const item of value) {
-    const text = typeof item === "string" ? item.trim() : "";
-    const key = text.toLowerCase();
-    if (!text || seen.has(key)) continue;
-
-    items.push(text);
-    seen.add(key);
-    if (items.length === limit) break;
-  }
-
-  return items;
-}
-
-async function getMadhyaPradeshHeroCities() {
-  try {
-    const res = await fetch(`${API}/state-overview/madhya-pradesh`, {
-      next: { revalidate: 86400 },
-    });
-
-    if (!res.ok) return [];
-    const data = (await res.json()) as { overview?: { major_cities?: unknown } };
-    return uniqueTextItems(data.overview?.major_cities, 3);
-  } catch {
-    return [];
-  }
-}
-
 export default async function Home() {
-  // Delhi renders on the server so the section is never blank; the client swaps
-  // it for the visitor's state once geolocation or the header picker resolves one.
-  const [quickLinkGroups, defaultSnapshot, madhyaPradeshHeroCities] = await Promise.all([
+  const [quickLinkGroups, defaultSnapshot] = await Promise.all([
     getStateQuickLinks(),
     fetchMarketSnapshot(DEFAULT_SNAPSHOT_SLUG),
-    getMadhyaPradeshHeroCities(),
   ]);
-  const initialCityOverrides =
-    madhyaPradeshHeroCities.length > 0
-      ? { "Madhya Pradesh": madhyaPradeshHeroCities }
-      : undefined;
 
   return (
     <div className="flex min-h-screen flex-col bg-secondary">
@@ -98,23 +79,39 @@ export default async function Home() {
           so wrapping it here would unstick it after the first screen. */}
       <div className="flex min-h-[min(calc(100svh-4rem),52rem)] flex-col">
         {/* Hero */}
-        <section className="relative overflow-hidden border-b border-border">
-          <Image
-            src="/hero-home.jpg"
-            alt="Modern residential buildings in India"
-            fill
-            priority
-            quality={100}
-            className="object-cover"
-            sizes="100vw"
+        {/* 570px from `md`, with the content centred in it rather than sized by
+            its own padding. Below that the height is left to the content: a
+            phone would spend most of 570px on empty sky. */}
+        <section className="relative flex overflow-hidden border-b border-border md:h-[570px]">
+          {/* Preloaded by hand: this is the LCP element, and a plain `img` gets
+              none of the preload `next/image` would have added for it. React
+              hoists the tag into the head. */}
+          <link
+            rel="preload"
+            as="image"
+            imageSrcSet={heroSrcSet}
+            imageSizes="100vw"
+            fetchPriority="high"
           />
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/15 to-black/45" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={cldUrl(HERO_IMAGE, "f_auto,q_auto:best,w_1920,c_limit")}
+            srcSet={heroSrcSet}
+            sizes="100vw"
+            alt="A city skyline at dusk, seen from the terrace of a high-rise home"
+            fetchPriority="high"
+            decoding="async"
+            /* Held to its top edge: the frame is wider than the photograph's
+               2:1, so the crop comes off the bottom — the terrace — and the
+               skyline it was chosen for stays in view. */
+            className="absolute inset-0 size-full object-cover object-top"
+          />
+          <div className="absolute inset-0 bg-black/35" />
 
-          <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">
-            <div className="mx-auto w-full text-center">
-              <HeroText initialCityOverrides={initialCityOverrides} />
-              <HeroSearch animateIn />
+          <div className="relative mx-auto flex w-full max-w-7xl items-center px-4 py-16 md:py-0">
+            <div className="w-full text-left">
+              <HeroText align="left" />
+              <HeroSearch align="left" alignTabsWithHeading animateIn />
             </div>
           </div>
         </section>
