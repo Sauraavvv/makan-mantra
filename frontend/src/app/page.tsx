@@ -1,6 +1,7 @@
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { HeroSearch } from "@/components/site/hero-search";
+import Image from "next/image";
 import { StateExplorer } from "@/components/site/state-explorer";
 import { HeroText } from "@/components/site/hero-text";
 import { HomeActivityPanel } from "@/components/site/home-activity-panel";
@@ -30,6 +31,17 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
  */
 const HERO_IMAGE = "site/hero-home";
 const HERO_WIDTHS = [1280, 1920, 2560, 3548];
+
+const PROPERTY_CATEGORIES = [
+  { label: "Flat", icon: "/category-icons/flat.png" },
+  { label: "Villa", icon: "/category-icons/villa.png" },
+  { label: "PG", icon: "/category-icons/pg.png" },
+  { label: "Plot", icon: "/category-icons/plot.png" },
+  { label: "Builder Floor", icon: "/category-icons/builder floor.png" },
+  { label: "Showroom", icon: "/category-icons/showroom.png" },
+  { label: "Shop", icon: "/category-icons/shop.png" },
+  { label: "Office Space", icon: "/category-icons/office space.png" },
+] as const;
 
 const heroSrcSet = HERO_WIDTHS.map(
   (width) => `${cldUrl(HERO_IMAGE, `f_auto,q_auto:best,w_${width},c_limit`)} ${width}w`,
@@ -79,10 +91,10 @@ export default async function Home() {
           so wrapping it here would unstick it after the first screen. */}
       <div className="flex min-h-[min(calc(100svh-4rem),52rem)] flex-col">
         {/* Hero */}
-        {/* 570px from `md`, with the content centred in it rather than sized by
+        {/* 540px from `md`, with the content centred in it rather than sized by
             its own padding. Below that the height is left to the content: a
-            phone would spend most of 570px on empty sky. */}
-        <section className="relative flex overflow-hidden border-b border-border md:h-[570px]">
+            phone would spend most of 540px on empty sky. */}
+        <section className="relative flex overflow-hidden md:h-[590px]">
           {/* Preloaded by hand: this is the LCP element, and a plain `img` gets
               none of the preload `next/image` would have added for it. React
               hoists the tag into the head. */}
@@ -116,19 +128,53 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Placeholder — holds the rest of the first screen until we fill it,
-            in the same card the sections below it use: gutter, rounded box,
+        {/* The property-category section sits directly beneath the hero, with
+            its category choices grouped in a separate inset card.
+
+            The area after it holds the rest of the first screen in the same
+            card treatment the sections below use: gutter, rounded box, and
             centred on the same max width.
 
             `flex-1` with no height of its own, so it takes the rest of the first
             screen where there is room and its own content's height where there
             is not. */}
-        <section className="flex flex-1 flex-col bg-secondary px-4 py-4 md:py-5">
+        <section className="flex flex-1 flex-col bg-secondary px-4 pb-4 md:pb-5">
+          <section
+            aria-label="Browse property categories"
+            className="mx-auto w-full max-w-[1250px] shrink-0 overflow-hidden rounded-b-[20px] border-x border-b border-border bg-background shadow-[0_10px_28px_rgba(15,23,42,0.08)]"
+          >
+            <div className="p-2 md:p-3">
+              <div className="no-scrollbar flex h-28 w-full snap-x overflow-x-auto rounded-[18px] border border-border bg-background md:h-36 md:overflow-visible">
+                {PROPERTY_CATEGORIES.map(({ label, icon }, index) => (
+                  <figure
+                    key={label}
+                    className="relative flex min-w-[5.25rem] flex-1 snap-start flex-col items-center justify-center gap-0.5 px-1.5 md:min-w-0 md:gap-1 md:px-3"
+                  >
+                    {index > 0 && (
+                      <span aria-hidden="true" className="absolute top-1/4 bottom-1/4 left-0 border-l border-border" />
+                    )}
+                    <Image
+                      src={icon}
+                      alt=""
+                      width={1254}
+                      height={1254}
+                      sizes="(max-width: 767px) 3rem, 4.5rem"
+                      className="size-[4.25rem] object-contain md:size-24"
+                    />
+                    <figcaption className="whitespace-nowrap text-[10px] font-semibold text-[#0A2036] md:text-xs">
+                      {label}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+          </section>
+
           {/* 75 / 25 by flex ratio rather than widths, so the gap between the two
               comes out of the row instead of pushing the pair past 100%. They
               stack below `md`, where a quarter of a phone is too narrow to hold
               anything. */}
-          <div className="mx-auto flex w-full max-w-[1250px] flex-1 flex-col gap-4 md:flex-row">
+          <div className="mx-auto mt-4 flex w-full max-w-[1250px] flex-1 flex-col gap-4 md:flex-row">
             <div className="flex-[3] rounded-[20px] border border-border bg-background" />
             <HomeActivityPanel className="flex-1" />
           </div>

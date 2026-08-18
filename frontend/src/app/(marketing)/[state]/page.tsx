@@ -6,9 +6,7 @@ import {
   AlertTriangle,
   Building2,
   ChevronRight,
-  GraduationCap,
   Home,
-  Landmark,
   MapPin,
   TrendingUp,
 } from "lucide-react";
@@ -25,8 +23,8 @@ import { getBuilderProfile } from "@/lib/constants/builders";
 import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
 import { HeroSearch } from "@/components/site/hero-search";
 import { GoogleMapEmbed } from "@/components/map/google-map-embed";
-import { AnimatedList } from "@/registry/magicui/animated-list";
 import { stateExploreHref } from "@/lib/state-routes";
+import { stateExploreBanner } from "@/lib/state-images";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -383,6 +381,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   const stateName = data.state_name;
   const parentStateName = stateName;
   const displayName = isDistrictPage ? asText(data.district_name) : stateName;
+  const stateBanner = isDistrictPage ? null : stateExploreBanner(stateName);
   const locationPages = await getExploreLocationPages({
     stateName: parentStateName,
     districtName: isDistrictPage ? displayName : undefined,
@@ -441,13 +440,11 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         airportCard,
       ]
     : baseConnectivityCards;
-  const languages = asArray(overview.official_languages);
   const overviewSectionTitle = compactText(
     data.seo?.page_title,
     isDistrictPage ? "District Overview" : "State Overview",
   );
   const overviewSectionDescription = compactText(data.seo?.page_description);
-  const capitalOrHeadquarters = compactText(overview.headquarters, overview.capital);
   const priceTrend = asPriceTrend(investment_angle.price_trend);
   const growthDrivers = uniqueItems(investment_angle.key_growth_drivers, 10);
   const investmentRisks = uniqueItems(investment_angle.investment_risks, 10);
@@ -492,35 +489,28 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       label: labelFromKey(key),
       value,
     }));
-  const heroStats = [
-    {
-      label: isDistrictPage ? "Headquarters" : "Capital",
-      value: capitalOrHeadquarters,
-      icon: Landmark,
-    },
-    {
-      label: "Population Density",
-      value: `${asText(overview.population_density_per_sq_km)} / sq km`,
-      icon: Building2,
-    },
-    {
-      label: "Languages",
-      value: languages.length > 0 ? languages.join(", ") : "Not available",
-      icon: GraduationCap,
-    },
-    {
-      label: "Area",
-      value: asText(overview.area_sq_km),
-      icon: MapPin,
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-secondary text-foreground selection:bg-primary/15">
       <Header />
 
-      <header className="border-b border-black bg-[#0A2036] text-white">
-        <nav>
+      <header className="relative overflow-hidden border-b border-black bg-[#0A2036] text-white md:h-[540px]">
+        {stateBanner && (
+          <>
+            {/* The uploaded banner is delivered at the rendered width by Cloudinary. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={stateBanner}
+              alt={`${stateName} landscape`}
+              sizes="100vw"
+              fetchPriority="high"
+              decoding="async"
+              className="absolute inset-0 size-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-black/35" />
+          </>
+        )}
+
+        <nav className="relative z-10">
           <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-white/70">
             <li>
               <Link href="/" className="flex items-center gap-1 hover:text-white">
@@ -542,8 +532,8 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
           </ol>
         </nav>
 
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 md:py-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
-          <div>
+        <div className="relative z-10 mx-auto flex max-w-7xl items-center px-4 py-10 md:min-h-[calc(540px-49px)] md:py-10">
+          <div className="w-full">
             <div className="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white/75">
               <span className="mr-2 h-2.5 w-2.5 rounded-full bg-saffron shadow-[0_0_12px_rgba(255,122,26,.95)]" />
               Real estate guide
@@ -559,24 +549,6 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
               areaDistrictName={isDistrictPage ? displayName : undefined}
             />
           </div>
-
-          <AnimatedList
-            key={displayName}
-            className="lg:w-full"
-            delay={120}
-            focusIndex={1}
-            focusScale={1.08}
-            visibleItems={3}
-          >
-            {heroStats.map((item) => (
-              <StatPlate
-                key={item.label}
-                label={item.label}
-                value={item.value}
-                icon={item.icon}
-              />
-            ))}
-          </AnimatedList>
         </div>
       </header>
 
@@ -757,30 +729,6 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         locationLinks={footerLocationLinks}
       />
     </div>
-  );
-}
-
-function StatPlate({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon: LucideIcon;
-}) {
-  return (
-    <figure className="relative min-h-[70px] w-full cursor-pointer overflow-hidden rounded-xl border border-white/12 bg-white/[0.08] p-4 text-white backdrop-blur-md transition-all duration-200 ease-in-out hover:scale-[1.025] hover:bg-white/[0.12]">
-      <div className="flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.04] text-white/85">
-          <Icon className="h-5 w-5" strokeWidth={1.55} />
-        </div>
-        <div className="min-w-0">
-          <figcaption className="text-sm font-semibold tracking-tight text-white">{label}</figcaption>
-          <p className="mt-1 text-sm leading-snug text-white/68">{value}</p>
-        </div>
-      </div>
-    </figure>
   );
 }
 

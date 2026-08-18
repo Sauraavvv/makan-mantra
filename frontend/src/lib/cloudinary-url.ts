@@ -8,7 +8,8 @@ const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
  * WebP/AVIF, which is the single biggest saving on delivery bandwidth.
  */
 export function cldUrl(publicId: string, transform = "q_auto,f_auto") {
-  return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${transform}/${publicId}`;
+  const transformationPath = transform ? `${transform}/` : "";
+  return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${transformationPath}${publicId}`;
 }
 
 /** Small square preview for cards and the upload tray. */

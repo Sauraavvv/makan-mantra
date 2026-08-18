@@ -226,11 +226,23 @@ export function Header({
           </span>
         </Link>
 
+        {!minimal && isHome && (
+          <nav className="ml-3 hidden items-center gap-1 lg:flex">
+            {NAV.map((item) => (
+              <MegaNavItem
+                key={item.label}
+                label={item.label}
+                listingType={item.label === "Rent" ? "rent" : "sale"}
+              />
+            ))}
+          </nav>
+        )}
+
         {/* Location dropdown — home page only */}
         {isHome && (
         <div
           ref={dropdownRef}
-          className="relative shrink-0"
+          className={`relative shrink-0 ${isHome ? "order-4 ml-auto" : ""}`}
           onMouseEnter={() => {
             if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
             setDropdownOpen(true);
@@ -339,7 +351,9 @@ export function Header({
         )}
 
         <form
-          className={`relative hidden flex-1 transition-all duration-300 md:block ${
+          className={`relative hidden transition-all duration-300 md:block ${
+            isHome ? "order-3 flex-1" : "flex-1"
+          } ${
             shouldShowSearch
               ? "max-w-md opacity-100"
               : "pointer-events-none max-w-0 overflow-hidden opacity-0"
@@ -355,8 +369,7 @@ export function Header({
 
         {minimal ? (
           <div className="ml-auto" />
-        ) : (
-          <>
+        ) : !isHome ? (
             <nav className="ml-auto hidden items-center gap-1 lg:flex">
               {NAV.map((item) => (
                 <MegaNavItem
@@ -366,29 +379,30 @@ export function Header({
                 />
               ))}
             </nav>
+        ) : null}
 
+        {!minimal && (
             <Link
               href="/post-property"
-              className="hidden h-9 shrink-0 items-center gap-1 rounded-full bg-saffron px-4 text-sm font-semibold text-saffron-foreground transition-colors hover:bg-saffron/90 sm:inline-flex"
+              className={`${isHome ? "order-5" : ""} hidden h-9 shrink-0 items-center gap-1 rounded-full bg-saffron px-4 text-sm font-semibold text-saffron-foreground transition-colors hover:bg-saffron/90 sm:inline-flex`}
             >
               <Plus className="h-4 w-4" /> Post Property{" "}
               <span className="ml-1 rounded bg-white/20 px-1 text-[10px] font-bold">FREE</span>
             </Link>
-          </>
         )}
 
         {/* Nothing is rendered until the first session read settles, so the
             Login button never flashes for someone who is already signed in. */}
         {sessionLoaded &&
           (sessionUser ? (
-            <div className="hidden md:block">
+            <div className={`${isHome ? "order-6" : ""} hidden md:block`}>
               <UserMenu user={sessionUser} />
             </div>
           ) : (
             <button
               type="button"
               onClick={() => openAuthModal("login")}
-              className="hidden h-9 shrink-0 items-center rounded-full border border-white/15 px-4 text-sm font-semibold text-white hover:bg-white/10 md:inline-flex"
+              className={`${isHome ? "order-6" : ""} hidden h-9 shrink-0 items-center rounded-full border border-white/15 px-4 text-sm font-semibold text-white hover:bg-white/10 md:inline-flex`}
             >
               Login
             </button>
@@ -397,7 +411,7 @@ export function Header({
         <Sheet>
           <SheetTrigger
             aria-label="Open menu"
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-medium text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-white/30 lg:hidden"
+            className={`${isHome ? "order-7" : ""} inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-medium text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-white/30 lg:hidden`}
           >
             <Menu className="h-5 w-5" />
           </SheetTrigger>

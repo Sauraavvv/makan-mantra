@@ -1,4 +1,5 @@
 import { stateSlug } from "@/lib/state-routes";
+import { cldUrl } from "@/lib/cloudinary-url";
 
 const STATE_IMAGE_BY_SLUG: Record<string, string> = {
   "andaman-and-nicobar-islands": "/state-cards/andaman-and-nicobar-islands.webp",
@@ -43,4 +44,14 @@ const STATE_IMAGE_BY_SLUG: Record<string, string> = {
 
 export function stateCardImage(state: string) {
   return STATE_IMAGE_BY_SLUG[stateSlug(state)] || "/hero-home.jpg";
+}
+
+/** State-level Explore headers use the matching normalized Cloudinary banner. */
+export function stateExploreBanner(state: string) {
+  const slug = stateSlug(state);
+  if (!STATE_IMAGE_BY_SLUG[slug]) return null;
+
+  // Use the source asset exactly as uploaded — no delivery resize or format
+  // conversion — so the Explore hero receives the banner's original pixels.
+  return cldUrl(`site/explore-state-${slug}`, "");
 }
