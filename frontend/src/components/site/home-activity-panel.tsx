@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 import { useRecentProperties } from "@/context/recent-properties-context";
+import { useSaved } from "@/context/saved-context";
 import { useSearchHistory } from "@/context/search-history-context";
 import { useSession } from "@/context/session-context";
 import { openAuthModal } from "@/lib/auth-modal";
@@ -13,24 +14,22 @@ const ACTION_CLASS =
   "grid h-9 shrink-0 place-items-center rounded-lg bg-[#0A2036] text-xs font-bold text-white transition-colors hover:bg-[#132E4A]";
 
 /**
- * The reader's own corner of the home page: who they are, and the two trails
- * worth a glance — what they searched, and what they opened.
+ * The reader's own corner of the home page: who they are, what they searched,
+ * what they opened, and what they shortlisted.
  *
- * The shortlist is not among them on purpose: it has a home of its own in the
- * dashboard, and it is the one trail a reader goes looking for deliberately
- * rather than one they want counted back at them here.
- *
- * Both counts are the reader's own whether or not they have signed in — a guest
- * builds them on this device, and signing in hands them to the account.
+ * Search, view, and shortlist counts belong to the reader whether or not they
+ * have signed in — a guest builds them on this device, and signing in hands
+ * them to the account.
  */
 export function HomeActivityPanel({ className = "" }: { className?: string }) {
   const { user, loaded: sessionLoaded } = useSession();
   const { items: searches } = useSearchHistory();
   const { items: viewed } = useRecentProperties();
+  const { items: saved, loaded: savedLoaded } = useSaved();
 
   return (
     <aside
-      className={`flex flex-col overflow-hidden rounded-[20px] border border-border bg-background p-4 ${className}`}
+      className={`flex min-h-[21rem] flex-col overflow-hidden rounded-[20px] border border-border bg-background p-4 ${className}`}
     >
       <header className="flex items-center gap-3">
         {/* The photo where there is one, initials where there is not — a guest
@@ -72,10 +71,8 @@ export function HomeActivityPanel({ className = "" }: { className?: string }) {
 
       <p className="mt-3 text-[11px] font-bold text-[#0A2036]">Your Recent Activity</p>
 
-      {/* The stats divide whatever height the card has, and never shrink under
-          their own content: on a short window they keep their size and the
-          section grows past the fold, rather than the numbers being squeezed
-          into a sliver with their labels cut off. */}
+      {/* Activity rows keep the original compact height even though the panel
+          itself is taller, leaving the remaining room open above the action. */}
       <div className="mt-2 flex flex-1 flex-col gap-2">
         <StatCard
           count={searches.length}
@@ -86,6 +83,11 @@ export function HomeActivityPanel({ className = "" }: { className?: string }) {
           count={viewed.length}
           label="Viewed"
           href="/dashboard/recently-viewed"
+        />
+        <StatCard
+          count={savedLoaded ? saved.length : "—"}
+          label="Shortlisted"
+          href="/dashboard/saved"
         />
       </div>
 
@@ -124,18 +126,22 @@ function initials(name?: string) {
     .join(" ");
 }
 
-/** `min-h` is the floor a stat may not shrink past: number plus label plus padding. */
+/** The original compact stat height: number, label, and their vertical padding. */
 const STAT_CLASS =
-  "flex min-h-[3.25rem] flex-1 flex-col justify-between gap-1 overflow-hidden rounded-lg bg-[#FDF3E3] px-3 py-2 text-left";
+  "flex h-[3.25rem] shrink-0 flex-col justify-between gap-1 overflow-hidden rounded-lg bg-[#FDF3E3] px-3 py-2 text-left";
 
 /**
- * One trail: how much of it there is, and what it is.
- *
- * The same link either way. These two pages read from the device, so a guest
- * opens the real thing — it is the rest of the dashboard that asks them to sign
- * in, and only once they go looking for it.
+ * One trail: how much of it there is, what it is, and where to see the details.
  */
-function StatCard({ count, label, href }: { count: number; label: string; href: string }) {
+function StatCard({
+  count,
+  label,
+  href,
+}: {
+  count: number | string;
+  label: string;
+  href: string;
+}) {
   const body = (
     <>
       <span className="flex items-start justify-between gap-2">
