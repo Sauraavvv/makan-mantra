@@ -13,17 +13,19 @@ import { getLiveSession } from "@/lib/auth/session";
 export async function GET() {
   const session = await getLiveSession();
   let profileImageUrl = "";
+  let phone = "";
 
   if (session) {
     try {
       const users = await getUsersCollection();
       const user = await users.findOne(
         { _id: new ObjectId(session.userId) },
-        { projection: { "profile_image.url": 1 } },
+        { projection: { "profile_image.url": 1, phone: 1 } },
       );
       if (typeof user?.profile_image?.url === "string") {
         profileImageUrl = user.profile_image.url;
       }
+      if (typeof user?.phone === "string") phone = user.phone;
     } catch {
       // Session identity can still render with initials during a database blip.
     }
@@ -37,6 +39,7 @@ export async function GET() {
             email: session.email,
             role: session.role,
             profileImageUrl,
+            phone,
           }
         : null,
     },

@@ -17,6 +17,7 @@ export type SessionUser = {
   email: string;
   role: string;
   profileImageUrl: string;
+  phone: string;
 };
 
 type SessionValue = {

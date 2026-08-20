@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPropertySubmissionsCollection } from "@/lib/auth/db";
 import { getLiveSession } from "@/lib/auth/session";
 import { deleteAsset, type UploadedAsset } from "@/lib/cloudinary";
+import { PROPERTY_TYPES } from "@/lib/constants/propertyTypes";
 
 const NO_STORE = { "cache-control": "no-store" };
 
@@ -19,6 +20,51 @@ function ownedBy(pid: string, userId: string, email: string) {
     pid,
     $or: [{ user_id: userId }, { user_email: email }, { owner_email: email }],
   };
+}
+
+/** A lightweight count for account surfaces that do not need the full listings. */
+export async function GET() {
+  const session = await getLiveSession();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in first" }, { status: 401 });
+  }
+
+  try {
+    const submissions = await getPropertySubmissionsCollection();
+    const filter = {
+      $or: [
+        { user_id: session.userId },
+        { user_email: session.email },
+        { owner_email: session.email },
+      ],
+    };
+    const [count, docs] = await Promise.all([
+      submissions.countDocuments(filter),
+      submissions.find(filter).sort({ created_at: -1 }).limit(4).toArray(),
+    ]);
+    const items = docs.map((doc) => {
+      const media: UploadedAsset[] = Array.isArray(doc.media)
+        ? doc.media
+        : Array.isArray(doc.images)
+          ? doc.images
+          : [];
+      const image = media.find((asset) => asset?.kind === "image");
+
+      return {
+        pid: typeof doc.pid === "string" ? doc.pid : "",
+        propertyType:
+          PROPERTY_TYPES[doc.property_type as keyof typeof PROPERTY_TYPES] ??
+          String(doc.property_type ?? "Property"),
+        listingType: doc.listing_type === "rent" ? "For Rent" : "For Sale",
+        status: typeof doc.status === "string" ? doc.status : "pending_review",
+        image: image?.url ?? "",
+      };
+    });
+
+    return NextResponse.json({ count, items }, { headers: NO_STORE });
+  } catch {
+    return NextResponse.json({ error: "Could not load property count" }, { status: 503 });
+  }
 }
 
 /** Marking a property sold, or putting it back on the market. */

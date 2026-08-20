@@ -35,7 +35,7 @@ export function HomeActivityPanel({ className = "" }: { className?: string }) {
         {/* The photo where there is one, initials where there is not — a guest
             has neither, and gets the initials tile's placeholder. A plain `img`,
             as everywhere else we serve Cloudinary. */}
-        <div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#DCF0E4] text-xs font-bold tracking-[0.15em] text-[#1F7A4C]">
+        <div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#DCF0E4] text-xs font-bold tracking-[0.15em] text-[#1F7A4C]">
           {user?.profileImageUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img

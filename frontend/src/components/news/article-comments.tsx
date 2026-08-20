@@ -332,7 +332,7 @@ export function ArticleComments({ articleTitle, articleSlug }: { articleTitle: s
                 return (
                   <article key={comment.id} className="py-5">
                     <div className="flex items-start gap-3">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#242424] text-xs font-bold uppercase text-white">{comment.author_name.charAt(0)}</span>
+                      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#242424] text-xs font-bold uppercase text-white">{comment.author_name.charAt(0)}</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                           <h3 className="text-sm font-bold text-[#242424]">{comment.author_name}</h3>

@@ -603,8 +603,8 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         <aside className="min-w-0 xl:h-full xl:overflow-hidden">
           <div className="overflow-hidden rounded-xl border border-[#e8ecf4] bg-white p-5 sm:p-6">
             <div className="flex flex-col items-center text-center">
-              <div className="relative size-32 rounded-full bg-primary/10 p-1 shadow-[0_16px_40px_rgba(8,27,53,0.16)]">
-                <div className="relative h-full w-full overflow-hidden rounded-full border-4 border-white bg-primary">
+              <div className="relative size-32 rounded-2xl bg-primary/10 p-1 shadow-[0_16px_40px_rgba(8,27,53,0.16)]">
+                <div className="relative h-full w-full overflow-hidden rounded-xl border-4 border-white bg-primary">
                   {profileImage ? (
                     <Image
                       src={profileImage.url}

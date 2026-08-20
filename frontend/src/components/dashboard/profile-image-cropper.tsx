@@ -197,7 +197,7 @@ export function ProfileImageCropper({
                 transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px)) scale(${zoom})`,
               }}
             />
-            <div className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-inset ring-white shadow-[0_0_0_999px_rgba(7,26,51,0.52)]" />
+            <div className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-inset ring-white shadow-[0_0_0_999px_rgba(7,26,51,0.52)]" />
           </div>
 
           <div className="mt-5 flex items-center gap-3">

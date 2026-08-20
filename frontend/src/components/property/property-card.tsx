@@ -197,7 +197,7 @@ export function PropertyCard({
       </div>
 
       <footer className="flex flex-wrap items-center gap-2.5 border-t border-border bg-secondary/50 px-4 py-2.5">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
           {property.agent.name.charAt(0)}
         </span>
 

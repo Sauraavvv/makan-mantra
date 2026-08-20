@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { HeroSearch } from "@/components/site/hero-search";
@@ -129,9 +131,30 @@ export default async function Home() {
               comes out of the row instead of pushing the pair past 100%. They
               stack below `md`, where a quarter of a phone is too narrow to hold
               anything. */}
-          <div className="mx-auto flex w-full max-w-[1250px] flex-1 flex-col gap-4 md:flex-row">
+          <div className="mx-auto flex w-full max-w-[1250px] flex-1 flex-col gap-4 md:flex-row md:items-stretch">
             <HomeRecommendations className="flex-[3]" />
-            <HomeActivityPanel className="flex-1" />
+            <div className="flex w-full flex-col gap-4 md:flex-1">
+              <HomeActivityPanel />
+              <div className="hidden min-h-0 flex-1 rounded-[20px] border border-border bg-background p-4 md:block">
+                <h2 className="text-base font-bold text-[#0A2036]">Plan Your Budget with us</h2>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Link
+                    href="/tools/emi-calculator"
+                    className="flex min-h-16 items-center justify-center rounded-xl border border-[#D9E4F2] bg-[#F5F8FD] p-2 text-center text-[#0A2036] transition-colors hover:border-primary/40 hover:bg-[#EDF4FF]"
+                  >
+                    <span className="text-[11px] font-semibold leading-4">EMI Calculator</span>
+                  </Link>
+                  <Link
+                    href="/tools/stamp-duty-calculator"
+                    className="flex min-h-16 items-center justify-center rounded-xl border border-[#D9E4F2] bg-[#F5F8FD] p-2 text-center text-[#0A2036] transition-colors hover:border-primary/40 hover:bg-[#EDF4FF]"
+                  >
+                    <span className="text-[11px] font-semibold leading-4">
+                      Stamp Duty Calculator
+                    </span>
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </div>
