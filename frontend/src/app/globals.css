@@ -3,6 +3,16 @@
 @import "shadcn/tailwind.css";
 @import "leaflet/dist/leaflet.css";
 
+/*
+ * Scoped dark variant for the property assistant only.
+ *
+ * The site itself is light-only, so this deliberately does NOT hook into
+ * `prefers-color-scheme` or a global `.dark` class — it responds to `.mm-dark`,
+ * which the chat widget puts on its own root. Nothing outside the widget can
+ * be pulled into dark mode by accident.
+ */
+@custom-variant mmdark (&:where(.mm-dark, .mm-dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

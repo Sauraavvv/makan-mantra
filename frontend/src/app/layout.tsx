@@ -45,8 +45,11 @@ export default function RootLayout({
               </LocationProvider>
             </RecentPropertiesProvider>
           </SearchHistoryProvider>
+          {/* Inside the provider: the assistant reads the session to decide
+              whether chats are saved, and outside it that read silently
+              returns "signed out" for everyone. */}
+          <Chatbot />
         </SessionProvider>
-        <Chatbot />
       </body>
     </html>
   );

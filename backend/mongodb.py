@@ -11,7 +11,11 @@ client: AsyncIOMotorClient = None
 
 async def connect_db():
     global client
-    client = AsyncIOMotorClient(MONGODB_URL, tlsCAFile=certifi.where())
+    # Atlas needs the CA bundle, and passing tlsCAFile is enough to turn TLS on
+    # — which is why it cannot be passed unconditionally: a local mongod has no
+    # TLS listener, so the handshake fails before the first query.
+    tls = {"tlsCAFile": certifi.where()} if MONGODB_URL.startswith("mongodb+srv://") else {}
+    client = AsyncIOMotorClient(MONGODB_URL, **tls)
     print("MongoDB connected")
 
 async def close_db():
@@ -46,3 +50,15 @@ def get_news_comments_collection():
 
 def get_news_views_collection():
     return get_database()["news_views"]
+
+
+def get_chat_messages_collection():
+    """One document per message. Kept as separate docs rather than an array on
+    a session so a long conversation is an append, not a growing document."""
+    return get_database()["chat_messages"]
+
+
+def get_chat_sessions_collection():
+    """Per-session search filters, so they survive a reload without being
+    re-derived from the transcript on every turn."""
+    return get_database()["chat_sessions"]

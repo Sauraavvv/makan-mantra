@@ -2,13 +2,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mongodb import close_db, connect_db, get_news_views_collection
-from routers import district_overview, gone, location_pages, market_snapshot, news, state_overview
+from routers import chat, district_overview, gone, location_pages, market_snapshot, news, state_overview
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_db()
     await get_news_views_collection().create_index([("article_slug", 1), ("visitor_hash", 1)], unique=True)
+    await chat.ensure_indexes()
     yield
     await close_db()
 
@@ -33,6 +34,7 @@ app.include_router(state_overview.router)
 app.include_router(district_overview.router)
 app.include_router(market_snapshot.router)
 app.include_router(news.router)
+app.include_router(chat.router)
 
 
 @app.get("/health")
