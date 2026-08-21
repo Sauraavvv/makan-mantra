@@ -433,26 +433,26 @@ function ListingPreviewList({
   onNavigate: () => void;
 }) {
   return (
-    <ul className="space-y-2">
+    <ul className="grid grid-cols-2 gap-2">
       {items.slice(0, 4).map((item, index) => (
         <li key={item.pid || `${item.propertyType}-${index}`}>
           <Link
             href="/dashboard/properties"
             onClick={onNavigate}
-            className="flex h-[52px] items-center gap-2.5 rounded-lg border border-[#DCE5F2] bg-background p-1.5 transition-colors hover:bg-[#EFF6FF]"
+            className="block h-[112px] overflow-hidden rounded-lg border border-[#DCE5F2] bg-background transition-colors hover:border-[#B8CEEA] hover:bg-[#EFF6FF]"
           >
-            <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-md bg-[#DBEAFE] text-[#3B82F6]">
+            <span className="relative grid h-14 w-full place-items-center overflow-hidden bg-[#DBEAFE] text-[#3B82F6]">
               {item.image ? (
-                <Image src={item.image} alt="" fill sizes="40px" className="object-cover" />
+                <Image src={item.image} alt="" fill sizes="150px" className="object-cover" />
               ) : (
                 <Building2 className="size-5" strokeWidth={1.5} />
               )}
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-medium text-muted-foreground">
+            <span className="block min-w-0 px-2 py-1.5">
+              <span className="block truncate text-[10px] font-medium text-muted-foreground">
                 {item.propertyType} · {item.listingType}
               </span>
-              <span className="mt-0.5 block truncate text-[10px] capitalize text-muted-foreground/70">
+              <span className="mt-0.5 block truncate text-[9px] capitalize text-muted-foreground/70">
                 {item.status.replaceAll("_", " ")}
               </span>
             </span>
@@ -507,15 +507,15 @@ function PropertyPreviewList({
   onNavigate: () => void;
 }) {
   return (
-    <ul className="space-y-2">
+    <ul className="grid grid-cols-2 gap-2">
       {items.slice(0, 4).map((item) => (
         <li key={item.propertyId}>
           <Link
             href={`/property/${item.propertyId}/${generateSlug(item.title)}`}
             onClick={onNavigate}
-            className="flex h-[52px] items-center gap-2.5 rounded-lg border border-[#DCE5F2] bg-background p-1.5 transition-colors hover:bg-[#EFF6FF]"
+            className="block h-[112px] overflow-hidden rounded-lg border border-[#DCE5F2] bg-background transition-colors hover:border-[#B8CEEA] hover:bg-[#EFF6FF]"
           >
-            <span className="relative size-10 shrink-0 overflow-hidden rounded-md bg-[#DBEAFE]">
+            <span className="relative block h-14 w-full overflow-hidden bg-[#DBEAFE]">
               {/* Activity snapshots may carry external image hosts from DB or local storage. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -525,11 +525,11 @@ function PropertyPreviewList({
                 className="size-full object-cover"
               />
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-medium text-muted-foreground">
+            <span className="block min-w-0 px-2 py-1.5">
+              <span className="block truncate text-[10px] font-medium text-muted-foreground">
                 {item.title}
               </span>
-              <span className="mt-0.5 block truncate text-[10px] text-muted-foreground/70">
+              <span className="mt-0.5 block truncate text-[9px] text-muted-foreground/70">
                 {[item.price, item.locality || item.city].filter(Boolean).join(" · ")}
               </span>
             </span>

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Heart, MapPin, Scaling } from "lucide-react";
 
@@ -44,8 +43,13 @@ export function SavedList() {
           key={item.propertyId}
           className="flex gap-3 overflow-hidden rounded-xl border border-border bg-background p-3"
         >
-          <div className="relative size-[86px] shrink-0 overflow-hidden rounded-lg">
-            <Image src={item.image || "/hero-home.jpg"} alt="" fill sizes="86px" className="object-cover" />
+          <div className="size-[86px] shrink-0 overflow-hidden rounded-lg bg-muted">
+            <img
+              src={item.image || "/hero-home.jpg"}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
           </div>
 
           <div className="min-w-0 flex-1">

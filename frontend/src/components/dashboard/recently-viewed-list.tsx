@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Eye, MapPin, Scaling } from "lucide-react";
 
@@ -49,13 +48,12 @@ export function RecentlyViewedList() {
               href={href}
               className="flex gap-3 overflow-hidden rounded-xl border border-border bg-background p-3 transition-colors hover:bg-muted/30"
             >
-              <div className="relative size-[86px] shrink-0 overflow-hidden rounded-lg">
-                <Image
+              <div className="size-[86px] shrink-0 overflow-hidden rounded-lg bg-muted">
+                <img
                   src={item.image || "/hero-home.jpg"}
                   alt=""
-                  fill
-                  sizes="86px"
-                  className="object-cover"
+                  loading="lazy"
+                  className="h-full w-full object-cover"
                 />
               </div>
 
