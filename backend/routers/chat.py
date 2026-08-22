@@ -24,6 +24,8 @@ from routers.slots import (
     regex_slots,
     summary,
 )
+from routers.matches import find_matches
+from routers.topic import off_topic, refusal, suggestions
 
 load_dotenv()
 
@@ -69,6 +71,11 @@ def build_llm() -> ChatGroq:
     return ChatGroq(model=MODEL, temperature=0.3, api_key=next_key())
 
 
+def build_extractor() -> ChatGroq:
+    """The cheap model, shared by everything that reads rather than writes."""
+    return ChatGroq(model=EXTRACT_MODEL, temperature=0, api_key=next_key())
+
+
 async def read_slots(known: Slots, message: str) -> Slots:
     """Fill the gaps in what is already known, from this message alone.
 
@@ -79,8 +86,7 @@ async def read_slots(known: Slots, message: str) -> Slots:
     A failure degrades to "learned nothing new" rather than breaking the turn.
     """
     try:
-        extractor = ChatGroq(model=EXTRACT_MODEL, temperature=0, api_key=next_key())
-        found = await extractor.with_structured_output(Slots).ainvoke([
+        found = await build_extractor().with_structured_output(Slots).ainvoke([
             SystemMessage(content=EXTRACT_PROMPT),
             HumanMessage(content=(
                 f"Already known: {known.model_dump_json(exclude_none=True)}\n"
@@ -335,30 +341,70 @@ async def stream(
     if not body.slots and user_id and body.session_id:
         known = await load_slots(body.session_id, user_id)
 
-    after_regex = merge(known, regex_slots(body.message))
-    slots = (
-        await read_slots(after_regex, body.message)
-        if needs_model(body.message, known, after_regex)
-        else after_regex
-    )
-    pending = missing_field(slots)
+    found = regex_slots(body.message)
+    asked = missing_field(known)
+    asked_field = asked[0] if asked else None
+    # With nothing filled in yet, nothing has been asked yet either. A refusal
+    # then offers openers rather than pretending to resume a search that never
+    # started — `missing_field` names a first question the user has not seen.
+    resuming = asked_field if known.model_dump(exclude_none=True) else None
 
-    directive = SYSTEM_PROMPT
-    if pending:
-        _, instruction = pending
-        known = summary(slots)
-        directive += f"\n\nAlready known: {known or 'nothing yet'}."
-        directive += f"\n\nYour entire reply is this one question. {instruction}"
-        directive += "\nDo not ask for anything else. Do not add a second question."
+    # Off subject, the turn stops here. The chat model is never called, nothing
+    # is extracted, and the slots are left exactly as they were — so the search
+    # resumes mid-question the moment the user comes back to it.
+    blocked = await off_topic(body.message, found, asked_field, build_extractor)
+
+    prompt: list[BaseMessage] = []
+    matches: list[dict] = []
+    if blocked:
+        slots, pending = known, asked
     else:
-        directive += (
-            f"\n\nYou now have everything: {summary(slots)}. "
-            "Confirm it back in one short line and say you are finding matches. Ask nothing further."
+        after_regex = merge(known, found)
+        slots = (
+            await read_slots(after_regex, body.message)
+            if needs_model(body.message, known, after_regex)
+            else after_regex
         )
+        pending = missing_field(slots)
 
-    prompt = [SystemMessage(content=directive), *past, HumanMessage(content=body.message)]
+        directive = SYSTEM_PROMPT
+        if pending:
+            _, instruction = pending
+            directive += f"\n\nAlready known: {summary(slots) or 'nothing yet'}."
+            directive += f"\n\nYour entire reply is this one question. {instruction}"
+            directive += "\nDo not ask for anything else. Do not add a second question."
+        else:
+            # The five answers are the whole point of the conversation, so this
+            # is where they finally buy something.
+            matches = find_matches(slots)
+            directive += (
+                f"\n\nYou now have everything: {summary(slots)}. "
+                "Confirm it back in one short line and say a few matches are below. "
+                "Do not list or describe them yourself. Ask nothing further."
+            )
+
+        prompt = [SystemMessage(content=directive), *past, HumanMessage(content=body.message)]
 
     async def events() -> AsyncIterator[str]:
+        # A refusal is fixed text, so it is written straight to the wire rather
+        # than streamed: there is no model behind it to wait for.
+        if blocked:
+            reply = refusal(body.message, resuming)
+            yield _sse("token", {"text": reply})
+            if user_id and session_id:
+                await save_turn(session_id, user_id, body.message, reply)
+            yield _sse("done", {
+                "session_id": session_id,
+                "answer": reply,
+                "slots": slots.model_dump(),
+                "awaiting": asked_field,
+                # What the user can ask instead. Turning them away without
+                # these is the half of the answer that helps nobody.
+                "suggestions": suggestions(slots, resuming),
+                "matches": [],
+            })
+            return
+
         answer = ""
         started = False
         last_error: Exception | None = None
@@ -415,6 +461,8 @@ async def stream(
             "answer": answer,
             "slots": slots.model_dump(),
             "awaiting": pending[0] if pending else None,
+            "suggestions": [],
+            "matches": matches,
         })
 
     return StreamingResponse(

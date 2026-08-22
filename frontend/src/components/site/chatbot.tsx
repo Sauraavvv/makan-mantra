@@ -22,16 +22,40 @@ import { ChatMarkdown } from "@/components/site/chat-markdown";
 import { useSession } from "@/context/session-context";
 import { openAuthModal } from "@/lib/auth-modal";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import { PROPERTY_IMAGES } from "@/lib/properties";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type Role = "bot" | "user";
+
+/**
+ * A listing the assistant found once it had all five answers.
+ *
+ * Fabricated on the server for now — there is no inventory behind the search
+ * yet — which is why the block is labelled as sample data on screen.
+ */
+type Match = {
+  id: string;
+  title: string;
+  price: string;
+  locality: string;
+  city: string;
+  config: string;
+  area: string;
+};
 
 type Message = {
   id: string;
   role: Role;
   text: string;
   pending?: boolean;
+  matches?: Match[];
+  /**
+   * What the assistant offers when it turns a question down. Only the newest
+   * message shows them, so an old refusal does not leave live buttons behind
+   * halfway up the transcript.
+   */
+  suggestions?: string[];
 };
 
 const WELCOME_TEXT =
@@ -145,7 +169,7 @@ function ChatbotWidget() {
   // character it writes is a dependency change.
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { isSupported: micSupported, status: micStatus, toggle: toggleMic } =
+  const { isSupported: micSupported, status: micStatus, error: micError, toggle: toggleMic } =
     useSpeechRecognition((text) => setInput(text));
   const bubbleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Avatar enters after 3s
@@ -370,8 +394,12 @@ function ChatbotWidget() {
     return sessionId === activeSession;
   }
 
-  async function handleSend() {
-    const text = input.trim();
+  function handleSend() {
+    void sendText(input);
+  }
+
+  async function sendText(raw: string) {
+    const text = raw.trim();
     if (!text || busy) return;
 
     setError(null);
@@ -412,6 +440,8 @@ function ChatbotWidget() {
       const decoder = new TextDecoder();
       let buffer = "";
       let failure: string | null = null;
+      let tips: string[] = [];
+      let found: Match[] = [];
       streamedRef.current = "";
 
       while (true) {
@@ -455,6 +485,8 @@ function ChatbotWidget() {
             }
             streamedRef.current = String(payload.answer ?? streamedRef.current);
             if (payload.slots) slotsRef.current = payload.slots as Record<string, unknown>;
+            if (Array.isArray(payload.suggestions)) tips = payload.suggestions as string[];
+            if (Array.isArray(payload.matches)) found = payload.matches as Match[];
           } else if (event === "error") {
             failure = String(payload.message ?? "Something went wrong.");
           }
@@ -463,7 +495,17 @@ function ChatbotWidget() {
 
       setMessages((current) =>
         current
-          .map((m) => (m.id === replyId ? { ...m, text: streamedRef.current, pending: false } : m))
+          .map((m) =>
+            m.id === replyId
+              ? {
+                  ...m,
+                  text: streamedRef.current,
+                  pending: false,
+                  suggestions: tips.length ? tips : undefined,
+                  matches: found.length ? found : undefined,
+                }
+              : m,
+          )
           // A failure before any token leaves an empty bubble behind.
           .filter((m) => m.id !== replyId || m.text),
       );
@@ -680,7 +722,7 @@ function ChatbotWidget() {
                   </section>
 
                   <div className="mx-auto mt-7 max-w-3xl space-y-4 pb-3">
-                    {messages.map((msg) => (
+                    {messages.map((msg, index) => (
                       <div key={msg.id} className={`flex flex-col gap-2 ${msg.role === "user" ? "items-end" : "items-start"}`}>
                         <div className={`max-w-[86%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm sm:max-w-[76%] ${
                           msg.role === "user"
@@ -699,13 +741,68 @@ function ChatbotWidget() {
                             </span>
                           )}
                         </div>
+
+                        {/* Unlinked on purpose. There is nothing to open yet, and a
+                            card that goes nowhere is worse than one that says so. */}
+                        {msg.matches?.length ? (
+                          <div className="w-full max-w-[86%] space-y-2 sm:max-w-[76%]">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mmdark:text-zinc-600">
+                              Sample results · live listings coming soon
+                            </div>
+                            {msg.matches.map((match, spot) => (
+                              <div
+                                key={match.id}
+                                className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm mmdark:border-zinc-800 mmdark:bg-zinc-950"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={PROPERTY_IMAGES[spot % PROPERTY_IMAGES.length]}
+                                  alt=""
+                                  className="h-16 w-20 shrink-0 rounded-xl object-cover"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-[13px] font-bold text-slate-900 mmdark:text-zinc-100">
+                                    {match.title}
+                                  </div>
+                                  <div className="truncate text-[11px] font-medium text-slate-500 mmdark:text-zinc-500">
+                                    {match.locality}, {match.city}
+                                  </div>
+                                  <div className="mt-1 flex min-w-0 items-baseline gap-2">
+                                    <span className="shrink-0 text-[13px] font-black text-saffron">
+                                      {match.price}
+                                    </span>
+                                    <span className="truncate text-[11px] font-medium text-slate-400 mmdark:text-zinc-600">
+                                      {match.config} · {match.area}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {/* Turning a question down is only half an answer; these
+                            are the other half, and they are one tap away. */}
+                        {msg.suggestions?.length && index === messages.length - 1 && !busy ? (
+                          <div className="flex max-w-[86%] flex-wrap gap-1.5 sm:max-w-[76%]">
+                            {msg.suggestions.map((tip) => (
+                              <button
+                                key={tip}
+                                onClick={() => void sendText(tip)}
+                                className="rounded-full border border-saffron/35 bg-saffron/5 px-3 py-1.5 text-[12px] font-semibold text-saffron transition hover:bg-saffron/15 mmdark:border-saffron/45 mmdark:bg-saffron/10"
+                              >
+                                {tip}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
 
-                    {error && (
+                    {(error || micError) && (
                       <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-700 mmdark:border-red-900 mmdark:bg-red-950/40 mmdark:text-red-300">
                         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                        {error}
+                        {error || micError}
                       </div>
                     )}
                     <div ref={bottomRef} />
@@ -718,7 +815,7 @@ function ChatbotWidget() {
                     <input
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && void handleSend()}
+                      onKeyDown={(e) => e.key === "Enter" && handleSend()}
                       disabled={busy}
                       placeholder={micStatus === "listening" ? "Listening…" : "Ask for 2 BHK for rent in Faridabad"}
                       className="h-11 min-w-0 flex-1 bg-transparent px-2 text-[13px] font-medium text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed mmdark:text-zinc-100 mmdark:placeholder:text-zinc-600"
@@ -738,7 +835,7 @@ function ChatbotWidget() {
                       </button>
                     )}
                     <button
-                      onClick={() => void handleSend()}
+                      onClick={handleSend}
                       disabled={busy || !input.trim()}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-saffron text-white transition hover:bg-saffron/90 disabled:opacity-40"
                       aria-label="Send message"

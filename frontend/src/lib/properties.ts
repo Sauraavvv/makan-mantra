@@ -46,7 +46,7 @@ const CITIES: Record<string, string[]> = {
 
 const LOCALITIES = ["Bandra West", "Andheri East", "Powai", "Kharadi", "Baner", "Hinjewadi", "Civil Lines", "Dharampeth", "College Road", "Gangapur Road", "Vashi", "Kalyani Nagar"];
 const TYPES: Property["type"][] = ["Flat", "Villa", "Plot", "Builder Floor", "Office Space", "Shop/Showroom"];
-const IMAGES = [
+export const PROPERTY_IMAGES = [
   "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800&auto=format&fit=crop",
@@ -75,7 +75,7 @@ export function generateProperties(state: string, count: number): Property[] {
     return {
       id: `${state.toLowerCase().replace(/\s+/g, "-")}-${i}-${s % 999}`,
       title: `${bhk} BHK ${TYPES[s % TYPES.length]} in ${locality}`,
-      image: IMAGES[(s + i) % IMAGES.length],
+      image: PROPERTY_IMAGES[(s + i) % PROPERTY_IMAGES.length],
       listing,
       type: TYPES[s % TYPES.length],
       bhk,
