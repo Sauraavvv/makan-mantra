@@ -24,8 +24,10 @@ from routers.slots import (
     regex_slots,
     summary,
 )
+from routers.desks import NEWS, POST, pick_desk
+from routers.lookup import find_news
 from routers.matches import find_matches
-from routers.topic import off_topic, refusal, suggestions
+from routers.topic import is_greeting, is_hinglish, off_topic, refusal, suggestions
 
 load_dotenv()
 
@@ -53,6 +55,20 @@ Style:
 - You can see the earlier turns; never make the user repeat themselves.
 - Answer general property questions directly when asked.
 """
+
+# The one desk that is not open. Fixed text in both languages: nothing about it
+# is a judgement call, so none of it is worth a model call.
+POST_CLOSED = (
+    "Posting a property through chat is not open yet. You can still list it from "
+    "the Post Property page, and our team will call to build the listing with you.",
+    "Chat se property post karna abhi shuru nahi hua hai. Aap Post Property page se "
+    "list kar sakte hain, hamari team call karke listing bana degi.",
+)
+
+def say(pair: tuple[str, str], text: str, **fields) -> str:
+    """Picks the language from what the visitor wrote, then fills the blanks."""
+    return (pair[1] if is_hinglish(text) else pair[0]).format(**fields)
+
 
 # Round-robin across the configured keys so one key's rate limit does not stop
 # the whole assistant. `cycle` is not thread-safe on its own, hence the lock.
@@ -190,6 +206,21 @@ async def save_slots(session_id: str, user_id: str, slots: Slots) -> None:
     )
 
 
+PANEL_INTRO = (
+    "\n\nA data panel is already on screen showing {title} — {subtitle}. "
+    "Write ONE short line telling the visitor what they are looking at. "
+    "State no figures: every number is already in the panel below your line. "
+    "Ask nothing."
+)
+
+
+PANEL_INTRO = (
+    "\n\nA panel is already on screen showing {title} — {subtitle}. "
+    "Write ONE short line telling the visitor what they are looking at. "
+    "Do not restate anything from it. Ask nothing."
+)
+
+
 class Turn(BaseModel):
     role: str
     content: str = Field(max_length=8000)
@@ -205,6 +236,9 @@ class AskRequest(BaseModel):
     # Carried back by the client so the server need not re-derive what it
     # already worked out last turn.
     slots: dict | None = None
+    # Which desk the visitor is at. Carried the same way and for the same
+    # reason: naming it once should hold for the turns that follow.
+    desk: str | None = None
 
 
 class SessionSummary(BaseModel):
@@ -349,15 +383,33 @@ async def stream(
     # started — `missing_field` names a first question the user has not seen.
     resuming = asked_field if known.model_dump(exclude_none=True) else None
 
+    # An explicit desk this turn wins over the one carried from the last, so a
+    # visitor can move between them without starting a new chat.
+    desk = pick_desk(body.message) or body.desk
+
     # Off subject, the turn stops here. The chat model is never called, nothing
     # is extracted, and the slots are left exactly as they were — so the search
     # resumes mid-question the moment the user comes back to it.
+    #
     blocked = await off_topic(body.message, found, asked_field, build_extractor)
 
     prompt: list[BaseMessage] = []
     matches: list[dict] = []
+    panel: dict | None = None
+    fixed: str | None = None
+    slots, pending = known, asked
+
     if blocked:
-        slots, pending = known, asked
+        pass
+    elif desk == POST:
+        fixed = say(POST_CLOSED, body.message)
+    elif desk == NEWS:
+        panel = await find_news()
+        prompt = [
+            SystemMessage(content=SYSTEM_PROMPT + PANEL_INTRO.format(
+                title=panel["title"], subtitle=panel["subtitle"])),
+            HumanMessage(content=body.message),
+        ]
     else:
         after_regex = merge(known, found)
         slots = (
@@ -371,7 +423,20 @@ async def stream(
         if pending:
             _, instruction = pending
             directive += f"\n\nAlready known: {summary(slots) or 'nothing yet'}."
-            directive += f"\n\nYour entire reply is this one question. {instruction}"
+            if is_greeting(body.message):
+                # Someone who says hello is owed a hello. Holding the reply to
+                # the pending question alone answers a person with a form
+                # field, which reads as not having been listened to at all.
+                directive += (
+                    f"\n\nAnswer what they said first, warmly and in a few words, "
+                    f"then ask this one question. {instruction}"
+                )
+                directive += (
+                    "\nPut no question mark in that opening line — the only question "
+                    "in your reply is the one at the end."
+                )
+            else:
+                directive += f"\n\nYour entire reply is this one question. {instruction}"
             directive += "\nDo not ask for anything else. Do not add a second question."
         else:
             # The five answers are the whole point of the conversation, so this
@@ -385,23 +450,32 @@ async def stream(
 
         prompt = [SystemMessage(content=directive), *past, HumanMessage(content=body.message)]
 
+    # Written here rather than by the model: a refusal, a desk waiting on a
+    # place, a desk with nothing to show, or one that is not open. All of it is
+    # fixed text, so none of it waits on a model.
+    written = refusal(body.message, resuming) if blocked else fixed
+    tips = suggestions(slots, resuming) if blocked else []
+
+    # The first question mark ends the reply only while a slot is being filled.
+    # A panel intro is not that, and neither is anything written above.
+    clip = pending is not None and panel is None and not written
+
     async def events() -> AsyncIterator[str]:
-        # A refusal is fixed text, so it is written straight to the wire rather
-        # than streamed: there is no model behind it to wait for.
-        if blocked:
-            reply = refusal(body.message, resuming)
-            yield _sse("token", {"text": reply})
+        if written:
+            yield _sse("token", {"text": written})
             if user_id and session_id:
-                await save_turn(session_id, user_id, body.message, reply)
+                await save_turn(session_id, user_id, body.message, written)
             yield _sse("done", {
                 "session_id": session_id,
-                "answer": reply,
+                "answer": written,
                 "slots": slots.model_dump(),
                 "awaiting": asked_field,
-                # What the user can ask instead. Turning them away without
+                "desk": desk,
+                # Where the visitor can go instead. Turning them away without
                 # these is the half of the answer that helps nobody.
-                "suggestions": suggestions(slots, resuming),
+                "suggestions": tips,
                 "matches": [],
+                "panel": None,
             })
             return
 
@@ -423,7 +497,7 @@ async def stream(
                     # While a field is still missing the turn ends at the first
                     # question mark, mid-stream. Truncating only at the end
                     # would let the extra questions flash on screen first.
-                    if pending:
+                    if clip:
                         clipped = one_question(answer + text)
                         if len(clipped) < len(answer + text):
                             tail = clipped[len(answer):]
@@ -442,7 +516,7 @@ async def stream(
                     return
                 continue
 
-        if pending:
+        if clip:
             answer = one_question(answer)
 
         if not answer:
@@ -461,8 +535,10 @@ async def stream(
             "answer": answer,
             "slots": slots.model_dump(),
             "awaiting": pending[0] if pending else None,
+            "desk": desk,
             "suggestions": [],
             "matches": matches,
+            "panel": panel,
         })
 
     return StreamingResponse(

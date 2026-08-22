@@ -54,21 +54,46 @@ PROPERTY_WORDS = re.compile(
     re.I,
 )
 
-# Greetings and acknowledgements are not a change of subject. Refusing a "hi"
-# would be the rudest possible way to enforce a topic.
-SMALL_TALK = re.compile(
+# Things a person says to a person: an opener, a thank you, a goodbye, or a
+# question about who they are talking to. These are not a change of subject,
+# and refusing a "hi" would be the rudest possible way to enforce a topic —
+# but neither is answering it with a form field, which is why they are kept
+# apart from the filler below.
+ADDRESS = (
+    r"(?:\s*[,!]?\s*(?:bro|bhai|buddy|dude|there|sir|madam|ma'?am|mam|dost|"
+    r"yaar|ji|mantraa?|team|guys?|friend|everyone))*"
+)
+
+GREETING = re.compile(
     r"^\s*("
     r"hi+|hello+|hey+|yo|namaste|namaskar|salaam|"
     r"good\s*(morning|afternoon|evening|night)|"
     r"thanks?|thank\s*you|thx|dhanyavaad|dhanyawad|shukriya|"
-    r"ok(ay)?|k|thik|theek|(thik|theek)\s*hai|sahi|great|nice|cool|good|"
-    r"ha+n?|yes|yep|yeah|no|nope|nahi|nhi|"
-    r"bye|goodbye|see\s*you|hmm+|"
+    r"bye|goodbye|see\s*you|"
     r"who\s*are\s*you|what\s*can\s*you\s*do|how\s*can\s*you\s*help|help|"
-    r"(aap|tum)\s*kaun\s*ho|kya\s*kar\s*sakte\s*ho|kaise\s*ho"
+    r"(aap|tum)\s*kaun\s*ho|kya\s*kar\s*sakte\s*ho|kaise\s*ho|how\s*are\s*you"
+    r")" + ADDRESS + r"[\s!.?]*$",
+    re.I,
+)
+
+# Bare acknowledgements. On topic, but there is nothing to say back to "ok".
+FILLER = re.compile(
+    r"^\s*("
+    r"ok(ay)?|k|thik|theek|(thik|theek)\s*hai|sahi|great|nice|cool|good|"
+    r"ha+n?|yes|yep|yeah|no|nope|nahi|nhi|hmm+"
     r")[\s!.?]*$",
     re.I,
 )
+
+
+def is_hinglish(text: str) -> bool:
+    """Whether a fixed reply should come back in Hinglish rather than English."""
+    return bool(HINGLISH.search(text))
+
+
+def is_greeting(text: str) -> bool:
+    """Whether this deserves a word back before the assistant carries on."""
+    return bool(GREETING.match(text))
 
 # A fast lane for the obvious, so the classifier call is spent only on messages
 # that are genuinely hard to place. Kept narrow on purpose: a word that could
@@ -129,6 +154,9 @@ about the assistant itself or what it can do.
 It does not belong if it is about something else entirely: sport, films, cooking,
 programming, health, general knowledge, politics, or schoolwork.
 
+A greeting, a thank you, a goodbye or any other pleasantry always belongs — that
+is a person being polite, not a change of subject.
+
 When it could plausibly be either, say it belongs."""
 
 
@@ -175,7 +203,7 @@ async def off_topic(
         return False
     if is_answer(asked, text):
         return False
-    if SMALL_TALK.match(text):
+    if GREETING.match(text) or FILLER.match(text):
         return False
     return await asks_elsewhere(text, extractor)
 

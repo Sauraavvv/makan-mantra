@@ -22,6 +22,7 @@ import { ChatMarkdown } from "@/components/site/chat-markdown";
 import { useSession } from "@/context/session-context";
 import { openAuthModal } from "@/lib/auth-modal";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import Link from "next/link";
 import { PROPERTY_IMAGES } from "@/lib/properties";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -44,12 +45,32 @@ type Match = {
   area: string;
 };
 
+/** A story from the news desk. Real links, unlike the sample listings. */
+type NewsItem = {
+  title: string;
+  meta: string;
+  summary: string;
+  href: string | null;
+  image: string | null;
+  at: string;
+};
+
+/** What a desk puts on screen beside its one-line reply. */
+type Panel = {
+  kind: "news";
+  title: string;
+  subtitle: string;
+  href: string | null;
+  links: NewsItem[];
+};
+
 type Message = {
   id: string;
   role: Role;
   text: string;
   pending?: boolean;
   matches?: Match[];
+  panel?: Panel;
   /**
    * What the assistant offers when it turns a question down. Only the newest
    * message shows them, so an old refusal does not leave live buttons behind
@@ -59,7 +80,22 @@ type Message = {
 };
 
 const WELCOME_TEXT =
-  "Hi! I'm **Mantraa**, your property assistant. Ask me anything about buying, renting or property prices in India.";
+  "Hi! I'm **Mantraa**, your property assistant at Makan Mantraa. I can help you find a " +
+  "home to buy or rent. What are you looking for — and in which city?";
+
+/**
+ * The opening menu.
+ *
+ * An empty box and an invitation to "ask anything" is the hardest possible
+ * first move: it asks the visitor to guess what the assistant can do. These
+ * name it instead, and each label is exactly what gets sent — the server
+ * matches on it to pick the desk.
+ */
+const MENU: { label: string; disabled?: boolean }[] = [
+  { label: "Recommend property" },
+  { label: "Latest news" },
+  { label: "Post property", disabled: true },
+];
 
 const INITIAL_MESSAGES: Message[] = [{ id: "welcome", role: "bot", text: WELCOME_TEXT }];
 
@@ -161,6 +197,9 @@ function ChatbotWidget() {
   // already worked out. A ref, because the send path must read the current
   // value rather than whatever a stale closure captured.
   const slotsRef = useRef<Record<string, unknown> | null>(null);
+  // Which desk the visitor is at, carried for the same reason and by the same
+  // route: naming it once should hold for the turns that follow.
+  const deskRef = useRef<string | null>(null);
   // Full by default, so a restored conversation shows the greeting complete
   // rather than replaying it. Opening a fresh chat restarts the typing.
   const [welcomeText, setWelcomeText] = useState(WELCOME_TEXT);
@@ -224,7 +263,7 @@ function ChatbotWidget() {
 
     let shown = 0;
     const timer = setInterval(() => {
-      shown += 2;
+      shown += 3;
       setWelcomeText(WELCOME_TEXT.slice(0, shown));
       if (shown >= WELCOME_TEXT.length) {
         clearInterval(timer);
@@ -286,6 +325,7 @@ function ChatbotWidget() {
       const data = (await res.json()) as { messages: { role: string; content: string }[] };
       sessionRef.current = sessionId;
       slotsRef.current = null;
+      deskRef.current = null;
       setActiveSession(sessionId);
       setWelcomeText(WELCOME_TEXT);
       setTyping(false);
@@ -331,6 +371,7 @@ function ChatbotWidget() {
     // already moved on from.
     sessionRef.current = null;
     slotsRef.current = null;
+    deskRef.current = null;
     setActiveSession(null);
     setMessages(INITIAL_MESSAGES);
     setWelcomeText("");
@@ -364,6 +405,7 @@ function ChatbotWidget() {
     // opening a chat and walking away leaves nothing behind.
     sessionRef.current = null;
     slotsRef.current = null;
+    deskRef.current = null;
     setActiveSession(null);
     setMessages(INITIAL_MESSAGES);
     setWelcomeText("");
@@ -376,6 +418,7 @@ function ChatbotWidget() {
   function clearGuestAndRestart() {
     clearGuestChat();
     slotsRef.current = null;
+    deskRef.current = null;
     setMessages(INITIAL_MESSAGES);
     setWelcomeText("");
     setTyping(true);
@@ -419,10 +462,16 @@ function ChatbotWidget() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(
           signedIn
-            ? { message: text, session_id: sessionRef.current, slots: slotsRef.current }
+            ? {
+                message: text,
+                session_id: sessionRef.current,
+                slots: slotsRef.current,
+                desk: deskRef.current,
+              }
             : {
                 message: text,
                 slots: slotsRef.current,
+                desk: deskRef.current,
                 history: messages
                   .filter((m) => m.id !== "welcome" && m.text)
                   .slice(-20)
@@ -442,6 +491,7 @@ function ChatbotWidget() {
       let failure: string | null = null;
       let tips: string[] = [];
       let found: Match[] = [];
+      let board: Panel | null = null;
       streamedRef.current = "";
 
       while (true) {
@@ -487,6 +537,8 @@ function ChatbotWidget() {
             if (payload.slots) slotsRef.current = payload.slots as Record<string, unknown>;
             if (Array.isArray(payload.suggestions)) tips = payload.suggestions as string[];
             if (Array.isArray(payload.matches)) found = payload.matches as Match[];
+            if (payload.panel) board = payload.panel as Panel;
+            deskRef.current = (payload.desk as string | null) ?? null;
           } else if (event === "error") {
             failure = String(payload.message ?? "Something went wrong.");
           }
@@ -503,6 +555,7 @@ function ChatbotWidget() {
                   pending: false,
                   suggestions: tips.length ? tips : undefined,
                   matches: found.length ? found : undefined,
+                  panel: board ?? undefined,
                 }
               : m,
           )
@@ -536,9 +589,9 @@ function ChatbotWidget() {
               animate={{ y: 0, scale: 1 }}
               exit={{ y: 26, scale: 0.96 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="flex h-[calc(100dvh-2rem)] w-full max-w-[1020px] overflow-hidden rounded-[20px] border border-white/40 bg-white shadow-2xl mmdark:border-zinc-800 mmdark:bg-black sm:h-[min(86vh,760px)] sm:min-h-[620px]"
+              className="flex h-[calc(100dvh-2rem)] w-full max-w-[1320px] overflow-hidden rounded-[20px] border border-white/40 bg-white shadow-2xl mmdark:border-zinc-800 mmdark:bg-black sm:h-[min(92vh,900px)] sm:min-h-[680px]"
             >
-              <aside className="hidden w-[248px] shrink-0 flex-col border-r border-slate-200 bg-[#F4F7FB] mmdark:border-zinc-800 mmdark:bg-zinc-950 md:flex">
+              <aside className="hidden w-[280px] shrink-0 flex-col border-r border-slate-200 bg-[#F4F7FB] mmdark:border-zinc-800 mmdark:bg-zinc-950 md:flex">
                 <div className="px-7 pb-5 pt-7">
                   <div className="font-serif text-xl font-bold leading-none text-[#0A2036] mmdark:text-zinc-50">
                     Makan <span className="text-saffron">Mantraa</span>
@@ -708,7 +761,7 @@ function ChatbotWidget() {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[linear-gradient(180deg,#fffaf0_0%,#ffffff_34%,#f8fafc_100%)] px-4 py-5 mmdark:bg-none mmdark:bg-black sm:px-7">
-                  <section className="mx-auto max-w-3xl text-center">
+                  <section className="mx-auto max-w-4xl text-center">
                     <div className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-saffron/25 bg-saffron/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron">
                       <Sparkles className="h-3 w-3" />
                       Home discovery
@@ -716,12 +769,12 @@ function ChatbotWidget() {
                     <h3 className="mt-4 text-xl font-black leading-tight text-slate-950 mmdark:text-zinc-50 sm:text-2xl">
                       Find a home that fits your plan
                     </h3>
-                    <p className="mx-auto mt-2 max-w-2xl text-xs font-medium leading-5 text-slate-500 mmdark:text-zinc-500 sm:text-[13px]">
+                    <p className="mx-auto mt-2 max-w-3xl text-xs font-medium leading-5 text-slate-500 mmdark:text-zinc-500 sm:text-[13px]">
                       Tell Mantraa your city, budget and property type.
                     </p>
                   </section>
 
-                  <div className="mx-auto mt-7 max-w-3xl space-y-4 pb-3">
+                  <div className="mx-auto mt-7 max-w-4xl space-y-4 pb-3">
                     {messages.map((msg, index) => (
                       <div key={msg.id} className={`flex flex-col gap-2 ${msg.role === "user" ? "items-end" : "items-start"}`}>
                         <div className={`max-w-[86%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm sm:max-w-[76%] ${
@@ -741,6 +794,80 @@ function ChatbotWidget() {
                             </span>
                           )}
                         </div>
+
+                        {/* The opening menu, shown only while the greeting is still
+                            the whole conversation. Held back until the typing
+                            finishes so the buttons do not appear mid-sentence. */}
+                        {msg.id === "welcome" && messages.length === 1 && !typing ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {MENU.map((entry) =>
+                              entry.disabled ? (
+                                <span
+                                  key={entry.label}
+                                  title="Coming soon"
+                                  className="cursor-not-allowed rounded-full border border-dashed border-slate-200 px-3 py-1.5 text-[12px] font-semibold text-slate-300 mmdark:border-zinc-800 mmdark:text-zinc-700"
+                                >
+                                  {entry.label}
+                                </span>
+                              ) : (
+                                <button
+                                  key={entry.label}
+                                  onClick={() => void sendText(entry.label)}
+                                  className="rounded-full border border-saffron/35 bg-saffron/5 px-3 py-1.5 text-[12px] font-semibold text-saffron transition hover:bg-saffron/15 mmdark:border-saffron/45 mmdark:bg-saffron/10"
+                                >
+                                  {entry.label}
+                                </button>
+                              ),
+                            )}
+                          </div>
+                        ) : null}
+
+                        {/* Real stories, so these do open — and closing the chat on
+                            the way out, because the widget outlives the route and
+                            would otherwise sit on top of the page just opened. */}
+                        {msg.panel?.links.length ? (
+                          <div className="w-full max-w-[86%] space-y-2 sm:max-w-[76%]">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mmdark:text-zinc-600">
+                              {msg.panel.subtitle}
+                            </div>
+                            {msg.panel.links.map((item) =>
+                              item.href ? (
+                                <Link
+                                  key={item.href}
+                                  href={item.href}
+                                  onClick={() => setOpen(false)}
+                                  className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm transition hover:border-saffron/60 mmdark:border-zinc-800 mmdark:bg-zinc-950"
+                                >
+                                  {item.image ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={item.image}
+                                      alt=""
+                                      className="h-16 w-20 shrink-0 rounded-xl object-cover"
+                                    />
+                                  ) : null}
+                                  <span className="min-w-0 flex-1">
+                                    <span className="line-clamp-2 block text-[13px] font-bold leading-snug text-slate-900 mmdark:text-zinc-100">
+                                      {item.title}
+                                    </span>
+                                    <span className="mt-1 block truncate text-[11px] font-medium text-slate-400 mmdark:text-zinc-600">
+                                      {[item.meta, item.at].filter(Boolean).join(" · ")}
+                                    </span>
+                                  </span>
+                                </Link>
+                              ) : null,
+                            )}
+                            {msg.panel.href ? (
+                              <Link
+                                href={msg.panel.href}
+                                onClick={() => setOpen(false)}
+                                className="block text-[12px] font-bold text-saffron hover:underline"
+                              >
+                                See all news →
+                              </Link>
+                            ) : null}
+                          </div>
+                        ) : null}
 
                         {/* Unlinked on purpose. There is nothing to open yet, and a
                             card that goes nowhere is worse than one that says so. */}
@@ -810,7 +937,7 @@ function ChatbotWidget() {
                 </div>
 
                 <div className="flex h-[92px] shrink-0 items-center border-t border-slate-100 bg-white px-4 mmdark:border-zinc-800 mmdark:bg-black sm:px-7">
-                  <div className="mx-auto flex w-full max-w-3xl items-center gap-2 rounded-2xl border-2 border-saffron/70 bg-white p-2 shadow-[0_14px_42px_rgba(255,111,35,0.12)] mmdark:bg-zinc-950 mmdark:shadow-none">
+                  <div className="mx-auto flex w-full max-w-4xl items-center gap-2 rounded-2xl border-2 border-saffron/70 bg-white p-2 shadow-[0_14px_42px_rgba(255,111,35,0.12)] mmdark:bg-zinc-950 mmdark:shadow-none">
                     <Search className="ml-2 h-5 w-5 shrink-0 text-slate-400" />
                     <input
                       value={input}
