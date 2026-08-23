@@ -3,11 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
+  Building2,
+  ChevronDown,
+  Minus,
+  LayoutDashboard,
+  LogOut,
+  Newspaper,
   Loader2,
   Mic,
-  Minus,
   Moon,
   Plus,
   Search,
@@ -80,8 +86,9 @@ type Message = {
 };
 
 const WELCOME_TEXT =
-  "Hi! I'm **Mantraa**, your property assistant at Makan Mantraa. I can help you find a " +
-  "home to buy or rent. What are you looking for — and in which city?";
+  "Hi! I\u2019m **Mantraa**, your home-finding assistant.\n\n" +
+  "Tell me what you\u2019re looking for \u2014 **Buy or Rent, preferred location, and budget** " +
+  "\u2014 and I\u2019ll help you find the right property.";
 
 /**
  * The opening menu.
@@ -93,8 +100,6 @@ const WELCOME_TEXT =
  */
 const MENU: { label: string; disabled?: boolean }[] = [
   { label: "Recommend property" },
-  { label: "Latest news" },
-  { label: "Post property", disabled: true },
 ];
 
 const INITIAL_MESSAGES: Message[] = [{ id: "welcome", role: "bot", text: WELCOME_TEXT }];
@@ -174,8 +179,51 @@ export function Chatbot() {
   return <ChatbotWidget />;
 }
 
+/**
+ * One entry in the sidebar's action list.
+ *
+ * No `onClick` renders it inert rather than hiding it: a desk that is not open
+ * yet still says what is coming, and a button that looks live and does nothing
+ * reads as broken. Opening one is then a single prop.
+ */
+function SidebarAction({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick?: () => void;
+}) {
+  const shell = "flex h-11 w-full items-center gap-2.5 rounded-xl px-3.5 text-[13px] font-semibold";
+
+  if (!onClick) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="Coming soon"
+        className={`${shell} cursor-not-allowed border border-dashed border-slate-200 text-slate-300 mmdark:border-[#223140] mmdark:text-[#4b5c6e]`}
+      >
+        <Icon className="h-4 w-4" />
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className={`${shell} border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:border-saffron/60 hover:text-saffron mmdark:border-[#223140] mmdark:bg-[#1b2836] mmdark:text-[#dfe9f2]`}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
+  );
+}
+
 function ChatbotWidget() {
-  const { user } = useSession();
+  const { user, signOut } = useSession();
   const signedIn = Boolean(user);
 
   const [open, setOpen] = useState(false);
@@ -193,6 +241,7 @@ function ChatbotWidget() {
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [guestPrompt, setGuestPrompt] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   // Carried back to the server each turn so it need not re-derive filters it
   // already worked out. A ref, because the send path must read the current
   // value rather than whatever a stale closure captured.
@@ -378,6 +427,11 @@ function ChatbotWidget() {
     setTyping(true);
     setError(null);
     void refreshSessions();
+  }
+
+  async function handleSignOut() {
+    setProfileOpen(false);
+    await signOut();
   }
 
   function toggleTheme() {
@@ -589,97 +643,28 @@ function ChatbotWidget() {
               animate={{ y: 0, scale: 1 }}
               exit={{ y: 26, scale: 0.96 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="flex h-[calc(100dvh-2rem)] w-full max-w-[1320px] overflow-hidden rounded-[20px] border border-white/40 bg-white shadow-2xl mmdark:border-zinc-800 mmdark:bg-black sm:h-[min(92vh,900px)] sm:min-h-[680px]"
+              className="flex h-[calc(100dvh-2rem)] w-full max-w-[1280px] overflow-hidden rounded-[20px] border border-white/40 bg-white shadow-2xl mmdark:border-[#223140] mmdark:bg-[#0f1923] sm:h-[min(94vh,980px)] sm:min-h-[720px]"
             >
-              <aside className="hidden w-[280px] shrink-0 flex-col border-r border-slate-200 bg-[#F4F7FB] mmdark:border-zinc-800 mmdark:bg-zinc-950 md:flex">
-                <div className="px-7 pb-5 pt-7">
-                  <div className="font-serif text-xl font-bold leading-none text-[#0A2036] mmdark:text-zinc-50">
+              <aside className="hidden w-[280px] shrink-0 flex-col border-r border-slate-200 bg-[#F4F7FB] mmdark:border-[#223140] mmdark:bg-[#141f2b] md:flex">
+                <div className="flex h-14 shrink-0 items-center border-b border-slate-200 px-5 mmdark:border-[#223140]">
+                  {/* Same type as the site header's logo — it was set in serif
+                      here and sans everywhere else, which read as two brands. */}
+                  <div className="text-xl font-bold tracking-tight text-[#0A2036] mmdark:text-[#eaf1f8] sm:text-2xl">
                     Makan <span className="text-saffron">Mantraa</span>
                   </div>
-                  <div className="mt-1.5 text-[11px] font-medium text-slate-500 mmdark:text-zinc-500">Property assistant</div>
                 </div>
 
-                <div className="space-y-3 px-5">
-                  <button
-                    onClick={startNewChat}
-                    className="flex h-11 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 shadow-sm transition hover:border-saffron/60 hover:text-saffron mmdark:border-zinc-800 mmdark:bg-zinc-900 mmdark:text-zinc-100"
-                  >
-                    <Plus className="h-4 w-4" />
-                    New Search
-                  </button>
-                </div>
-
-                <div className="mt-6 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-slate-200 px-5 pt-5 mmdark:border-zinc-800">
-                  <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mmdark:text-zinc-600">
-                    Recent Chats
-                  </div>
-
-                  {!signedIn ? (
-                    <p className="mt-4 text-xs font-medium leading-5 text-slate-500 mmdark:text-zinc-500">
-                      Chats aren&apos;t saved while you&apos;re signed out.{" "}
-                      <button
-                        onClick={() => openAuthModal("login")}
-                        className="font-bold text-saffron underline-offset-2 hover:underline"
-                      >
-                        Sign in
-                      </button>{" "}
-                      to keep them.
-                    </p>
-                  ) : sessions.length === 0 ? (
-                    <p className="mt-4 text-xs font-medium text-slate-400 mmdark:text-zinc-600">
-                      No past chats yet.
-                    </p>
-                  ) : (
-                    <div className="mt-4 space-y-1 pb-4">
-                      {sessions.map((session) => {
-                        const active = isActive(session.session_id);
-                        return (
-                          <div
-                            key={session.session_id}
-                            className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 transition ${
-                              active
-                                ? "bg-white shadow-sm mmdark:bg-zinc-900"
-                                : "hover:bg-white/70 mmdark:hover:bg-zinc-900/60"
-                            }`}
-                          >
-                            <button
-                              onClick={() => void loadSession(session.session_id)}
-                              className="flex min-w-0 flex-1 flex-col items-start text-left"
-                            >
-                              <span
-                                className={`w-full truncate text-[13px] font-medium ${
-                                  active
-                                    ? "text-[#0A2036] mmdark:text-zinc-50"
-                                    : "text-slate-500 mmdark:text-zinc-400"
-                                }`}
-                              >
-                                {session.title}
-                              </span>
-                              <span className="text-[10px] font-medium text-slate-400 mmdark:text-zinc-600">
-                                {Math.ceil(session.message_count / 2)} message
-                                {session.message_count > 2 ? "s" : ""}
-                              </span>
-                            </button>
-                            <button
-                              onClick={() => void deleteSession(session.session_id)}
-                              aria-label={`Delete chat: ${session.title}`}
-                              className="shrink-0 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:text-red-500 mmdark:text-zinc-700"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-
-                {/* Pinned below the chat list: who you are is the last thing in
-                    the column, not something competing with the chats. */}
-                <div className="mt-auto flex h-[92px] shrink-0 items-center border-t border-slate-200 px-4 mmdark:border-zinc-800">
+                {/* Above the actions rather than under the chat list: signing
+                    in is what makes those chats persist, so it belongs before
+                    them, not after. */}
+                <div className="shrink-0 px-5 pt-4">
                   {signedIn ? (
-                    <div className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm mmdark:border-zinc-800 mmdark:bg-zinc-900">
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm mmdark:border-[#223140] mmdark:bg-[#1b2836]">
+                    <button
+                      onClick={() => setProfileOpen((shown) => !shown)}
+                      aria-expanded={profileOpen}
+                      className="flex w-full items-center gap-3 p-2.5 text-left"
+                    >
                       {user?.profileImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -693,83 +678,194 @@ function ChatbotWidget() {
                         </span>
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-bold text-slate-900 mmdark:text-zinc-100">
+                        <span className="block truncate text-[13px] font-bold text-slate-900 mmdark:text-[#dfe9f2]">
                           {user?.name || "You"}
                         </span>
-                        <span className="block truncate text-[11px] font-medium text-slate-400 mmdark:text-zinc-600">
+                        <span className="block truncate text-[11px] font-medium text-slate-400 mmdark:text-[#7089a0]">
                           {user?.email || "Chats are saved"}
                         </span>
                       </span>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform mmdark:text-[#7089a0] ${
+                          profileOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {profileOpen ? (
+                      <div className="space-y-0.5 border-t border-slate-100 p-1.5 mmdark:border-[#223140]">
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50 mmdark:text-[#cbd9e6] mmdark:hover:bg-[#26374a]"
+                        >
+                          <LayoutDashboard className="h-4 w-4" />
+                          Go to Dashboard
+                        </Link>
+                        <button
+                          onClick={() => void handleSignOut()}
+                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12px] font-semibold text-red-600 transition hover:bg-red-50 mmdark:text-red-400 mmdark:hover:bg-red-950/30"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Log out
+                        </button>
+                      </div>
+                    ) : null}
                     </div>
                   ) : (
                     <button
                       onClick={() => openAuthModal("login")}
-                      className="flex w-full items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white p-2.5 text-left shadow-sm transition hover:border-saffron mmdark:border-zinc-700 mmdark:bg-zinc-900"
+                      className="flex w-full items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white p-2.5 text-left shadow-sm transition hover:border-saffron mmdark:border-[#2f4356] mmdark:bg-[#1b2836]"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400 mmdark:bg-zinc-800">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400 mmdark:bg-[#26374a]">
                         <User className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[13px] font-bold text-slate-700 mmdark:text-zinc-200">
+                        <span className="block text-[13px] font-bold text-slate-700 mmdark:text-[#cbd9e6]">
                           Sign in
                         </span>
-                        <span className="block text-[11px] font-medium text-slate-400 mmdark:text-zinc-600">
+                        <span className="block text-[11px] font-medium text-slate-400 mmdark:text-[#7089a0]">
                           to save your chats
                         </span>
                       </span>
                     </button>
                   )}
                 </div>
+
+                <div className="space-y-2.5 px-5 pt-3">
+                  <SidebarAction icon={Plus} label="New Search" onClick={startNewChat} />
+                  <SidebarAction icon={Building2} label="Post Property" />
+                  <SidebarAction icon={Newspaper} label="Latest News" />
+                </div>
+
+                <div className="mt-6 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-slate-200 px-5 pt-5 mmdark:border-[#223140]">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mmdark:text-[#7089a0]">
+                    Recent Chats
+                  </div>
+
+                  {!signedIn ? (
+                    <p className="mt-4 text-xs font-medium leading-5 text-slate-500 mmdark:text-[#8ea4b8]">
+                      Chats aren&apos;t saved while you&apos;re signed out.{" "}
+                      <button
+                        onClick={() => openAuthModal("login")}
+                        className="font-bold text-saffron underline-offset-2 hover:underline"
+                      >
+                        Sign in
+                      </button>{" "}
+                      to keep them.
+                    </p>
+                  ) : sessions.length === 0 ? (
+                    <p className="mt-4 text-xs font-medium text-slate-400 mmdark:text-[#7089a0]">
+                      No past chats yet.
+                    </p>
+                  ) : (
+                    <div className="mt-4 space-y-1 pb-4">
+                      {sessions.map((session) => {
+                        const active = isActive(session.session_id);
+                        return (
+                          <div
+                            key={session.session_id}
+                            className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 transition ${
+                              active
+                                ? "bg-white shadow-sm mmdark:bg-[#1b2836]"
+                                : "hover:bg-white/70 mmdark:hover:bg-[#1b2836]/70"
+                            }`}
+                          >
+                            <button
+                              onClick={() => void loadSession(session.session_id)}
+                              className="flex min-w-0 flex-1 flex-col items-start text-left"
+                            >
+                              <span
+                                className={`w-full truncate text-[13px] font-medium ${
+                                  active
+                                    ? "text-[#0A2036] mmdark:text-[#eaf1f8]"
+                                    : "text-slate-500 mmdark:text-[#a3b6c8]"
+                                }`}
+                              >
+                                {session.title}
+                              </span>
+                              <span className="text-[10px] font-medium text-slate-400 mmdark:text-[#7089a0]">
+                                {Math.ceil(session.message_count / 2)} message
+                                {session.message_count > 2 ? "s" : ""}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => void deleteSession(session.session_id)}
+                              aria-label={`Delete chat: ${session.title}`}
+                              className="shrink-0 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:text-red-500 mmdark:text-[#4b5c6e]"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+
               </aside>
 
-              <main className="flex min-w-0 flex-1 flex-col bg-white mmdark:bg-black">
-                <div className="flex h-20 shrink-0 items-center gap-4 border-b border-slate-100 px-4 mmdark:border-zinc-800 sm:px-6">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0A2036] text-white mmdark:bg-zinc-900">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.15)]" />
-                      <h2 className="truncate text-sm font-bold text-slate-950 mmdark:text-zinc-50 sm:text-base">Mantraa</h2>
-                    </div>
-                    <p className="truncate text-[11px] font-medium text-slate-500 mmdark:text-zinc-500 sm:text-xs">
-                      Search smarter, compare faster, shortlist better
-                    </p>
-                  </div>
+              <main className="flex min-w-0 flex-1 flex-col bg-white mmdark:bg-[#0f1923]">
+                <div className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-100 px-4 mmdark:border-[#223140] sm:px-6">
+                  {/* Nothing on the left any more, so the controls carry
+                      themselves to the right rather than leaning on a spacer. */}
                   <button
                     onClick={toggleTheme}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:text-slate-900 mmdark:border-zinc-800 mmdark:bg-zinc-900 mmdark:hover:text-zinc-100"
+                    role="switch"
+                    aria-checked={theme === "dark"}
+                    className="ml-auto flex h-7 w-[52px] shrink-0 items-center rounded-full border border-slate-300 bg-slate-200 px-[3px] transition-colors mmdark:border-[#3f424b] mmdark:bg-[#2a2f3c]"
                     aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
                     title={theme === "dark" ? "Light mode" : "Dark mode"}
                   >
-                    {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                    {/* The knob shows the state it is in, not the one it would
+                        switch to — that is what a switch means, and the icon
+                        used to say the opposite of the track it sat on. */}
+                    <span
+                      className={`flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#FFB067] text-[#1b2836] shadow-sm transition-transform duration-200 ${
+                        theme === "dark" ? "translate-x-[22px]" : "translate-x-0"
+                      }`}
+                    >
+                      {theme === "dark" ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+                    </span>
                   </button>
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:text-slate-900 mmdark:border-zinc-800 mmdark:bg-zinc-900 mmdark:hover:text-zinc-100 sm:flex"
-                    aria-label="Minimize chat"
-                  >
-                    <Minus className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:text-slate-900 mmdark:border-zinc-800 mmdark:bg-zinc-900 mmdark:hover:text-zinc-100"
-                    aria-label="Close chat"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
+                  {/* macOS traffic lights: the glyph only shows on hover, the
+                      way the real ones do. The dot is 14px but the button pads
+                      out to 22px, because a 14px tap target is not one. */}
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      onClick={() => setOpen(false)}
+                      aria-label="Minimize chat"
+                      title="Minimize"
+                      className="group -m-1 flex p-1"
+                    >
+                      <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#FEBC2E] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)] transition group-hover:brightness-95">
+                        <Minus className="h-3.5 w-3.5 text-black/55 opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={3.5} />
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setOpen(false)}
+                      aria-label="Close chat"
+                      title="Close"
+                      className="group -m-1 flex p-1"
+                    >
+                      <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#FF5F57] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)] transition group-hover:brightness-95">
+                        <X className="h-3.5 w-3.5 text-black/55 opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={3.5} />
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[linear-gradient(180deg,#fffaf0_0%,#ffffff_34%,#f8fafc_100%)] px-4 py-5 mmdark:bg-none mmdark:bg-black sm:px-7">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[linear-gradient(180deg,#fffaf0_0%,#ffffff_34%,#f8fafc_100%)] px-3 py-5 mmdark:bg-none mmdark:bg-[#0f1923] sm:px-5">
                   <section className="mx-auto max-w-4xl text-center">
                     <div className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-saffron/25 bg-saffron/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron">
                       <Sparkles className="h-3 w-3" />
                       Home discovery
                     </div>
-                    <h3 className="mt-4 text-xl font-black leading-tight text-slate-950 mmdark:text-zinc-50 sm:text-2xl">
+                    <h3 className="mt-4 text-xl font-black leading-tight text-slate-950 mmdark:text-[#eaf1f8] sm:text-2xl">
                       Find a home that fits your plan
                     </h3>
-                    <p className="mx-auto mt-2 max-w-3xl text-xs font-medium leading-5 text-slate-500 mmdark:text-zinc-500 sm:text-[13px]">
+                    <p className="mx-auto mt-2 max-w-3xl text-xs font-medium leading-5 text-slate-500 mmdark:text-[#8ea4b8] sm:text-[13px]">
                       Tell Mantraa your city, budget and property type.
                     </p>
                   </section>
@@ -779,8 +875,8 @@ function ChatbotWidget() {
                       <div key={msg.id} className={`flex flex-col gap-2 ${msg.role === "user" ? "items-end" : "items-start"}`}>
                         <div className={`max-w-[86%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm sm:max-w-[76%] ${
                           msg.role === "user"
-                            ? "whitespace-pre-wrap rounded-br-md bg-[#0A2036] text-white mmdark:bg-zinc-800 mmdark:text-zinc-50"
-                            : "rounded-bl-md border border-slate-200 bg-white text-slate-800 mmdark:border-zinc-800 mmdark:bg-zinc-950 mmdark:text-zinc-200"
+                            ? "whitespace-pre-wrap rounded-br-md bg-[#0A2036] text-white mmdark:bg-[#26374a] mmdark:text-[#eaf1f8]"
+                            : "rounded-bl-md border border-slate-200 bg-white text-slate-800 mmdark:border-[#223140] mmdark:bg-[#141f2b] mmdark:text-[#cbd9e6]"
                         }`}>
                           {(() => {
                             const body = msg.id === "welcome" ? welcomeText : msg.text;
@@ -805,7 +901,7 @@ function ChatbotWidget() {
                                 <span
                                   key={entry.label}
                                   title="Coming soon"
-                                  className="cursor-not-allowed rounded-full border border-dashed border-slate-200 px-3 py-1.5 text-[12px] font-semibold text-slate-300 mmdark:border-zinc-800 mmdark:text-zinc-700"
+                                  className="cursor-not-allowed rounded-full border border-dashed border-slate-200 px-3 py-1.5 text-[12px] font-semibold text-slate-300 mmdark:border-[#223140] mmdark:text-[#4b5c6e]"
                                 >
                                   {entry.label}
                                 </span>
@@ -827,7 +923,7 @@ function ChatbotWidget() {
                             would otherwise sit on top of the page just opened. */}
                         {msg.panel?.links.length ? (
                           <div className="w-full max-w-[86%] space-y-2 sm:max-w-[76%]">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mmdark:text-zinc-600">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mmdark:text-[#7089a0]">
                               {msg.panel.subtitle}
                             </div>
                             {msg.panel.links.map((item) =>
@@ -836,7 +932,7 @@ function ChatbotWidget() {
                                   key={item.href}
                                   href={item.href}
                                   onClick={() => setOpen(false)}
-                                  className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm transition hover:border-saffron/60 mmdark:border-zinc-800 mmdark:bg-zinc-950"
+                                  className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm transition hover:border-saffron/60 mmdark:border-[#223140] mmdark:bg-[#141f2b]"
                                 >
                                   {item.image ? (
                                     // eslint-disable-next-line @next/next/no-img-element
@@ -847,10 +943,10 @@ function ChatbotWidget() {
                                     />
                                   ) : null}
                                   <span className="min-w-0 flex-1">
-                                    <span className="line-clamp-2 block text-[13px] font-bold leading-snug text-slate-900 mmdark:text-zinc-100">
+                                    <span className="line-clamp-2 block text-[13px] font-bold leading-snug text-slate-900 mmdark:text-[#dfe9f2]">
                                       {item.title}
                                     </span>
-                                    <span className="mt-1 block truncate text-[11px] font-medium text-slate-400 mmdark:text-zinc-600">
+                                    <span className="mt-1 block truncate text-[11px] font-medium text-slate-400 mmdark:text-[#7089a0]">
                                       {[item.meta, item.at].filter(Boolean).join(" · ")}
                                     </span>
                                   </span>
@@ -873,13 +969,13 @@ function ChatbotWidget() {
                             card that goes nowhere is worse than one that says so. */}
                         {msg.matches?.length ? (
                           <div className="w-full max-w-[86%] space-y-2 sm:max-w-[76%]">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mmdark:text-zinc-600">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mmdark:text-[#7089a0]">
                               Sample results · live listings coming soon
                             </div>
                             {msg.matches.map((match, spot) => (
                               <div
                                 key={match.id}
-                                className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm mmdark:border-zinc-800 mmdark:bg-zinc-950"
+                                className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm mmdark:border-[#223140] mmdark:bg-[#141f2b]"
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
@@ -888,17 +984,17 @@ function ChatbotWidget() {
                                   className="h-16 w-20 shrink-0 rounded-xl object-cover"
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate text-[13px] font-bold text-slate-900 mmdark:text-zinc-100">
+                                  <div className="truncate text-[13px] font-bold text-slate-900 mmdark:text-[#dfe9f2]">
                                     {match.title}
                                   </div>
-                                  <div className="truncate text-[11px] font-medium text-slate-500 mmdark:text-zinc-500">
+                                  <div className="truncate text-[11px] font-medium text-slate-500 mmdark:text-[#8ea4b8]">
                                     {match.locality}, {match.city}
                                   </div>
                                   <div className="mt-1 flex min-w-0 items-baseline gap-2">
                                     <span className="shrink-0 text-[13px] font-black text-saffron">
                                       {match.price}
                                     </span>
-                                    <span className="truncate text-[11px] font-medium text-slate-400 mmdark:text-zinc-600">
+                                    <span className="truncate text-[11px] font-medium text-slate-400 mmdark:text-[#7089a0]">
                                       {match.config} · {match.area}
                                     </span>
                                   </div>
@@ -936,8 +1032,8 @@ function ChatbotWidget() {
                   </div>
                 </div>
 
-                <div className="flex h-[92px] shrink-0 items-center border-t border-slate-100 bg-white px-4 mmdark:border-zinc-800 mmdark:bg-black sm:px-7">
-                  <div className="mx-auto flex w-full max-w-4xl items-center gap-2 rounded-2xl border-2 border-saffron/70 bg-white p-2 shadow-[0_14px_42px_rgba(255,111,35,0.12)] mmdark:bg-zinc-950 mmdark:shadow-none">
+                <div className="flex h-[92px] shrink-0 items-center border-t border-slate-100 bg-white px-3 mmdark:border-[#223140] mmdark:bg-[#0f1923] sm:px-5">
+                  <div className="mx-auto flex w-full max-w-4xl items-center gap-2 rounded-2xl border-2 border-saffron/70 bg-white p-2 shadow-[0_14px_42px_rgba(255,111,35,0.12)] mmdark:bg-[#141f2b] mmdark:shadow-none">
                     <Search className="ml-2 h-5 w-5 shrink-0 text-slate-400" />
                     <input
                       value={input}
@@ -945,7 +1041,7 @@ function ChatbotWidget() {
                       onKeyDown={(e) => e.key === "Enter" && handleSend()}
                       disabled={busy}
                       placeholder={micStatus === "listening" ? "Listening…" : "Ask for 2 BHK for rent in Faridabad"}
-                      className="h-11 min-w-0 flex-1 bg-transparent px-2 text-[13px] font-medium text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed mmdark:text-zinc-100 mmdark:placeholder:text-zinc-600"
+                      className="h-11 min-w-0 flex-1 bg-transparent px-2 text-[13px] font-medium text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed mmdark:text-[#dfe9f2] mmdark:placeholder:text-[#7089a0]"
                     />
                     {micSupported && (
                       <button
@@ -987,12 +1083,12 @@ function ChatbotWidget() {
                     initial={{ y: 12, scale: 0.97 }}
                     animate={{ y: 0, scale: 1 }}
                     exit={{ y: 12, scale: 0.97 }}
-                    className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl mmdark:bg-zinc-900"
+                    className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl mmdark:bg-[#1b2836]"
                   >
-                    <h4 className="text-lg font-bold text-slate-950 mmdark:text-zinc-50">
+                    <h4 className="text-lg font-bold text-slate-950 mmdark:text-[#eaf1f8]">
                       Start a new chat?
                     </h4>
-                    <p className="mt-2 text-sm font-medium leading-6 text-slate-500 mmdark:text-zinc-400">
+                    <p className="mt-2 text-sm font-medium leading-6 text-slate-500 mmdark:text-[#a3b6c8]">
                       Signed-out chats aren&apos;t saved, so starting a new one clears this
                       conversation. Sign in to keep your chat history.
                     </p>
@@ -1008,13 +1104,13 @@ function ChatbotWidget() {
                       </button>
                       <button
                         onClick={clearGuestAndRestart}
-                        className="h-11 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 transition hover:border-slate-300 mmdark:border-zinc-700 mmdark:text-zinc-200"
+                        className="h-11 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 transition hover:border-slate-300 mmdark:border-[#2f4356] mmdark:text-[#cbd9e6]"
                       >
                         Clear and start over
                       </button>
                       <button
                         onClick={() => setGuestPrompt(false)}
-                        className="h-9 text-sm font-semibold text-slate-400 transition hover:text-slate-600 mmdark:hover:text-zinc-300"
+                        className="h-9 text-sm font-semibold text-slate-400 transition hover:text-slate-600 mmdark:hover:text-[#b9cadb]"
                       >
                         Cancel
                       </button>
