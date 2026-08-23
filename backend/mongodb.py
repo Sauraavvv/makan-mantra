@@ -58,6 +58,13 @@ def get_chat_messages_collection():
     return get_database()["chat_messages"]
 
 
+def get_chat_leads_collection():
+    """Visitors who asked for a finished search by email. One document per ask,
+    not per person: the same address wanting two different searches is two
+    leads, and collapsing them would lose the second one's criteria."""
+    return get_database()["chat_leads"]
+
+
 def get_chat_sessions_collection():
     """Per-session search filters, so they survive a reload without being
     re-derived from the transcript on every turn."""

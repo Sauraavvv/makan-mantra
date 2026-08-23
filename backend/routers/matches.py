@@ -33,6 +33,10 @@ LOCALITIES = [
     "Rajendra Nagar", "Ashok Vihar", "Gandhi Nagar", "Krishna Colony", "New Colony",
 ]
 
+# Where a listing is in its life. Fabricated like everything else here, but
+# fixed per listing rather than per render.
+STATUS = ["Ready to Move", "Under Construction", "New Launch"]
+
 TYPE_LABEL = {
     "flat": "Flat",
     "villa": "Villa",
@@ -115,17 +119,21 @@ def find_matches(slots: Slots) -> list[dict]:
         # A PG is a room, not a home; the same formula would list it at
         # fifteen hundred square feet.
         area = 110 + (spin % 140) if slots.property_type == "pg" else 450 + (spin % 600) + (rooms or 2) * 250
-        baths = rooms if rooms and rooms <= 2 else (rooms or 0) - 1
-        parts = [f"{rooms} BHK", f"{baths} Bath"] if rooms else [label]
-
         results.append({
             "id": f"sample-{base}-{i}",
             "title": f"{rooms} BHK {label} in {locality}" if rooms else f"{label} in {locality}",
             "price": money(price, slots.listing_type),
             "locality": locality,
             "city": slots.city,
-            "config": " · ".join(parts),
-            "area": f"{area:,} sq ft",
+            "status": STATUS[spin % len(STATUS)],
+            # Four facts in a fixed order; the card draws them as a grid and
+            # picks its icons from that order, so the order is the contract.
+            "specs": [
+                {"label": "Config", "value": f"{rooms} Beds" if rooms else label},
+                {"label": "Size", "value": f"{area:,} sq ft"},
+                {"label": "Units", "value": f"{120 + (spin >> 4) % 880}"},
+                {"label": "Total area", "value": f"{1.5 + ((spin >> 8) % 95) / 10:.1f} acres"},
+            ],
         })
 
     return results

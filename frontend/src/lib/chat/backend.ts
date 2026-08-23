@@ -19,10 +19,16 @@ export async function backendHeaders(): Promise<Record<string, string>> {
 
   if (session?.userId) {
     headers["X-MM-User-Id"] = session.userId;
+    headers["X-MM-User-Email"] = session.email;
     headers["X-MM-Internal-Token"] = INTERNAL_TOKEN;
   }
 
   return headers;
+}
+
+/** The shared token on its own, for calls that are not about a signed-in user. */
+export function serviceHeaders(): Record<string, string> {
+  return { "content-type": "application/json", "X-MM-Internal-Token": INTERNAL_TOKEN };
 }
 
 export function backendUrl(path: string) {

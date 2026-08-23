@@ -7,7 +7,15 @@ import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   Building2,
+  BedDouble,
   ChevronDown,
+  Heart,
+  Pencil,
+  LandPlot,
+  Layers,
+  MapPin,
+  Phone,
+  Ruler,
   Minus,
   LayoutDashboard,
   LogOut,
@@ -47,9 +55,19 @@ type Match = {
   price: string;
   locality: string;
   city: string;
-  config: string;
-  area: string;
+  status: string;
+  specs: { label: string; value: string }[];
 };
+
+/** One editable answer, with the options the question originally offered. */
+type FilterRow = {
+  field: string;
+  label: string;
+  options: { label: string; selected: boolean }[];
+};
+
+/** Read positionally: the server sends Config, Size, Units, Total area. */
+const SPEC_ICONS = [BedDouble, Ruler, Layers, LandPlot];
 
 /** A story from the news desk. Real links, unlike the sample listings. */
 type NewsItem = {
@@ -76,6 +94,7 @@ type Message = {
   text: string;
   pending?: boolean;
   matches?: Match[];
+  filters?: FilterRow[];
   panel?: Panel;
   /**
    * What the assistant offers when it turns a question down. Only the newest
@@ -83,6 +102,8 @@ type Message = {
    * halfway up the transcript.
    */
   suggestions?: string[];
+  /** A line to put above those buttons, when they need one. */
+  tipsLine?: string;
 };
 
 const WELCOME_TEXT =
@@ -242,6 +263,11 @@ function ChatbotWidget() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [guestPrompt, setGuestPrompt] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  // Shortlisted cards, for as long as the widget is open. The real shortlist
+  // lives behind /api/saved and keys off a property id — these ids belong to
+  // fabricated listings, so nothing here is sent anywhere.
+  const [saved, setSaved] = useState<string[]>([]);
+  const [editing, setEditing] = useState(false);
   // Carried back to the server each turn so it need not re-derive filters it
   // already worked out. A ref, because the send path must read the current
   // value rather than whatever a stale closure captured.
@@ -249,6 +275,9 @@ function ChatbotWidget() {
   // Which desk the visitor is at, carried for the same reason and by the same
   // route: naming it once should hold for the turns that follow.
   const deskRef = useRef<string | null>(null);
+  // How far the "send it to my inbox" step has got. Carried like the rest, so
+  // the server need not work out on every turn whether it is mid-ask.
+  const leadRef = useRef<string | null>(null);
   // Full by default, so a restored conversation shows the greeting complete
   // rather than replaying it. Opening a fresh chat restarts the typing.
   const [welcomeText, setWelcomeText] = useState(WELCOME_TEXT);
@@ -375,6 +404,7 @@ function ChatbotWidget() {
       sessionRef.current = sessionId;
       slotsRef.current = null;
       deskRef.current = null;
+      leadRef.current = null;
       setActiveSession(sessionId);
       setWelcomeText(WELCOME_TEXT);
       setTyping(false);
@@ -421,6 +451,8 @@ function ChatbotWidget() {
     sessionRef.current = null;
     slotsRef.current = null;
     deskRef.current = null;
+    leadRef.current = null;
+    setEditing(false);
     setActiveSession(null);
     setMessages(INITIAL_MESSAGES);
     setWelcomeText("");
@@ -432,6 +464,12 @@ function ChatbotWidget() {
   async function handleSignOut() {
     setProfileOpen(false);
     await signOut();
+  }
+
+  function toggleSaved(id: string) {
+    setSaved((current) =>
+      current.includes(id) ? current.filter((one) => one !== id) : [...current, id],
+    );
   }
 
   function toggleTheme() {
@@ -460,6 +498,8 @@ function ChatbotWidget() {
     sessionRef.current = null;
     slotsRef.current = null;
     deskRef.current = null;
+    leadRef.current = null;
+    setEditing(false);
     setActiveSession(null);
     setMessages(INITIAL_MESSAGES);
     setWelcomeText("");
@@ -473,6 +513,7 @@ function ChatbotWidget() {
     clearGuestChat();
     slotsRef.current = null;
     deskRef.current = null;
+    leadRef.current = null;
     setMessages(INITIAL_MESSAGES);
     setWelcomeText("");
     setTyping(true);
@@ -521,11 +562,13 @@ function ChatbotWidget() {
                 session_id: sessionRef.current,
                 slots: slotsRef.current,
                 desk: deskRef.current,
+                lead: leadRef.current,
               }
             : {
                 message: text,
                 slots: slotsRef.current,
                 desk: deskRef.current,
+                lead: leadRef.current,
                 history: messages
                   .filter((m) => m.id !== "welcome" && m.text)
                   .slice(-20)
@@ -544,8 +587,10 @@ function ChatbotWidget() {
       let buffer = "";
       let failure: string | null = null;
       let tips: string[] = [];
+      let tipsLine = "";
       let found: Match[] = [];
       let board: Panel | null = null;
+      let refine: FilterRow[] = [];
       streamedRef.current = "";
 
       while (true) {
@@ -590,9 +635,26 @@ function ChatbotWidget() {
             streamedRef.current = String(payload.answer ?? streamedRef.current);
             if (payload.slots) slotsRef.current = payload.slots as Record<string, unknown>;
             if (Array.isArray(payload.suggestions)) tips = payload.suggestions as string[];
+            if (payload.suggestions_line) tipsLine = String(payload.suggestions_line);
             if (Array.isArray(payload.matches)) found = payload.matches as Match[];
+            if (Array.isArray(payload.filters)) refine = payload.filters as FilterRow[];
             if (payload.panel) board = payload.panel as Panel;
             deskRef.current = (payload.desk as string | null) ?? null;
+            leadRef.current = (payload.lead as string | null) ?? null;
+            // The address was captured server-side; the mail itself goes from
+            // here, because Resend lives on this side and always has.
+            const wants = payload.mail as { to?: string } | null;
+            if (wants?.to) {
+              void fetch("/api/chat/email", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ to: wants.to, slots: payload.slots ?? slotsRef.current }),
+              }).catch(() => {
+                // Nothing is said on screen: the reply already promised it, and
+                // a contradiction a second later helps no one. The lead is
+                // stored either way, so the search itself is not lost.
+              });
+            }
           } else if (event === "error") {
             failure = String(payload.message ?? "Something went wrong.");
           }
@@ -608,7 +670,9 @@ function ChatbotWidget() {
                   text: streamedRef.current,
                   pending: false,
                   suggestions: tips.length ? tips : undefined,
+                  tipsLine: tipsLine || undefined,
                   matches: found.length ? found : undefined,
+                  filters: refine.length ? refine : undefined,
                   panel: board ?? undefined,
                 }
               : m,
@@ -873,7 +937,10 @@ function ChatbotWidget() {
                   <div className="mx-auto mt-7 max-w-4xl space-y-4 pb-3">
                     {messages.map((msg, index) => (
                       <div key={msg.id} className={`flex flex-col gap-2 ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                        <div className={`max-w-[86%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm sm:max-w-[76%] ${
+                        <div className={`flex max-w-[86%] items-end gap-1.5 sm:max-w-[76%] ${
+                          msg.role === "user" ? "flex-row-reverse" : ""
+                        }`}>
+                        <div className={`min-w-0 rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm ${
                           msg.role === "user"
                             ? "whitespace-pre-wrap rounded-br-md bg-[#0A2036] text-white mmdark:bg-[#26374a] mmdark:text-[#eaf1f8]"
                             : "rounded-bl-md border border-slate-200 bg-white text-slate-800 mmdark:border-[#223140] mmdark:bg-[#141f2b] mmdark:text-[#cbd9e6]"
@@ -889,6 +956,27 @@ function ChatbotWidget() {
                               Thinking…
                             </span>
                           )}
+                        </div>
+
+                        {/* Only on the reply that summarises the five answers, and
+                            only while it is the latest: editing a search two results
+                            back would rewrite the one on screen. */}
+                        {msg.filters?.length && index === messages.length - 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setEditing((shown) => !shown)}
+                            aria-expanded={editing}
+                            aria-label={editing ? "Done editing" : "Edit your answers"}
+                            title="Edit your answers"
+                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition ${
+                              editing
+                                ? "border-saffron bg-saffron/15 text-saffron"
+                                : "border-slate-200 text-slate-400 hover:border-saffron/60 hover:text-saffron mmdark:border-[#223140] mmdark:text-[#7089a0]"
+                            }`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        ) : null}
                         </div>
 
                         {/* The opening menu, shown only while the greeting is still
@@ -965,49 +1053,153 @@ function ChatbotWidget() {
                           </div>
                         ) : null}
 
-                        {/* Unlinked on purpose. There is nothing to open yet, and a
-                            card that goes nowhere is worse than one that says so. */}
+                        {/* A row that scrolls rather than a stack that grows: three
+                            listings down the page push the question that follows them
+                            out of sight. Unlinked on purpose — there is nothing to open
+                            yet, and a card that goes nowhere is worse than one that
+                            says so. */}
                         {msg.matches?.length ? (
-                          <div className="w-full max-w-[86%] space-y-2 sm:max-w-[76%]">
+                          <div className="w-full space-y-2">
                             <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mmdark:text-[#7089a0]">
                               Sample results · live listings coming soon
                             </div>
-                            {msg.matches.map((match, spot) => (
-                              <div
-                                key={match.id}
-                                className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm mmdark:border-[#223140] mmdark:bg-[#141f2b]"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={PROPERTY_IMAGES[spot % PROPERTY_IMAGES.length]}
-                                  alt=""
-                                  className="h-16 w-20 shrink-0 rounded-xl object-cover"
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate text-[13px] font-bold text-slate-900 mmdark:text-[#dfe9f2]">
-                                    {match.title}
+                            {/* Negative margin then padding, so the cards can reach the
+                                edge of the column while their shadows still have room. */}
+                            <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
+                              {msg.matches.map((match, spot) => (
+                                <div
+                                  key={match.id}
+                                  className="w-[268px] shrink-0 snap-start overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm mmdark:border-[#223140] mmdark:bg-[#141f2b]"
+                                >
+                                  <div className="relative">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={PROPERTY_IMAGES[spot % PROPERTY_IMAGES.length]}
+                                      alt=""
+                                      className="h-[132px] w-full object-cover"
+                                    />
+                                    <span className="absolute left-2.5 top-2.5 rounded-lg bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
+                                      {match.status}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleSaved(match.id)}
+                                      aria-pressed={saved.includes(match.id)}
+                                      aria-label={saved.includes(match.id) ? "Remove from shortlist" : "Add to shortlist"}
+                                      className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-sm transition hover:bg-white mmdark:bg-[#1b2836]/95"
+                                    >
+                                      <Heart
+                                        className={`h-4 w-4 transition ${
+                                          saved.includes(match.id)
+                                            ? "fill-saffron text-saffron"
+                                            : "text-slate-400 mmdark:text-[#7089a0]"
+                                        }`}
+                                      />
+                                    </button>
                                   </div>
-                                  <div className="truncate text-[11px] font-medium text-slate-500 mmdark:text-[#8ea4b8]">
-                                    {match.locality}, {match.city}
-                                  </div>
-                                  <div className="mt-1 flex min-w-0 items-baseline gap-2">
-                                    <span className="shrink-0 text-[13px] font-black text-saffron">
+
+                                  <div className="p-3">
+                                    <div className="truncate text-[14px] font-bold text-slate-900 mmdark:text-[#dfe9f2]">
+                                      {match.title}
+                                    </div>
+                                    <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500 mmdark:text-[#8ea4b8]">
+                                      <MapPin className="h-3 w-3 shrink-0" />
+                                      <span className="truncate">
+                                        {match.locality}, {match.city}
+                                      </span>
+                                    </div>
+                                    <div className="mt-2 text-[17px] font-black text-slate-900 mmdark:text-[#eaf1f8]">
                                       {match.price}
-                                    </span>
-                                    <span className="truncate text-[11px] font-medium text-slate-400 mmdark:text-[#7089a0]">
-                                      {match.config} · {match.area}
-                                    </span>
+                                    </div>
+
+                                    <div className="mt-3 grid grid-cols-2 gap-x-2 gap-y-3 border-t border-slate-100 pt-3 mmdark:border-[#223140]">
+                                      {match.specs.map((spec, slot) => {
+                                        const Icon = SPEC_ICONS[slot % SPEC_ICONS.length];
+                                        return (
+                                          <div key={spec.label} className="flex min-w-0 items-center gap-2">
+                                            <Icon className="h-4 w-4 shrink-0 text-slate-400 mmdark:text-[#7089a0]" />
+                                            <span className="min-w-0">
+                                              <span className="block truncate text-[12px] font-bold text-slate-800 mmdark:text-[#cbd9e6]">
+                                                {spec.value}
+                                              </span>
+                                              <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 mmdark:text-[#7089a0]">
+                                                {spec.label}
+                                              </span>
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+
+                                    {/* Both inert while the listings behind them are
+                                        fabricated: there is no page to open and nobody
+                                        to put on the call. */}
+                                    <div className="mt-3 grid grid-cols-2 gap-2">
+                                      <button
+                                        type="button"
+                                        disabled
+                                        title="Coming soon"
+                                        className="h-9 cursor-not-allowed rounded-xl border border-slate-200 text-[12px] font-bold text-slate-400 mmdark:border-[#223140] mmdark:text-[#50545d]"
+                                      >
+                                        Details
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled
+                                        title="Coming soon"
+                                        className="flex h-9 cursor-not-allowed items-center justify-center gap-1.5 rounded-xl bg-saffron/40 text-[12px] font-bold text-white"
+                                      >
+                                        <Phone className="h-3.5 w-3.5" />
+                                        Enquire
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
+                              ))}
+                            </div>
+
+                            {/* The five answers again, editable, opened from the
+                                pencil on the reply above. Each chip sends its own
+                                label, so a correction travels the same path a typed
+                                answer does — no separate machinery to keep in step. */}
+                            {msg.filters?.length && index === messages.length - 1 && editing ? (
+                              <div className="space-y-2.5 border-t border-slate-100 pt-3 mmdark:border-[#223140]">
+                                {msg.filters.map((row) => (
+                                  <div key={row.field} className="flex flex-wrap items-center gap-2">
+                                    <span className="w-[86px] shrink-0 text-[10px] font-bold uppercase tracking-wider text-slate-400 mmdark:text-[#7089a0]">
+                                      {row.label}
+                                    </span>
+                                    {row.options.map((option) => (
+                                      <button
+                                        key={option.label}
+                                        onClick={() => void sendText(option.label)}
+                                        disabled={busy}
+                                        className={`rounded-full border px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-50 ${
+                                          option.selected
+                                            ? "border-saffron bg-saffron/15 text-saffron"
+                                            : "border-slate-200 text-slate-600 hover:border-saffron/50 hover:text-saffron mmdark:border-[#223140] mmdark:text-[#a3b6c8]"
+                                        }`}
+                                      >
+                                        {option.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            ) : null}
                           </div>
                         ) : null}
 
                         {/* Turning a question down is only half an answer; these
                             are the other half, and they are one tap away. */}
                         {msg.suggestions?.length && index === messages.length - 1 && !busy ? (
-                          <div className="flex max-w-[86%] flex-wrap gap-1.5 sm:max-w-[76%]">
+                          <div className="max-w-[86%] sm:max-w-[76%]">
+                            {msg.tipsLine ? (
+                              <div className="mb-2 text-[13px] font-semibold text-slate-700 mmdark:text-[#cbd9e6]">
+                                {msg.tipsLine}
+                              </div>
+                            ) : null}
+                            <div className="flex flex-wrap gap-1.5">
                             {msg.suggestions.map((tip) => (
                               <button
                                 key={tip}
@@ -1017,6 +1209,7 @@ function ChatbotWidget() {
                                 {tip}
                               </button>
                             ))}
+                            </div>
                           </div>
                         ) : null}
                       </div>

@@ -14,10 +14,16 @@ from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from pymongo import ASCENDING, DESCENDING
 
-from mongodb import get_chat_messages_collection, get_chat_sessions_collection
+from mongodb import (
+    get_chat_leads_collection,
+    get_chat_messages_collection,
+    get_chat_sessions_collection,
+)
 from routers.slots import (
     EXTRACT_PROMPT,
     Slots,
+    ask,
+    filters,
     merge,
     missing_field,
     needs_model,
@@ -25,6 +31,15 @@ from routers.slots import (
     summary,
 )
 from routers.desks import NEWS, POST, pick_desk
+from routers.lead import (
+    ASKING,
+    DONE,
+    OFFER_CHIPS,
+    OFFER_LINE,
+    OFFERED,
+    SENT_LINE,
+    advance,
+)
 from routers.lookup import find_news
 from routers.matches import find_matches
 from routers.topic import is_greeting, is_hinglish, off_topic, refusal, suggestions
@@ -58,6 +73,7 @@ Style:
 
 # The one desk that is not open. Fixed text in both languages: nothing about it
 # is a judgement call, so none of it is worth a model call.
+GREETED = ("Hi! Happy to help.", "Namaste! Madad ke liye hazir hoon.")
 POST_CLOSED = (
     "Posting a property through chat is not open yet. You can still list it from "
     "the Post Property page, and our team will call to build the listing with you.",
@@ -221,6 +237,16 @@ PANEL_INTRO = (
 )
 
 
+async def save_lead(session_id: str | None, user_id: str | None, email: str, slots: Slots) -> None:
+    await get_chat_leads_collection().insert_one({
+        "email": email,
+        "user_id": user_id,
+        "session_id": session_id,
+        "slots": slots.model_dump(exclude_none=True),
+        "at": datetime.now(timezone.utc),
+    })
+
+
 class Turn(BaseModel):
     role: str
     content: str = Field(max_length=8000)
@@ -239,6 +265,8 @@ class AskRequest(BaseModel):
     # Which desk the visitor is at. Carried the same way and for the same
     # reason: naming it once should hold for the turns that follow.
     desk: str | None = None
+    # How far the "send it to my inbox" step has got, if it has started.
+    lead: str | None = None
 
 
 class SessionSummary(BaseModel):
@@ -341,6 +369,31 @@ async def clear_history(
     return {"deleted": result.deleted_count}
 
 
+class MatchRequest(BaseModel):
+    slots: dict = Field(default_factory=dict)
+
+
+@router.post("/matches")
+async def matches_for(
+    body: MatchRequest,
+    x_mm_internal_token: str | None = Header(default=None),
+) -> dict:
+    """The listings for a search, regenerated server-side.
+
+    The email is composed on the Next side, which cannot run the generator — so
+    it asks for the listings here rather than being handed them by the browser.
+    Content the client supplies is content the client can put in any inbox it
+    names, and this endpoint exists precisely so it cannot.
+
+    The generator is seeded off the slots, so this returns exactly what was on
+    screen without anything having to be stored between the two requests.
+    """
+    if not INTERNAL_TOKEN or x_mm_internal_token != INTERNAL_TOKEN:
+        raise HTTPException(status_code=401, detail="invalid internal token")
+    slots = Slots(**(body.slots or {}))
+    return {"summary": summary(slots, join=", "), "matches": find_matches(slots)}
+
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 
@@ -349,6 +402,7 @@ def _sse(event: str, data: dict) -> str:
 async def stream(
     body: AskRequest,
     x_mm_user_id: str | None = Header(default=None),
+    x_mm_user_email: str | None = Header(default=None),
     x_mm_internal_token: str | None = Header(default=None),
 ) -> StreamingResponse:
     """Same conversation for everyone; only where it is remembered differs.
@@ -358,6 +412,7 @@ async def stream(
     transcript and replays it with each turn.
     """
     user_id = identify(x_mm_user_id, x_mm_internal_token)
+    account_email = (x_mm_user_email or "").strip().lower() if user_id else ""
 
     if user_id:
         session_id = body.session_id or str(uuid.uuid4())
@@ -385,21 +440,54 @@ async def stream(
 
     # An explicit desk this turn wins over the one carried from the last, so a
     # visitor can move between them without starting a new chat.
-    desk = pick_desk(body.message) or body.desk
+    named = pick_desk(body.message)
+    desk = named or body.desk
+
+    # The email step gets the turn before anything else looks at it. An address
+    # is not a property question, so the topic guard would refuse it — rightly,
+    # if it had any business seeing it. It does not.
+    step = advance(
+        body.lead,
+        body.message,
+        account_email or None,
+        # Recognisably about something else: a property answer, or a desk.
+        elsewhere=bool(named) or bool(found.model_dump(exclude_none=True)),
+    )
+    lead = step.stage
+    mail: dict | None = None
 
     # Off subject, the turn stops here. The chat model is never called, nothing
     # is extracted, and the slots are left exactly as they were — so the search
     # resumes mid-question the moment the user comes back to it.
     #
-    blocked = await off_topic(body.message, found, asked_field, build_extractor)
+    blocked = (
+        False
+        if (step.email or step.reply)
+        else await off_topic(body.message, found, asked_field, build_extractor)
+    )
 
     prompt: list[BaseMessage] = []
     matches: list[dict] = []
     panel: dict | None = None
     fixed: str | None = None
+    tips: list[str] = []
+    # A line that belongs with the buttons rather than with the reply. The
+    # email offer is about the listings, so it has to sit under them — and the
+    # reply is rendered above them.
+    tips_line: str = ""
+    refine: list[dict] = []
     slots, pending = known, asked
 
-    if blocked:
+    if step.email:
+        # Stored here, sent by the proxy: this service has no mailer, and the
+        # one the site already uses lives on the other side.
+        await save_lead(session_id, user_id, step.email, known)
+        mail = {"to": step.email}
+        fixed = SENT_LINE.format(email=step.email)
+    elif step.reply:
+        fixed = step.reply
+        tips = step.chips
+    elif blocked:
         pass
     elif desk == POST:
         fixed = say(POST_CLOSED, body.message)
@@ -415,46 +503,42 @@ async def stream(
         slots = (
             await read_slots(after_regex, body.message)
             if needs_model(body.message, known, after_regex)
+            and not named
+            and not is_greeting(body.message)
             else after_regex
         )
         pending = missing_field(slots)
 
-        directive = SYSTEM_PROMPT
+        # The search runs on fixed text from here down. Which of the five is
+        # asked is already decided by the slots, the wording never varies, and
+        # the answers are a closed set the regex pass reads straight back — so
+        # there is nothing left for a model to decide, and no call to make.
         if pending:
-            _, instruction = pending
-            directive += f"\n\nAlready known: {summary(slots) or 'nothing yet'}."
-            if is_greeting(body.message):
-                # Someone who says hello is owed a hello. Holding the reply to
-                # the pending question alone answers a person with a form
-                # field, which reads as not having been listened to at all.
-                directive += (
-                    f"\n\nAnswer what they said first, warmly and in a few words, "
-                    f"then ask this one question. {instruction}"
-                )
-                directive += (
-                    "\nPut no question mark in that opening line — the only question "
-                    "in your reply is the one at the end."
-                )
-            else:
-                directive += f"\n\nYour entire reply is this one question. {instruction}"
-            directive += "\nDo not ask for anything else. Do not add a second question."
+            line, tips = ask(pending[0], slots)
+            # Someone who says hello is still owed a hello; it just does not
+            # cost a model call to give them one.
+            fixed = f"{say(GREETED, body.message)} {line}" if is_greeting(body.message) else line
         else:
             # The five answers are the whole point of the conversation, so this
             # is where they finally buy something.
             matches = find_matches(slots)
-            directive += (
-                f"\n\nYou now have everything: {summary(slots)}. "
-                "Confirm it back in one short line and say a few matches are below. "
-                "Do not list or describe them yourself. Ask nothing further."
-            )
-
-        prompt = [SystemMessage(content=directive), *past, HumanMessage(content=body.message)]
+            # The same five answers, offered back as rows to change. Every chip
+            # sends its own label, which the regex pass reads exactly as if it
+            # had been typed — so refining costs no new machinery at all.
+            refine = filters(slots)
+            # Three listings on screen and nothing asked of the visitor is the
+            # one moment worth asking for something.
+            lead = OFFERED
+            tips = OFFER_CHIPS
+            tips_line = OFFER_LINE
+            fixed = f"Got it — {summary(slots, join=', ')}.\n\nHere are a few matches:"
 
     # Written here rather than by the model: a refusal, a desk waiting on a
     # place, a desk with nothing to show, or one that is not open. All of it is
     # fixed text, so none of it waits on a model.
     written = refusal(body.message, resuming) if blocked else fixed
-    tips = suggestions(slots, resuming) if blocked else []
+    if blocked:
+        tips = suggestions(slots, resuming)
 
     # The first question mark ends the reply only while a slot is being filled.
     # A panel intro is not that, and neither is anything written above.
@@ -471,11 +555,15 @@ async def stream(
                 "slots": slots.model_dump(),
                 "awaiting": asked_field,
                 "desk": desk,
-                # Where the visitor can go instead. Turning them away without
-                # these is the half of the answer that helps nobody.
+                # Where the visitor can go next: the options for the question
+                # just asked, or — after a refusal — somewhere else entirely.
                 "suggestions": tips,
-                "matches": [],
-                "panel": None,
+                "suggestions_line": tips_line,
+                "matches": matches,
+                "panel": panel,
+                "filters": refine,
+                "lead": lead,
+                "mail": mail,
             })
             return
 
@@ -537,8 +625,12 @@ async def stream(
             "awaiting": pending[0] if pending else None,
             "desk": desk,
             "suggestions": [],
+            "suggestions_line": "",
             "matches": matches,
             "panel": panel,
+            "filters": refine,
+            "lead": lead,
+            "mail": mail,
         })
 
     return StreamingResponse(

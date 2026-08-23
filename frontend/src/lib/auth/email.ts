@@ -349,3 +349,87 @@ export async function sendNewsletterWelcomeEmail(email: string, createAccountUrl
   });
   if (error) throw new Error(`Email send failed: ${error.message}`);
 }
+
+
+export type SampleMatch = {
+  title: string;
+  price: string;
+  locality: string;
+  city: string;
+  status: string;
+  specs: { label: string; value: string }[];
+};
+
+/**
+ * A finished chat search, sent to whoever asked for it.
+ *
+ * The listings are fabricated while the live inventory is being built, and an
+ * inbox carries none of the framing the screen does — there is no "sample
+ * results" strip above an email, and a forwarded one loses even the subject.
+ * So the notice sits in the subject, above the listings, and again at the end.
+ */
+export async function sendSampleMatchesEmail(
+  email: string,
+  criteria: string,
+  matches: SampleMatch[],
+) {
+  const cards = matches
+    .map(
+      (match) => `
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+             style="margin-bottom:12px;border:1px solid #e6e8ee;border-radius:12px">
+        <tr>
+          <td style="padding:16px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#8a8a8a">
+              ${match.status}
+            </div>
+            <div style="margin-top:6px;font-size:16px;font-weight:700;color:${NAVY}">${match.title}</div>
+            <div style="margin-top:3px;font-size:13px;color:#6b7280">${match.locality}, ${match.city}</div>
+            <div style="margin-top:10px;font-size:19px;font-weight:700;color:${SAFFRON}">${match.price}</div>
+            <div style="margin-top:8px;font-size:12px;color:#6b7280">
+              ${match.specs.map((spec) => `${spec.label}: <strong style="color:#3d4654">${spec.value}</strong>`).join(" &nbsp;·&nbsp; ")}
+            </div>
+          </td>
+        </tr>
+      </table>`,
+    )
+    .join("");
+
+  const body = `
+    <h1 style="margin:0 0 10px;font-size:23px;line-height:1.3;color:${NAVY};font-weight:700">
+      Your shortlist
+    </h1>
+
+    <p style="margin:0 0 6px;font-size:15px;line-height:1.65;color:#3d4654">
+      Here is what you asked Mantraa for:
+    </p>
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:${NAVY};font-weight:700">
+      ${criteria}
+    </p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="margin-bottom:20px;background:#fff8ef;border:1px solid #f0dfd4;border-radius:10px">
+      <tr>
+        <td style="padding:13px 16px;font-size:13px;line-height:1.6;color:#8a5a2b">
+          <strong>These are sample listings.</strong> We are still bringing the live
+          inventory online, so treat the properties and prices below as illustrative
+          rather than as homes you can view today.
+        </td>
+      </tr>
+    </table>
+
+    ${cards}
+
+    <p style="margin:18px 0 0;font-size:13px;line-height:1.65;color:#6b7280">
+      We will email you again the moment real listings match this search.
+    </p>`;
+
+  const { error } = await resend.emails.send({
+    from: "Makan Mantraa <onboarding@resend.dev>",
+    to: email,
+    subject: `[Sample] ${criteria}`,
+    html: shell("Your property shortlist", body),
+  });
+
+  if (error) throw new Error(error.message);
+}

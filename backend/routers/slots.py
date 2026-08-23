@@ -50,6 +50,94 @@ QUESTIONS: list[tuple[str, str]] = [
 ]
 
 
+# The user-facing half of each question, and the closed set of answers where
+# one exists.
+#
+# Neither is worth a model call. The wording does not need to vary, the options
+# cannot, and a model asked to list them will sooner or later list them wrong,
+# reorder them, or invent an eighth. Fixed text and buttons cost nothing and
+# cannot go off-script — and a tap is a cleaner answer than a typed word, since
+# every label here is one the regex pass already reads back.
+PROMPTS: dict[str, str] = {
+    "property_type": "What type of property are you looking for?",
+    "bhk": "How many bedrooms do you need?",
+    "city": "Which city are you looking in? Tap one, or type any other.",
+    "listing_type": "Are you looking to buy, or to rent?",
+    "budget": "What is your budget?",
+}
+
+CHOICES: dict[str, list[str]] = {
+    "property_type": ["Flat", "Villa", "Builder Floor", "Plot", "Office Space", "Shop", "PG"],
+    "bhk": ["1 BHK", "2 BHK", "3 BHK", "4 BHK", "5 BHK"],
+    # A hint, not the whole country: anything typed is read the same way.
+    "city": ["Noida", "Gurugram", "Mumbai", "Pune", "Bengaluru", "Hyderabad"],
+    "listing_type": ["Buy", "Rent"],
+}
+
+# Single-bounded on purpose. "50 lakh to 1 crore" reads back as 50 lakh through
+# the money regex — the floor, when the user meant the ceiling.
+BUDGET_BUY = ["Under 50 lakh", "Under 1 crore", "Under 2 crore", "Above 2 crore"]
+BUDGET_RENT = ["Under 15 thousand", "Under 30 thousand", "Under 50 thousand", "Above 50 thousand"]
+
+
+def ask(field: str, slots: Slots) -> tuple[str, list[str]]:
+    """The line to put on screen, and the buttons to put under it."""
+    if field == "budget":
+        renting = slots.listing_type == "rent"
+        return (
+            "What is your monthly budget?" if renting else "What is your budget?",
+            BUDGET_RENT if renting else BUDGET_BUY,
+        )
+    return PROMPTS[field], CHOICES.get(field, [])
+
+
+# The same five answers again, this time as rows the visitor can go back and
+# change. The options come from CHOICES, not from a second list on the client:
+# a filter offering something the question never did is a filter that sets a
+# slot nothing downstream can read.
+FILTER_ORDER = ["listing_type", "property_type", "bhk", "city", "budget"]
+FILTER_LABEL = {
+    "listing_type": "Looking to",
+    "property_type": "Type",
+    "bhk": "Bedrooms",
+    "city": "City",
+    "budget": "Budget",
+}
+
+
+def picked(slots: Slots, field: str, option: str) -> bool:
+    """Whether this option is the one currently in the slot."""
+    current = getattr(slots, field, None)
+    if current in (None, ""):
+        return False
+    if field == "bhk":
+        return option.startswith(str(current))
+    if field == "budget":
+        # The slot holds what the money regex read back — "50 lakh" out of
+        # "Under 50 lakh" — so the chip contains the slot, not the reverse.
+        return str(current).lower() in option.lower()
+    return str(current).lower() == option.lower()
+
+
+def filters(slots: Slots) -> list[dict]:
+    """The answers so far, as editable rows."""
+    rows = []
+    for field in FILTER_ORDER:
+        if field == "bhk" and slots.property_type not in BHK_TYPES:
+            continue
+        options = ask(field, slots)[1]
+        # A city typed rather than tapped is still the answer, so it joins the
+        # row instead of leaving it looking unanswered.
+        if field == "city" and slots.city and not any(picked(slots, field, o) for o in options):
+            options = [slots.city, *options]
+        rows.append({
+            "field": field,
+            "label": FILTER_LABEL[field],
+            "options": [{"label": o, "selected": picked(slots, field, o)} for o in options],
+        })
+    return rows
+
+
 def missing_field(slots: Slots) -> tuple[str, str] | None:
     """The next thing to ask for, or None when everything is known."""
     for field, instruction in QUESTIONS:
@@ -65,7 +153,7 @@ def missing_field(slots: Slots) -> tuple[str, str] | None:
     return None
 
 
-def summary(slots: Slots) -> str:
+def summary(slots: Slots, join: str = " · ") -> str:
     bits = []
     if slots.bhk and slots.property_type in BHK_TYPES:
         bits.append(f"{slots.bhk} BHK")
@@ -78,7 +166,7 @@ def summary(slots: Slots) -> str:
         bits.append("to buy" if slots.listing_type == "buy" else "to rent")
     if slots.budget:
         bits.append(f"budget {slots.budget}")
-    return " · ".join(bits)
+    return join.join(bits)
 
 
 EXTRACT_PROMPT = """Read the conversation and pull out what the user has said they want.
@@ -190,6 +278,10 @@ def merge(base: Slots, update: Slots) -> Slots:
     for field, value in update.model_dump().items():
         if value not in (None, ""):
             setattr(merged, field, value)
+    # A budget is either a sale price or a monthly rent, never both. Changing
+    # which one is being asked for makes any number already held meaningless.
+    if update.listing_type and base.listing_type and update.listing_type != base.listing_type:
+        merged.budget = None
     return merged
 
 
