@@ -23,7 +23,9 @@ import { PROPERTY_TYPES } from "@/lib/constants/propertyTypes";
 import { insertWithPid } from "@/lib/property-id";
 
 const LISTING_TYPES = ["buy", "rent"] as const;
-const SOURCES = ["banner", "post_property_page"] as const;
+// A submission that came through the assistant, so the desk that gets it
+// knows no photos were possible and the owner has not seen the wizard.
+const SOURCES = ["banner", "post_property_page", "chatbot"] as const;
 const USER_TYPES = ["owner", "builder", "broker"] as const;
 
 const MAX_FILES = 6;

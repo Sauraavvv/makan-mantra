@@ -30,7 +30,7 @@ from routers.slots import (
     regex_slots,
     summary,
 )
-from routers.desks import NEWS, POST, pick_desk
+from routers.desks import NEWS, POST, carries_forward, pick_desk
 from routers.lead import (
     ASKING,
     DONE,
@@ -40,6 +40,12 @@ from routers.lead import (
     SENT_LINE,
     advance,
 )
+from routers.listing import Listing
+from routers.listing import apply as fill_listing
+from routers.listing import ask as ask_listing
+from routers.listing import missing_field as listing_missing
+from routers.listing import payload as listing_payload
+from routers.listing import summary as listing_summary
 from routers.lookup import find_news
 from routers.matches import find_matches
 from routers.topic import is_greeting, is_hinglish, off_topic, refusal, suggestions
@@ -71,14 +77,24 @@ Style:
 - Answer general property questions directly when asked.
 """
 
-# The one desk that is not open. Fixed text in both languages: nothing about it
-# is a judgement call, so none of it is worth a model call.
 GREETED = ("Hi! Happy to help.", "Namaste! Madad ke liye hazir hoon.")
-POST_CLOSED = (
-    "Posting a property through chat is not open yet. You can still list it from "
-    "the Post Property page, and our team will call to build the listing with you.",
-    "Chat se property post karna abhi shuru nahi hua hai. Aap Post Property page se "
-    "list kar sakte hain, hamari team call karke listing bana degi.",
+# Said when the form is complete, in both languages: the wording is fixed, so
+# none of it is worth a model call.
+#
+# It promises filing, not a filed listing -- the submission itself happens on
+# the Next side a moment later (see listing.payload), and the property id comes
+# back from there, so this line cannot name it.
+POSTED = (
+    "Got it — {summary}.\n\nFiling it now.",
+    "Ho gaya — {summary}.\n\nAbhi file kar raha hoon.",
+)
+# Said instead when the photos question was skipped, so the promise of a call
+# for them is only made when there is something still to collect.
+POSTED_NO_MEDIA = (
+    "Got it — {summary}.\n\nFiling it now. No photos on it yet, so the team will "
+    "ask for those when they call.",
+    "Ho gaya — {summary}.\n\nAbhi file kar raha hoon. Photos abhi nahi hain, to "
+    "team call karke wo maang legi.",
 )
 
 def say(pair: tuple[str, str], text: str, **fields) -> str:
@@ -223,14 +239,6 @@ async def save_slots(session_id: str, user_id: str, slots: Slots) -> None:
 
 
 PANEL_INTRO = (
-    "\n\nA data panel is already on screen showing {title} — {subtitle}. "
-    "Write ONE short line telling the visitor what they are looking at. "
-    "State no figures: every number is already in the panel below your line. "
-    "Ask nothing."
-)
-
-
-PANEL_INTRO = (
     "\n\nA panel is already on screen showing {title} — {subtitle}. "
     "Write ONE short line telling the visitor what they are looking at. "
     "Do not restate anything from it. Ask nothing."
@@ -267,6 +275,12 @@ class AskRequest(BaseModel):
     desk: str | None = None
     # How far the "send it to my inbox" step has got, if it has started.
     lead: str | None = None
+    # The Post Property form so far, carried back each turn the same way the
+    # search slots are -- this service keeps nothing between turns for a guest.
+    listing: dict | None = None
+    # How many files the browser has uploaded and is holding for this turn.
+    # The files themselves go straight to Cloudinary and never come here.
+    attachments: int = 0
 
 
 class SessionSummary(BaseModel):
@@ -439,9 +453,11 @@ async def stream(
     resuming = asked_field if known.model_dump(exclude_none=True) else None
 
     # An explicit desk this turn wins over the one carried from the last, so a
-    # visitor can move between them without starting a new chat.
+    # visitor can move between them without starting a new chat. Only a desk
+    # that is mid-something is carried at all -- see desks.carries_forward --
+    # so the turn after the news is read as whatever it actually says.
     named = pick_desk(body.message)
-    desk = named or body.desk
+    desk = named or (body.desk if carries_forward(body.desk) else None)
 
     # The email step gets the turn before anything else looks at it. An address
     # is not a property question, so the topic guard would refuse it — rightly,
@@ -460,15 +476,26 @@ async def stream(
     # is extracted, and the slots are left exactly as they were — so the search
     # resumes mid-question the moment the user comes back to it.
     #
+    # A name, a mobile number or a line of address is not a property question,
+    # and the guard would refuse it -- rightly, if it had any business seeing
+    # it. Mid-form it does not, so the Post Property desk is exempt too.
     blocked = (
         False
-        if (step.email or step.reply)
+        if (step.email or step.reply or desk == POST)
         else await off_topic(body.message, found, asked_field, build_extractor)
     )
 
     prompt: list[BaseMessage] = []
     matches: list[dict] = []
     panel: dict | None = None
+    # Set only on the turn the form completes -- the client posts it to
+    # /api/post-property, which is the same endpoint the wizard uses.
+    submit: dict | None = None
+    # True while the form is on its photos question, so the composer knows to
+    # offer the file picker. Which question is being asked is decided here, so
+    # working it out again on the client would be a second copy of that rule.
+    attach = False
+    posting = Listing(**(body.listing or {}))
     fixed: str | None = None
     tips: list[str] = []
     # A line that belongs with the buttons rather than with the reply. The
@@ -490,7 +517,29 @@ async def stream(
     elif blocked:
         pass
     elif desk == POST:
-        fixed = say(POST_CLOSED, body.message)
+        # Signed in, the name and email are already known and the account
+        # exists, so those three questions are skipped -- /api/post-property
+        # reads them off the session exactly as it does for the wizard.
+        known_owner = bool(user_id)
+        # The turn that names the desk opens the form; it is not an answer to a
+        # question nobody has been asked yet.
+        retry = None
+        if named != POST:
+            answering = listing_missing(posting, known_owner)
+            if answering:
+                retry = fill_listing(posting, answering, body.message, body.attachments)
+
+        nxt = listing_missing(posting, known_owner)
+        attach = nxt == "photos"
+        if nxt:
+            # A retry leaves the same question standing, so the chips under it
+            # are still that question's chips.
+            line, tips = ask_listing(nxt)
+            fixed = retry or line
+        else:
+            submit = listing_payload(posting)
+            done_text = POSTED if posting.photos else POSTED_NO_MEDIA
+            fixed = say(done_text, body.message, summary=listing_summary(posting))
     elif desk == NEWS:
         panel = await find_news()
         prompt = [
@@ -555,6 +604,9 @@ async def stream(
                 "slots": slots.model_dump(),
                 "awaiting": asked_field,
                 "desk": desk,
+                "listing": posting.model_dump(),
+                "submit": submit,
+                "attach": attach,
                 # Where the visitor can go next: the options for the question
                 # just asked, or — after a refusal — somewhere else entirely.
                 "suggestions": tips,
@@ -624,6 +676,9 @@ async def stream(
             "slots": slots.model_dump(),
             "awaiting": pending[0] if pending else None,
             "desk": desk,
+            "listing": posting.model_dump(),
+            "submit": submit,
+            "attach": attach,
             "suggestions": [],
             "suggestions_line": "",
             "matches": matches,

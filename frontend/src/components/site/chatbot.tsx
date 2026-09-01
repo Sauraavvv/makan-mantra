@@ -19,7 +19,9 @@ import {
   Minus,
   LayoutDashboard,
   LogOut,
+  Image as ImageIcon,
   Newspaper,
+  Paperclip,
   Loader2,
   Mic,
   Moon,
@@ -30,6 +32,7 @@ import {
   Sun,
   Trash2,
   User,
+  Video,
   X,
 } from "lucide-react";
 import { ChatMarkdown } from "@/components/site/chat-markdown";
@@ -38,6 +41,7 @@ import { openAuthModal } from "@/lib/auth-modal";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import Link from "next/link";
 import { PROPERTY_IMAGES } from "@/lib/properties";
+import { uploadToCloudinary, type CloudinaryAsset } from "@/lib/cloudinary-upload";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -121,12 +125,80 @@ const WELCOME_TEXT =
  */
 const MENU: { label: string; disabled?: boolean }[] = [
   { label: "Recommend property" },
+  { label: "Latest news" },
+  { label: "Post property" },
 ];
 
 const INITIAL_MESSAGES: Message[] = [{ id: "welcome", role: "bot", text: WELCOME_TEXT }];
 
+// The Post Property page's own limits. /api/post-property re-checks every one
+// of them against Cloudinary, so these only save the visitor a round trip --
+// they are not the enforcement.
+const MAX_FILES = 6;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 8 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
+
+/** One file the visitor attached, from picked to uploaded. */
+type Upload = {
+  id: string;
+  name: string;
+  size: number;
+  kind: "image" | "video";
+  status: "uploading" | "done" | "error";
+  progress: number;
+  asset?: CloudinaryAsset;
+};
+
 function newId() {
   return Math.random().toString(36).slice(2);
+}
+
+/**
+ * Files a chat-collected property through the Post Property endpoint.
+ *
+ * The same multipart POST the wizard makes, minus the media: the widget has no
+ * file picker, so a chat submission carries none and the team asks for photos
+ * on the call. Everything that makes a submission real — the property id, the
+ * confirmation email, the account opened alongside it — lives behind that one
+ * route, and none of it exists on the chat service's side.
+ *
+ * Resolves to the line to put on screen rather than throwing. The reply above
+ * it has already promised the filing, so what follows has to say what actually
+ * happened, success or not.
+ */
+async function filePropertySubmission(
+  fields: Record<string, string>,
+  media: CloudinaryAsset[],
+): Promise<string> {
+  try {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(fields)) form.append(key, value ?? "");
+    // Ids only. The files went straight from the browser to Cloudinary, and the
+    // route asks Cloudinary itself what they really are before storing them.
+    form.append(
+      "media",
+      JSON.stringify(media.map(({ public_id, kind }) => ({ public_id, kind }))),
+    );
+
+    const res = await fetch("/api/post-property", { method: "POST", body: form });
+    const data = (await res.json().catch(() => null)) as { pid?: string; error?: string } | null;
+
+    if (!res.ok || !data?.pid) {
+      return (
+        data?.error ??
+        "I could not file that just now — please try the Post Property page."
+      );
+    }
+
+    return (
+      `Filed${media.length ? ` with ${media.length} file${media.length > 1 ? "s" : ""}` : ""}. ` +
+      `Your property ID is **${data.pid}** — worth keeping. ` +
+      `Our team will call on ${fields.owner_phone} to build the listing with you.`
+    );
+  } catch {
+    return "I could not reach the listings service — please try the Post Property page.";
+  }
 }
 
 type Theme = "light" | "dark";
@@ -278,6 +350,18 @@ function ChatbotWidget() {
   // How far the "send it to my inbox" step has got. Carried like the rest, so
   // the server need not work out on every turn whether it is mid-ask.
   const leadRef = useRef<string | null>(null);
+  // The Post Property form so far, for the same reason again: signed out,
+  // nothing about the conversation is stored server-side between turns.
+  const listingRef = useRef<Record<string, unknown> | null>(null);
+  // Set by the server on the turn the form reaches its photos question -- which
+  // question is being asked is decided there, so the composer is told rather
+  // than working it out from the form a second time.
+  const [attaching, setAttaching] = useState(false);
+  const [uploads, setUploads] = useState<Upload[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadIdRef = useRef(0);
+  const readyUploads = uploads.filter((u) => u.status === "done" && u.asset);
+  const uploading = uploads.some((u) => u.status === "uploading");
   // Full by default, so a restored conversation shows the greeting complete
   // rather than replaying it. Opening a fresh chat restarts the typing.
   const [welcomeText, setWelcomeText] = useState(WELCOME_TEXT);
@@ -405,6 +489,9 @@ function ChatbotWidget() {
       slotsRef.current = null;
       deskRef.current = null;
       leadRef.current = null;
+      listingRef.current = null;
+      setUploads([]);
+      setAttaching(false);
       setActiveSession(sessionId);
       setWelcomeText(WELCOME_TEXT);
       setTyping(false);
@@ -452,6 +539,9 @@ function ChatbotWidget() {
     slotsRef.current = null;
     deskRef.current = null;
     leadRef.current = null;
+    listingRef.current = null;
+    setUploads([]);
+    setAttaching(false);
     setEditing(false);
     setActiveSession(null);
     setMessages(INITIAL_MESSAGES);
@@ -499,6 +589,9 @@ function ChatbotWidget() {
     slotsRef.current = null;
     deskRef.current = null;
     leadRef.current = null;
+    listingRef.current = null;
+    setUploads([]);
+    setAttaching(false);
     setEditing(false);
     setActiveSession(null);
     setMessages(INITIAL_MESSAGES);
@@ -514,6 +607,9 @@ function ChatbotWidget() {
     slotsRef.current = null;
     deskRef.current = null;
     leadRef.current = null;
+    listingRef.current = null;
+    setUploads([]);
+    setAttaching(false);
     setMessages(INITIAL_MESSAGES);
     setWelcomeText("");
     setTyping(true);
@@ -532,13 +628,69 @@ function ChatbotWidget() {
     return sessionId === activeSession;
   }
 
+  /** Picked from the clip in the composer, uploaded one by one as they arrive. */
+  function pickFiles(picked: File[]) {
+    const room = MAX_FILES - uploads.length;
+    if (room <= 0) return setError(`You can attach up to ${MAX_FILES} files.`);
+
+    const accepted: { file: File; kind: "image" | "video" }[] = [];
+    for (const file of picked.slice(0, room)) {
+      const kind: "image" | "video" = file.type.startsWith("video/") ? "video" : "image";
+      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+        return setError(`"${file.name}" is not a photo or a video.`);
+      }
+      if (file.size > (kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
+        return setError(`"${file.name}" is larger than ${kind === "video" ? "8MB" : "2MB"}.`);
+      }
+      accepted.push({ file, kind });
+    }
+
+    const used = uploads.reduce((sum, u) => sum + u.size, 0);
+    if (used + accepted.reduce((sum, a) => sum + a.file.size, 0) > MAX_TOTAL_BYTES) {
+      return setError("Total attachment size must stay under 10MB.");
+    }
+
+    setError(null);
+
+    for (const { file, kind } of accepted) {
+      uploadIdRef.current += 1;
+      const id = `up-${uploadIdRef.current}`;
+      setUploads((current) => [
+        ...current,
+        { id, name: file.name, size: file.size, kind, status: "uploading", progress: 0 },
+      ]);
+
+      const patch = (changes: Partial<Upload>) =>
+        setUploads((current) => current.map((u) => (u.id === id ? { ...u, ...changes } : u)));
+
+      uploadToCloudinary(file, kind, (progress) => patch({ progress }))
+        .then((asset) => patch({ status: "done", progress: 100, asset }))
+        .catch(() => patch({ status: "error" }));
+    }
+  }
+
+  function removeUpload(id: string) {
+    // The asset keeps its `draft` tag on Cloudinary and is swept up a day
+    // later, so dropping it here is all that is needed.
+    setUploads((current) => current.filter((u) => u.id !== id));
+  }
+
   function handleSend() {
     void sendText(input);
   }
 
   async function sendText(raw: string) {
-    const text = raw.trim();
+    // Files in hand are an answer on their own, so a send with nothing typed
+    // still goes -- the transcript needs a line for it either way.
+    const ready = uploads.filter((u) => u.status === "done" && u.asset);
+    const text =
+      raw.trim() ||
+      (ready.length ? `${ready.length} file${ready.length > 1 ? "s" : ""} attached` : "");
     if (!text || busy) return;
+    if (uploads.some((u) => u.status === "uploading")) {
+      setError("Give the upload a moment to finish.");
+      return;
+    }
 
     setError(null);
     setInput("");
@@ -563,12 +715,16 @@ function ChatbotWidget() {
                 slots: slotsRef.current,
                 desk: deskRef.current,
                 lead: leadRef.current,
+                listing: listingRef.current,
+                attachments: ready.length,
               }
             : {
                 message: text,
                 slots: slotsRef.current,
                 desk: deskRef.current,
                 lead: leadRef.current,
+                listing: listingRef.current,
+                attachments: ready.length,
                 history: messages
                   .filter((m) => m.id !== "welcome" && m.text)
                   .slice(-20)
@@ -586,6 +742,9 @@ function ChatbotWidget() {
       const decoder = new TextDecoder();
       let buffer = "";
       let failure: string | null = null;
+      // Awaited after the stream closes: the reply promising to file it is
+      // already on screen, and the outcome follows it as its own line.
+      let posted: Promise<string> | null = null;
       let tips: string[] = [];
       let tipsLine = "";
       let found: Match[] = [];
@@ -641,6 +800,20 @@ function ChatbotWidget() {
             if (payload.panel) board = payload.panel as Panel;
             deskRef.current = (payload.desk as string | null) ?? null;
             leadRef.current = (payload.lead as string | null) ?? null;
+            if (payload.listing) listingRef.current = payload.listing as Record<string, unknown>;
+            setAttaching(Boolean(payload.attach));
+            // The form is complete, so it goes to the same endpoint the Post
+            // Property wizard posts to -- property id, confirmation email and
+            // account creation all live behind it, and none of them exist on
+            // the chat service's side.
+            const filing = payload.submit as Record<string, string> | null;
+            if (filing) {
+              posted = filePropertySubmission(
+                filing,
+                ready.map((u) => u.asset as CloudinaryAsset),
+              );
+              listingRef.current = null;
+            }
             // The address was captured server-side; the mail itself goes from
             // here, because Resend lives on this side and always has.
             const wants = payload.mail as { to?: string } | null;
@@ -680,6 +853,15 @@ function ChatbotWidget() {
           // A failure before any token leaves an empty bubble behind.
           .filter((m) => m.id !== replyId || m.text),
       );
+      // Started while the stream was still open, so the wait here is usually
+      // already over. It lands as the next line rather than rewriting the one
+      // that promised it — that line was true when it was written.
+      // Spent on this turn, whether they completed the form or not.
+      if (ready.length) setUploads([]);
+      if (posted) {
+        const outcome = await posted;
+        setMessages((current) => [...current, { id: newId(), role: "bot", text: outcome }]);
+      }
       if (failure) setError(failure);
       void refreshSessions();
     } catch (err) {
@@ -799,7 +981,6 @@ function ChatbotWidget() {
                 <div className="space-y-2.5 px-5 pt-3">
                   <SidebarAction icon={Plus} label="New Search" onClick={startNewChat} />
                   <SidebarAction icon={Building2} label="Post Property" />
-                  <SidebarAction icon={Newspaper} label="Latest News" />
                 </div>
 
                 <div className="mt-6 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-slate-200 px-5 pt-5 mmdark:border-[#223140]">
@@ -1010,37 +1191,77 @@ function ChatbotWidget() {
                             the way out, because the widget outlives the route and
                             would otherwise sit on top of the page just opened. */}
                         {msg.panel?.links.length ? (
-                          <div className="w-full max-w-[86%] space-y-2 sm:max-w-[76%]">
+                          <div className="w-full space-y-2">
                             <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mmdark:text-[#7089a0]">
                               {msg.panel.subtitle}
                             </div>
-                            {msg.panel.links.map((item) =>
-                              item.href ? (
-                                <Link
-                                  key={item.href}
-                                  href={item.href}
-                                  onClick={() => setOpen(false)}
-                                  className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm transition hover:border-saffron/60 mmdark:border-[#223140] mmdark:bg-[#141f2b]"
-                                >
-                                  {item.image ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={item.image}
-                                      alt=""
-                                      className="h-16 w-20 shrink-0 rounded-xl object-cover"
-                                    />
-                                  ) : null}
-                                  <span className="min-w-0 flex-1">
-                                    <span className="line-clamp-2 block text-[13px] font-bold leading-snug text-slate-900 mmdark:text-[#dfe9f2]">
-                                      {item.title}
-                                    </span>
-                                    <span className="mt-1 block truncate text-[11px] font-medium text-slate-400 mmdark:text-[#7089a0]">
-                                      {[item.meta, item.at].filter(Boolean).join(" · ")}
-                                    </span>
-                                  </span>
-                                </Link>
-                              ) : null,
-                            )}
+                            {/* The same scrolling row the listings use, and for the
+                                same reason: six stories stacked down the page push
+                                the reply that follows them out of sight. Negative
+                                margin then padding, so the cards can reach the edge
+                                of the column while their shadows still have room. */}
+                            <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
+                              {msg.panel.links.map((item) =>
+                                item.href ? (
+                                  <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    onClick={() => setOpen(false)}
+                                    className="flex w-[268px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-saffron/60 mmdark:border-[#223140] mmdark:bg-[#141f2b]"
+                                  >
+                                    {item.image ? (
+                                      <div className="relative">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src={item.image}
+                                          alt=""
+                                          className="h-[164px] w-full object-cover"
+                                        />
+                                        {/* Where the listing card carries its status. */}
+                                        {item.meta ? (
+                                          <span className="absolute left-2.5 top-2.5 rounded-lg bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
+                                            {item.meta}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+
+                                    <div className="flex min-h-0 flex-1 flex-col p-3">
+                                      {/* Without an image there is no badge to sit on
+                                          it, so the category runs above the headline
+                                          rather than being dropped. */}
+                                      {!item.image && item.meta ? (
+                                        <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron">
+                                          {item.meta}
+                                        </div>
+                                      ) : null}
+
+                                      <div className="line-clamp-2 text-[14px] font-bold leading-snug text-slate-900 mmdark:text-[#dfe9f2]">
+                                        {item.title}
+                                      </div>
+
+                                      {/* The story's own standfirst, cut to 150 chars
+                                          in lookup.py -- two lines saying what it is
+                                          about, so the headline is not all there is to
+                                          go on before deciding to open it. */}
+                                      {item.summary ? (
+                                        <p className="mt-1.5 line-clamp-4 text-[11.5px] font-medium leading-relaxed text-slate-500 mmdark:text-[#8ea4b8]">
+                                          {item.summary}
+                                        </p>
+                                      ) : null}
+
+                                      <div className="mt-auto flex items-center gap-1.5 border-t border-slate-100 pt-2.5 text-[11px] font-medium text-slate-400 mmdark:border-[#223140] mmdark:text-[#7089a0]">
+                                        <Newspaper className="h-3 w-3 shrink-0" />
+                                        <span className="truncate">{item.at}</span>
+                                        <span className="ml-auto shrink-0 font-bold text-saffron">
+                                          Read →
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </Link>
+                                ) : null,
+                              )}
+                            </div>
                             {msg.panel.href ? (
                               <Link
                                 href={msg.panel.href}
@@ -1225,15 +1446,88 @@ function ChatbotWidget() {
                   </div>
                 </div>
 
-                <div className="flex h-[92px] shrink-0 items-center border-t border-slate-100 bg-white px-3 mmdark:border-[#223140] mmdark:bg-[#0f1923] sm:px-5">
-                  <div className="mx-auto flex w-full max-w-4xl items-center gap-2 rounded-2xl border-2 border-saffron/70 bg-white p-2 shadow-[0_14px_42px_rgba(255,111,35,0.12)] mmdark:bg-[#141f2b] mmdark:shadow-none">
-                    <Search className="ml-2 h-5 w-5 shrink-0 text-slate-400" />
+                <div className="flex min-h-[92px] shrink-0 flex-col justify-center border-t border-slate-100 bg-white px-3 py-2.5 mmdark:border-[#223140] mmdark:bg-[#0f1923] sm:px-5">
+                  <div className="mx-auto w-full max-w-4xl">
+                  {/* What is attached so far, above the input rather than inside
+                      it: six filenames in a row would leave nothing to type in. */}
+                  {uploads.length > 0 ? (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {uploads.map((item) => (
+                        <span
+                          key={item.id}
+                          className={`flex max-w-[200px] items-center gap-1.5 rounded-lg border py-1 pl-2 pr-1 text-[11px] font-semibold ${
+                            item.status === "error"
+                              ? "border-red-200 bg-red-50 text-red-600 mmdark:border-red-900 mmdark:bg-red-950/40 mmdark:text-red-300"
+                              : "border-slate-200 bg-slate-50 text-slate-600 mmdark:border-[#223140] mmdark:bg-[#1b2836] mmdark:text-[#cbd9e6]"
+                          }`}
+                        >
+                          {item.kind === "video" ? (
+                            <Video className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                          ) : (
+                            <ImageIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                          )}
+                          <span className="truncate">{item.name}</span>
+                          {item.status === "uploading" ? (
+                            <span className="shrink-0 tabular-nums opacity-60">{item.progress}%</span>
+                          ) : item.status === "error" ? (
+                            <span className="shrink-0">failed</span>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => removeUpload(item.id)}
+                            aria-label={`Remove ${item.name}`}
+                            className="flex h-4 w-4 shrink-0 items-center justify-center rounded transition-colors hover:text-red-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="flex w-full items-center gap-2 rounded-2xl border-2 border-saffron/70 bg-white p-2 shadow-[0_14px_42px_rgba(255,111,35,0.12)] mmdark:bg-[#141f2b] mmdark:shadow-none">
+                    {attaching ? (
+                      <>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          multiple
+                          accept="image/*,video/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            pickFiles(Array.from(e.target.files ?? []));
+                            e.target.value = "";
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={busy || uploads.length >= MAX_FILES}
+                          aria-label="Attach photos or a video"
+                          title={
+                            uploads.length >= MAX_FILES
+                              ? `Up to ${MAX_FILES} files`
+                              : "Attach photos or a video"
+                          }
+                          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:text-saffron disabled:opacity-40 mmdark:hover:text-saffron"
+                        >
+                          <Paperclip className="h-5 w-5" />
+                        </button>
+                      </>
+                    ) : (
+                      <Search className="ml-2 h-5 w-5 shrink-0 text-slate-400" />
+                    )}
                     <input
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSend()}
                       disabled={busy}
-                      placeholder={micStatus === "listening" ? "Listening…" : "Ask for 2 BHK for rent in Faridabad"}
+                      placeholder={
+                        micStatus === "listening"
+                          ? "Listening…"
+                          : attaching
+                            ? "Attach photos, or say skip"
+                            : "Ask for 2 BHK for rent in Faridabad"
+                      }
                       className="h-11 min-w-0 flex-1 bg-transparent px-2 text-[13px] font-medium text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed mmdark:text-[#dfe9f2] mmdark:placeholder:text-[#7089a0]"
                     />
                     {micSupported && (
@@ -1252,12 +1546,13 @@ function ChatbotWidget() {
                     )}
                     <button
                       onClick={handleSend}
-                      disabled={busy || !input.trim()}
+                      disabled={busy || uploading || (!input.trim() && readyUploads.length === 0)}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-saffron text-white transition hover:bg-saffron/90 disabled:opacity-40"
                       aria-label="Send message"
                     >
                       {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                     </button>
+                  </div>
                   </div>
                 </div>
               </main>

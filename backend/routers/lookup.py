@@ -12,6 +12,15 @@ from mongodb import get_news_collection
 
 NEWS_LIMIT = 6
 
+# How much of a story's summary travels to the card.
+#
+# Not what the visitor reads: the card clamps it to four lines (~170 chars at
+# its width) and CSS adds the ellipsis. This only bounds the payload, so it has
+# to sit well clear of that -- at 150 it did not, and every summary in the
+# collection is longer than 150, so the card ended each one mid-word with no
+# ellipsis to show it had been cut.
+SUMMARY_CHARS = 300
+
 
 async def find_news(limit: int = NEWS_LIMIT) -> dict:
     """The most recent published stories, newest first."""
@@ -30,7 +39,7 @@ async def find_news(limit: int = NEWS_LIMIT) -> dict:
         links.append({
             "title": row.get("title", ""),
             "meta": (row.get("category") or "").replace("-", " ").title(),
-            "summary": (row.get("summary") or "")[:150],
+            "summary": (row.get("summary") or "")[:SUMMARY_CHARS],
             "href": f"/blog/{row['slug']}" if row.get("slug") else None,
             "image": image.get("url") if isinstance(image, dict) else None,
             "at": str(row.get("publishedAt") or "")[:10],
