@@ -44,6 +44,44 @@ function istHour() {
   return Number(parts.find((part) => part.type === "hour")?.value ?? 0);
 }
 
+/**
+ * Answers the desk is asked before anyone fills the form in. Every number here
+ * — the file limits, the required fields, what the email carries — is the one
+ * the wizard and `/api/post-property` actually enforce, so keep them in step.
+ */
+const FAQS = [
+  {
+    question: "Is it really free to post my property?",
+    answer:
+      "Yes. Posting is completely free — there are no listing charges, no commission and no hidden fees at any stage.",
+  },
+  {
+    question: "How long does it take, and what do I have to fill in?",
+    answer:
+      "About two minutes. The form has three steps — property details, your contact details, and photos or a video. Only the property type and a valid 10-digit phone number are compulsory (plus your name and email if you are not signed in); everything else you can leave for our team to fill in with you.",
+  },
+  {
+    question: "What happens after I submit my property?",
+    answer:
+      "Your submission reaches our team with its own property ID, and a confirmation email carrying that ID goes to you straight away. Our team then reviews the details, calls you on the number you gave to fill in anything missing, and builds and publishes the live listing for you. Your number is only used so our team and genuine buyers can reach you about this property.",
+  },
+  {
+    question: "What kind of properties can I post?",
+    answer:
+      "Flats, villas, plots, builder floors, office spaces, showrooms or shops, and PGs — each one either For Sale or For Rent. You can post as an owner, a builder or a broker.",
+  },
+  {
+    question: "How many photos and videos can I add?",
+    answer:
+      "Up to six files in total, 10MB combined. Photos can be JPG or PNG up to 2MB each, and a walkthrough video can be MP4 or MOV up to 8MB. Media is optional, but photos help buyers shortlist your property.",
+  },
+  {
+    question: "Do I need an account to post?",
+    answer:
+      "No — you can post without signing in. If you tick the account option on the last step, we open an account with the details you entered and email you a link to set your password, so you can track this listing and its enquiries from your dashboard.",
+  },
+];
+
 const HIGHLIGHTS = [
   { icon: Tag, title: "100% Free", copy: "No hidden charges" },
   { icon: Users, title: "Genuine Buyers", copy: "Direct connections" },
@@ -159,9 +197,33 @@ export default async function PostPropertyPage({
         </section>
 
         {/* Steps + form */}
-        <section className="bg-secondary px-4 pb-12 pt-4 md:px-8 md:pb-16 md:pt-5">
+        <section className="bg-secondary px-4 pb-6 pt-4 md:px-8 md:pb-8 md:pt-5">
           <div className="mx-auto max-w-[1250px]">
             <PostPropertyWizard />
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section id="faq" className="scroll-mt-32 bg-secondary px-4 pb-12 md:px-8 md:pb-16">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
+            <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
+              Frequently Asked Questions
+            </h2>
+            <div className="divide-y divide-border rounded-xl border border-border bg-card/70 px-4 md:px-5">
+              {FAQS.map((item) => (
+                <details key={item.question} className="group py-3">
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
+                    <span className="text-sm font-medium text-foreground">{item.question}</span>
+                    <span className="mt-0.5 shrink-0 text-primary transition-transform group-open:rotate-45">
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-2 max-w-5xl text-sm leading-relaxed text-muted-foreground">
+                    {item.answer}
+                  </p>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
       </main>

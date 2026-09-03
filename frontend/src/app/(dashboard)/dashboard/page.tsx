@@ -29,16 +29,18 @@ function greeting() {
 async function loadPostedProperties(
   userId: string,
   email: string,
-): Promise<DashboardPostedProperty[]> {
+): Promise<{ items: DashboardPostedProperty[]; count: number }> {
   try {
     const submissions = await getPropertySubmissionsCollection();
-    const docs = await submissions
-      .find({ $or: [{ user_id: userId }, { user_email: email }, { owner_email: email }] })
-      .sort({ created_at: -1 })
-      .limit(3)
-      .toArray();
+    const owned = { $or: [{ user_id: userId }, { user_email: email }, { owner_email: email }] };
+    // The preview is capped at three cards, so the tile's count is asked for
+    // separately — otherwise it would stop at three however many were posted.
+    const [docs, count] = await Promise.all([
+      submissions.find(owned).sort({ created_at: -1 }).limit(3).toArray(),
+      submissions.countDocuments(owned),
+    ]);
 
-    return docs.map((doc) => {
+    const items = docs.map((doc) => {
       const media = Array.isArray(doc.media)
         ? doc.media
         : Array.isArray(doc.images)
@@ -67,8 +69,10 @@ async function loadPostedProperties(
         createdAt: doc.created_at ? new Date(doc.created_at as Date).toISOString() : null,
       };
     });
+
+    return { items, count };
   } catch {
-    return [];
+    return { items: [], count: 0 };
   }
 }
 
@@ -79,7 +83,7 @@ export default async function DashboardPage() {
   if (!session) return <DashboardGuestPlaceholder />;
 
   const firstName = (session.name || "").trim().split(/\s+/)[0];
-  const postedProperties = await loadPostedProperties(session.userId, session.email);
+  const posted = await loadPostedProperties(session.userId, session.email);
 
   return (
     <div className="min-w-0 space-y-5">
@@ -92,7 +96,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <DashboardPropertyActivity postedProperties={postedProperties} />
+      <DashboardPropertyActivity postedProperties={posted.items} postedCount={posted.count} />
     </div>
   );
 }

@@ -115,10 +115,8 @@ const DETAILS_PLACEHOLDER = [
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[6-9]\d{9}$/;
 
-const labelClass = "mb-1.5 block text-[13px] font-semibold text-primary";
-const fieldClass =
-  "h-12 w-full rounded-lg border border-border bg-background text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60 focus:ring-3 focus:ring-primary/15";
-const selectClass = `${fieldClass} gap-2 pl-3 pr-2 text-sm data-[size=default]:h-12`;
+const FIELD_LOOK =
+  "w-full rounded-lg border border-border bg-background text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60 focus:ring-3 focus:ring-primary/15";
 const cardClass = "rounded-[20px] border border-border bg-background p-6";
 const cardTitleClass = "text-[13px] font-bold uppercase tracking-wide text-muted-foreground";
 
@@ -132,11 +130,29 @@ export function PostPropertyWizard({
   variant = "cards",
   source = "post_property_page",
   className,
+  onStepChange,
 }: {
   variant?: "cards" | "compact";
   source?: "banner" | "post_property_page";
   className?: string;
+  /** Lets the banner's step rail track the step the form is on. */
+  onStepChange?: (step: number) => void;
 }) {
+  /*
+   * The banner card is boxed in by the artwork it sits on, so `compact` runs a
+   * notch tighter — shorter rows, smaller labels, less padding. Only the metrics
+   * move; the colours, borders and focus states are the one set both share.
+   */
+  const compact = variant === "compact";
+  const rowClass = compact ? "h-11" : "h-12";
+  const labelClass = compact
+    ? "mb-1 block text-xs font-semibold text-primary"
+    : "mb-1.5 block text-[13px] font-semibold text-primary";
+  const fieldClass = `${rowClass} ${FIELD_LOOK}`;
+  const selectClass = `${fieldClass} gap-2 pl-3 pr-2 text-sm ${
+    compact ? "data-[size=default]:h-11" : "data-[size=default]:h-12"
+  }`;
+
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const uploadIdRef = useRef(0);
@@ -270,6 +286,10 @@ export function PostPropertyWizard({
     return null;
   };
 
+  useEffect(() => {
+    onStepChange?.(step);
+  }, [step, onStepChange]);
+
   const goNext = () => {
     const message = validateStep(step);
     if (message) return setError(message);
@@ -367,7 +387,7 @@ export function PostPropertyWizard({
       key="continue"
       type="button"
       onClick={goNext}
-      className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+      className={`flex ${rowClass} w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90`}
     >
       Continue <ArrowRight className="size-4" />
     </button>
@@ -379,7 +399,7 @@ export function PostPropertyWizard({
       type="button"
       onClick={() => void submitForm()}
       disabled={status === "submitting"}
-      className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-70"
+      className={`flex ${rowClass} w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-70`}
     >
       <Send className="size-4" />
       {status === "submitting" ? "Publishing..." : "Publish Property"}
@@ -420,7 +440,7 @@ export function PostPropertyWizard({
 
       <div>
         <label className={labelClass}>Listing Type</label>
-        <div className="grid h-12 grid-cols-2 gap-2">
+        <div className={`grid ${rowClass} grid-cols-2 gap-2`}>
           {LISTING_OPTIONS.map((option) => {
             const active = listingType === option.value;
             return (
@@ -470,7 +490,7 @@ export function PostPropertyWizard({
     <>
       <div>
         <label className={labelClass}>You are</label>
-        <div className="grid h-12 grid-cols-3 gap-2">
+        <div className={`grid ${rowClass} grid-cols-3 gap-2`}>
           {USER_TYPE_OPTIONS.map((option) => {
             const active = userType === option.value;
             return (
@@ -724,20 +744,20 @@ export function PostPropertyWizard({
   if (variant === "compact") {
     if (status === "success") {
       return (
-        <div className={cn(cardClass, "flex flex-col lg:h-[500px] xl:h-[600px]", className)}>{successView}</div>
+        <div className={cn(cardClass, "flex flex-col p-5 lg:h-[500px] xl:h-[600px]", className)}>{successView}</div>
       );
     }
 
     return (
-      <div className={cn(cardClass, "flex flex-col lg:h-[500px] xl:h-[600px]", className)}>
+      <div className={cn(cardClass, "flex flex-col p-5 lg:h-[500px] xl:h-[600px]", className)}>
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-xl font-extrabold tracking-tight text-primary">POST YOUR PROPERTY</h3>
-          <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+          <h3 className="text-base font-extrabold tracking-tight text-primary">POST YOUR PROPERTY</h3>
+          <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
             Step {step + 1} of {STEPS.length}
           </span>
         </div>
 
-        <div className="mt-3 flex gap-1.5">
+        <div className="mt-2.5 flex gap-1.5">
           {STEPS.map((item, index) => (
             <span
               key={item.title}
@@ -746,20 +766,20 @@ export function PostPropertyWizard({
           ))}
         </div>
 
-        <p className="mt-3 text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
+        <p className="mt-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
           {step + 1}. {STEPS[step].title}
         </p>
 
-        <form onSubmit={handleFormSubmit} className="mt-4 flex min-h-0 flex-1 flex-col">
+        <form onSubmit={handleFormSubmit} className="mt-3 flex min-h-0 flex-1 flex-col">
           {/* Scrolls without showing for it: the card is a fixed height, so on a
               shorter one a step's fields overflow — but a bar down the middle of
               a five-field form reads as a defect rather than as an affordance.
               `no-scrollbar` is the same utility the carousels here use. */}
-          <div className="flex min-h-0 flex-1 flex-col justify-between gap-4 overflow-y-auto no-scrollbar">
+          <div className="flex min-h-0 flex-1 flex-col justify-between gap-3 overflow-y-auto no-scrollbar">
             {stepFields[step]}
           </div>
 
-          <div className="mt-4 shrink-0 space-y-3">
+          <div className="mt-3 shrink-0 space-y-2.5">
             {feedback}
 
             <div className="flex gap-3">
@@ -767,7 +787,7 @@ export function PostPropertyWizard({
                 <button
                   type="button"
                   onClick={goBack}
-                  className="flex h-12 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold transition-colors hover:bg-secondary"
+                  className={`flex ${rowClass} items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold transition-colors hover:bg-secondary`}
                 >
                   <ArrowLeft className="size-4" /> Back
                 </button>

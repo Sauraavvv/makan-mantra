@@ -31,6 +31,39 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
  * Next re-encodes what Cloudinary sent — and re-encoding a photograph is where
  * its quality goes.
  */
+/**
+ * Platform-level questions, kept to what the site actually does — the property
+ * types the search covers, what posting costs, and what an account adds. The
+ * three-step detail matches the wizard on `/post-property`.
+ */
+const FAQS = [
+  {
+    question: "What is Makan Mantraa?",
+    answer:
+      "Makan Mantraa is an Indian property platform. You can buy or rent flats, villas, plots, builder floors, office spaces, showrooms and PGs across every state, city and locality in India — and list your own property on it for free.",
+  },
+  {
+    question: "Is Makan Mantraa free to use?",
+    answer:
+      "Yes. Searching, shortlisting and viewing properties are free, and so is posting a property — there is no listing charge, no commission and no hidden fee.",
+  },
+  {
+    question: "How do I find properties in my city?",
+    answer:
+      "Use the search at the top of this page: choose Buy or Rent, then search by state, city or locality. You can also browse state by state, or open the market snapshot and top builders for your state to see what is moving there.",
+  },
+  {
+    question: "How do I list my property for sale or rent?",
+    answer:
+      "Open Post Property and fill in three short steps — property details, your contact details, and photos or a video. Our team then reviews what you sent, calls you to fill in anything missing, and publishes the live listing for you.",
+  },
+  {
+    question: "Do I need an account to search?",
+    answer:
+      "No. You can search, shortlist and view properties as a guest — that activity stays on your device and moves into your account the moment you sign in. An account also lets you track your own listings and their enquiries from your dashboard.",
+  },
+];
+
 const HERO_IMAGE = "site/hero-home";
 const HERO_WIDTHS = [1280, 1920, 2560, 3548];
 
@@ -180,13 +213,9 @@ export default async function Home() {
       </section>
 
       {/* Post your property banner */}
-      {/*
-       * The extra room from `lg` is for the form that floats over the banner: it
-       * is a fixed-height card and the banner's height follows its width, so the
-       * card hangs out of both ends — about 72px at `lg`, 74px at `xl`. Without
-       * it the card touches the sections either side.
-       */}
-      <section className="bg-secondary px-4 py-4 md:py-5 lg:py-16 xl:py-20">
+      {/* The form sits inside the artwork now, so this takes the same rhythm as
+          the sections either side rather than extra room for an overhang. */}
+      <section className="bg-secondary px-4 py-4 md:py-5">
         <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background p-2 md:p-3">
           <PostPropertyBanner />
         </div>
@@ -199,6 +228,30 @@ export default async function Home() {
           </div>
         </section>
       )}
+
+      {/* FAQ */}
+      <section id="faq" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
+          <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
+            Frequently Asked Questions
+          </h2>
+          <div className="divide-y divide-border rounded-xl border border-border bg-card/70 px-4 md:px-5">
+            {FAQS.map((item) => (
+              <details key={item.question} className="group py-3">
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
+                  <span className="text-sm font-medium text-foreground">{item.question}</span>
+                  <span className="mt-0.5 shrink-0 text-primary transition-transform group-open:rotate-45">
+                    +
+                  </span>
+                </summary>
+                <p className="mt-2 max-w-5xl text-sm leading-relaxed text-muted-foreground">
+                  {item.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <Footer />
     </div>

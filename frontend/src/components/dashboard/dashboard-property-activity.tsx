@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
   Building2,
   CalendarDays,
   Clock3,
+  Eye,
   Heart,
   Images,
   MapPin,
@@ -19,6 +21,9 @@ import { useSearchHistory } from "@/context/search-history-context";
 import { useSaved, type SavedItem } from "@/context/saved-context";
 
 type PropertyItem = RecentPropertyItem | SavedItem;
+
+/** The same four stops the account sidebar offers, in the same order. */
+type ActivityKey = "listings" | "searches" | "viewed" | "saved";
 
 export type DashboardPostedProperty = {
   pid: string | null;
@@ -224,11 +229,13 @@ function EmptyActivity({
   title,
   description,
   accent,
+  action = { label: "Browse properties", href: "/" },
 }: {
   title: string;
   description: string;
   /** `navy` is the theme's own primary; `orange` stays the shortlist accent. */
   accent: "navy" | "orange";
+  action?: { label: string; href: string };
 }) {
   const isNavy = accent === "navy";
 
@@ -242,33 +249,126 @@ function EmptyActivity({
         <p className="text-[15px] font-bold text-foreground sm:text-base">{title}</p>
         <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{description}</p>
         <Link
-          href="/"
+          href={action.href}
           className={`mt-5 inline-flex h-10 items-center justify-center rounded-lg px-6 text-sm font-semibold text-white transition-opacity hover:opacity-90 ${
             isNavy ? "bg-primary" : "bg-[#ff6422]"
           }`}
         >
-          Browse properties
+          {action.label}
         </Link>
       </div>
     </div>
   );
 }
 
+/**
+ * One stop on the activity strip. It is the account sidebar's tile, scaled for
+ * the wider canvas here — same blue, same count pill, same underline on the
+ * selected one — so the two places read as the same control.
+ */
+function ActivityTile({
+  icon: Icon,
+  label,
+  count,
+  selected,
+  onSelect,
+}: {
+  icon: LucideIcon;
+  label: string;
+  /** `null` until the store behind it has loaded; the tile shows a dash. */
+  count: number | null;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button type="button" aria-pressed={selected} onClick={onSelect} className="block w-full">
+      <span
+        className={`relative flex h-[104px] flex-col items-center justify-center rounded-xl border px-2 py-3 text-center transition-colors ${
+          selected
+            ? "border-[#2563EB] bg-[#EFF6FF]"
+            : "border-[#C9D8EE] bg-background hover:border-[#2563EB] hover:bg-[#EFF6FF]"
+        }`}
+      >
+        <Icon className="size-5 text-[#2563EB] sm:size-6" strokeWidth={1.8} />
+        <span className="mt-2 flex min-h-8 items-center text-[11px] font-medium leading-4 text-foreground sm:text-[13px]">
+          {label}
+        </span>
+        <span className="mt-1 min-w-7 rounded-full bg-[#DBEAFE] px-1.5 py-0.5 text-center text-[10px] font-semibold leading-none text-[#1D4ED8] sm:text-[11px]">
+          {count ?? "—"}
+        </span>
+        {selected && (
+          <span
+            aria-hidden="true"
+            className="absolute -bottom-2 left-1/2 h-0.5 w-9 -translate-x-1/2 rounded-full bg-[#2563EB]"
+          />
+        )}
+      </span>
+    </button>
+  );
+}
+
 export function DashboardPropertyActivity({
   postedProperties,
+  postedCount,
 }: {
   postedProperties: DashboardPostedProperty[];
+  /** Every submission the owner has, not just the three previewed below. */
+  postedCount: number;
 }) {
   const searches = useSearchHistory();
   const recent = useRecentProperties();
   const saved = useSaved();
+  // Someone who has posted lands on their own listings; everyone else on the
+  // trail they are most likely to have — the same default the sidebar takes.
+  const [selected, setSelected] = useState<ActivityKey>(postedCount > 0 ? "listings" : "searches");
+
   const searchItems = searches.items.slice(0, 4);
   const recentItems = recent.items.slice(0, 3);
   const savedItems = saved.items.slice(0, 3);
 
+  const tiles: { key: ActivityKey; label: string; icon: LucideIcon; count: number | null }[] = [
+    { key: "listings", label: "My Listings", icon: Building2, count: postedCount },
+    {
+      key: "searches",
+      label: "Recent Searches",
+      icon: Search,
+      count: searches.loaded ? searches.items.length : null,
+    },
+    {
+      key: "viewed",
+      label: "Viewed Properties",
+      icon: Eye,
+      count: recent.loaded ? recent.items.length : null,
+    },
+    {
+      key: "saved",
+      label: "Shortlisted Properties",
+      icon: Heart,
+      count: saved.loaded ? saved.items.length : null,
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {postedProperties.length > 0 && (
+      <section className="min-w-0 rounded-xl border border-border bg-card px-4 py-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:px-6 sm:py-6">
+        {/* The selected tile's underline hangs below the row, so the bottom
+            margin is what keeps it off the card's edge. */}
+        <ul className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {tiles.map((tile) => (
+            <li key={tile.key}>
+              <ActivityTile
+                icon={tile.icon}
+                label={tile.label}
+                count={tile.count}
+                selected={selected === tile.key}
+                onSelect={() => setSelected(tile.key)}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {selected === "listings" && (
         <ActivitySection
           title="My Properties"
           subtitle="Your latest property submissions"
@@ -277,91 +377,104 @@ export function DashboardPropertyActivity({
           actionClassName="text-[#0f8b8d] hover:text-[#087274]"
           action={{ label: "Manage all", href: "/dashboard/properties" }}
         >
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {postedProperties.map((property, index) => (
-              <PostedPropertyCard key={property.pid ?? index} property={property} />
-            ))}
-          </div>
+          {postedProperties.length > 0 ? (
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {postedProperties.map((property, index) => (
+                <PostedPropertyCard key={property.pid ?? index} property={property} />
+              ))}
+            </div>
+          ) : (
+            <EmptyActivity
+              title="No properties posted yet"
+              description="Post a property and our team will take it from there."
+              accent="orange"
+              action={{ label: "Post a property", href: "/post-property" }}
+            />
+          )}
         </ActivitySection>
       )}
 
-      <ActivitySection
-        title="Recent Searches"
-        subtitle="Quick access to your latest searches"
-        action={{ label: "View all", href: "/dashboard/recent-searches" }}
-      >
-        {!searches.loaded ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[0, 1, 2, 3].map((item) => (
-              <div
-                key={item}
-                className="h-[76px] animate-pulse rounded-lg border border-border bg-muted/40"
-              />
-            ))}
-          </div>
-        ) : searchItems.length > 0 ? (
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {searchItems.map((search) => (
+      {selected === "searches" && (
+        <ActivitySection
+          title="Recent Searches"
+          subtitle="Quick access to your latest searches"
+          action={{ label: "View all", href: "/dashboard/recent-searches" }}
+        >
+          {!searches.loaded ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="h-[76px] animate-pulse rounded-lg border border-border bg-muted/40"
+                />
+              ))}
+            </div>
+          ) : searchItems.length > 0 ? (
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {searchItems.map((search) => (
+                <Link
+                  key={search.id}
+                  href={`/?q=${encodeURIComponent(search.query || search.label)}`}
+                  className="flex h-[76px] min-w-0 items-center gap-3 rounded-lg border border-border bg-background px-3 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-colors hover:border-primary/30 hover:bg-primary/[0.03]"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                    <Search className="size-5" strokeWidth={1.8} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className="block truncate text-xs font-bold text-foreground"
+                      title={search.label}
+                    >
+                      {search.label}
+                    </span>
+                    <span className="mt-1 block truncate text-[11px] text-muted-foreground">
+                      {[search.tab, search.category].filter(Boolean).join("  /  ")}
+                    </span>
+                  </span>
+                  <Clock3 className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.7} />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-primary/25 bg-primary/[0.03] px-6 py-6 text-center">
+              <p className="text-sm font-bold text-foreground">No recent searches</p>
               <Link
-                key={search.id}
-                href={`/?q=${encodeURIComponent(search.query || search.label)}`}
-                className="flex h-[76px] min-w-0 items-center gap-3 rounded-lg border border-border bg-background px-3 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-colors hover:border-primary/30 hover:bg-primary/[0.03]"
+                href="/"
+                className="mt-3 inline-flex text-xs font-semibold text-primary hover:underline"
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                  <Search className="size-5" strokeWidth={1.8} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span
-                    className="block truncate text-xs font-bold text-foreground"
-                    title={search.label}
-                  >
-                    {search.label}
-                  </span>
-                  <span className="mt-1 block truncate text-[11px] text-muted-foreground">
-                    {[search.tab, search.category].filter(Boolean).join("  /  ")}
-                  </span>
-                </span>
-                <Clock3 className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.7} />
+                Browse properties
               </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-primary/25 bg-primary/[0.03] px-6 py-6 text-center">
-            <p className="text-sm font-bold text-foreground">No recent searches</p>
-            <Link
-              href="/"
-              className="mt-3 inline-flex text-xs font-semibold text-primary hover:underline"
-            >
-              Browse properties
-            </Link>
-          </div>
-        )}
-      </ActivitySection>
+            </div>
+          )}
+        </ActivitySection>
+      )}
 
-      <ActivitySection
-        title="Recently Viewed Properties"
-        subtitle="Continue where you left off"
-        actionClassName="text-primary hover:text-primary/80"
-        action={{ label: "Browse properties", href: "/" }}
-      >
-        {!recent.loaded ? (
-          <LoadingRow />
-        ) : recentItems.length > 0 ? (
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {recentItems.map((item) => (
-              <PropertyActivityCard key={item.propertyId} item={item} />
-            ))}
-          </div>
-        ) : (
-          <EmptyActivity
-            title="No recently viewed properties"
-            description="Properties you open or interact with will appear here."
-            accent="navy"
-          />
-        )}
-      </ActivitySection>
+      {selected === "viewed" && (
+        <ActivitySection
+          title="Recently Viewed Properties"
+          subtitle="Continue where you left off"
+          actionClassName="text-primary hover:text-primary/80"
+          action={{ label: "Browse properties", href: "/" }}
+        >
+          {!recent.loaded ? (
+            <LoadingRow />
+          ) : recentItems.length > 0 ? (
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {recentItems.map((item) => (
+                <PropertyActivityCard key={item.propertyId} item={item} />
+              ))}
+            </div>
+          ) : (
+            <EmptyActivity
+              title="No recently viewed properties"
+              description="Properties you open or interact with will appear here."
+              accent="navy"
+            />
+          )}
+        </ActivitySection>
+      )}
 
-      {postedProperties.length === 0 && (
+      {selected === "saved" && (
         <ActivitySection
           title="Shortlisted Properties"
           subtitle="Save your favourite properties"
