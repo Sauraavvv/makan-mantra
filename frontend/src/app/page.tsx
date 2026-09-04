@@ -216,7 +216,7 @@ export default async function Home() {
       {/* The form sits inside the artwork now, so this takes the same rhythm as
           the sections either side rather than extra room for an overhang. */}
       <section className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background p-2 md:p-3">
+        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
           <PostPropertyBanner />
         </div>
       </section>

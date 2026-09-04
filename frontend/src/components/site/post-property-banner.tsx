@@ -46,14 +46,17 @@ export function PostPropertyBanner() {
       {/* The artwork is drawn around the form: the figure and the phone hold the
           left third and the rest is left empty for the rail and the card. The
           asset is trimmed a little top and bottom to keep the section from
-          running tall, and is laid out uncropped at its own 2.17:1. */}
-      <div className="overflow-hidden rounded-[20px]">
+          running tall, and the soft shape that sat under the card's right edge
+          is painted out of it; it is laid out uncropped at its own 2.17:1. */}
+      {/* A notch tighter than the card that frames it, so the two curves nest
+          instead of the artwork's corner cutting across the border's. */}
+      <div className="overflow-hidden rounded-xl">
         <Image
-          src="/post-property-banner-v6.webp"
+          src="/post-property-banner-v7.webp"
           alt="List your property on MakanMantraa and reach the right buyers"
           width={3548}
           height={1632}
-          sizes="(min-width: 1280px) 1226px, 100vw"
+          sizes="(min-width: 1280px) 1210px, 100vw"
           quality={90}
           className="h-auto w-full"
         />
