@@ -46,7 +46,7 @@ from routers.listing import ask as ask_listing
 from routers.listing import missing_field as listing_missing
 from routers.listing import payload as listing_payload
 from routers.listing import summary as listing_summary
-from routers.lookup import find_news
+from routers.lookup import find_news, match_category, news_categories
 from routers.matches import find_matches
 from routers.topic import is_greeting, is_hinglish, off_topic, refusal, suggestions
 
@@ -78,6 +78,10 @@ Style:
 """
 
 GREETED = ("Hi! Happy to help.", "Namaste! Madad ke liye hazir hoon.")
+# The one question the news desk asks. Fixed text with a fixed set of answers,
+# so no model is called for it -- the same reason the form's prompts are fixed.
+NEWS_TOPIC = "Which topic would you like the latest on?"
+NEWS_ALL = "All topics"
 # Said when the form is complete, in both languages: the wording is fixed, so
 # none of it is worth a model call.
 #
@@ -479,9 +483,13 @@ async def stream(
     # A name, a mobile number or a line of address is not a property question,
     # and the guard would refuse it -- rightly, if it had any business seeing
     # it. Mid-form it does not, so the Post Property desk is exempt too.
+    #
+    # So is the news desk, for the same reason: the answer to the topic it asks
+    # for is a bare category name, and refusing "Policy" as off subject would
+    # leave its own question unanswerable.
     blocked = (
         False
-        if (step.email or step.reply or desk == POST)
+        if (step.email or step.reply or desk in (POST, NEWS))
         else await off_topic(body.message, found, asked_field, build_extractor)
     )
 
@@ -541,12 +549,29 @@ async def stream(
             done_text = POSTED if posting.photos else POSTED_NO_MEDIA
             fixed = say(done_text, body.message, summary=listing_summary(posting))
     elif desk == NEWS:
-        panel = await find_news()
-        prompt = [
-            SystemMessage(content=SYSTEM_PROMPT + PANEL_INTRO.format(
-                title=panel["title"], subtitle=panel["subtitle"])),
-            HumanMessage(content=body.message),
-        ]
+        # Six stories across every topic is a pile to read through, so the desk
+        # asks which one first. The categories are read from what is actually
+        # published, so a chip never leads to an empty panel.
+        topics = await news_categories()
+        wanted = match_category(body.message, topics)
+        every = NEWS_ALL.lower() in body.message.lower()
+
+        # Only the turn that named the desk can be the one that has not been
+        # asked yet -- a carried NEWS desk is here because the question is
+        # standing, and anything that is not a topic is taken as "all of them".
+        if wanted is None and not every and named == NEWS and topics:
+            fixed = NEWS_TOPIC
+            tips = topics + [NEWS_ALL]
+        else:
+            panel = await find_news(category=wanted)
+            # Answered. Nothing is left standing, so the desk stops travelling
+            # and the next line is read as whatever it actually says.
+            desk = None
+            prompt = [
+                SystemMessage(content=SYSTEM_PROMPT + PANEL_INTRO.format(
+                    title=panel["title"], subtitle=panel["subtitle"])),
+                HumanMessage(content=body.message),
+            ]
     else:
         after_regex = merge(known, found)
         slots = (

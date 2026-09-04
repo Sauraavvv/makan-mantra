@@ -116,6 +116,26 @@ const WELCOME_TEXT =
   "\u2014 and I\u2019ll help you find the right property.";
 
 /**
+ * The same opening, for someone who came in to list rather than to look. It
+ * names the three things the desk goes on to ask about, in the order it asks
+ * them, so its first question does not arrive out of nowhere.
+ */
+const POST_PROPERTY_WELCOME =
+  "Hi! I\u2019m **Mantraa**, your home-finding assistant.\n\n" +
+  "Let\u2019s get your property listed \u2014 I\u2019ll ask a few quick questions about " +
+  "**the property, who is posting it, and how to reach you** \u2014 and our team takes it " +
+  "from there.";
+
+/**
+ * And for the news desk, which asks for a topic before it fetches anything —
+ * so this sets that question up rather than promising stories straight away.
+ */
+const NEWS_WELCOME =
+  "Hi! I\u2019m **Mantraa**, your home-finding assistant.\n\n" +
+  "Here\u2019s **the latest from Indian real estate** \u2014 pick the topic you want and " +
+  "I\u2019ll pull up the newest stories on it.";
+
+/**
  * The opening menu.
  *
  * An empty box and an invitation to "ask anything" is the hardest possible
@@ -123,10 +143,24 @@ const WELCOME_TEXT =
  * name it instead, and each label is exactly what gets sent — the server
  * matches on it to pick the desk.
  */
+/**
+ * What each desk matches on, and the greeting a chat opened for it starts with.
+ * Neither is a menu chip any more: both are sidebar buttons, and each opens a
+ * chat of its own rather than turning the current one into something else.
+ */
+const POST_PROPERTY_INTENT = "Post property";
+const NEWS_INTENT = "Latest news";
+
+const DESK_WELCOME: Record<string, string> = {
+  [POST_PROPERTY_INTENT]: POST_PROPERTY_WELCOME,
+  [NEWS_INTENT]: NEWS_WELCOME,
+};
+
 const MENU: { label: string; disabled?: boolean }[] = [
   { label: "Recommend property" },
-  { label: "Latest news" },
-  { label: "Post property" },
+  // Not built yet. Shown rather than hidden so the menu says what is coming —
+  // `disabled` is what renders it as the dashed "Coming soon" chip.
+  { label: "New project", disabled: true },
 ];
 
 const INITIAL_MESSAGES: Message[] = [{ id: "welcome", role: "bot", text: WELCOME_TEXT }];
@@ -334,6 +368,11 @@ function ChatbotWidget() {
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [guestPrompt, setGuestPrompt] = useState(false);
+  // Where an opening intent waits while a guest is asked whether to drop the
+  // chat they already have.
+  const intentAfterClearRef = useRef<string | null>(null);
+  // And where it waits while the greeting types itself in.
+  const pendingOpenerRef = useRef<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   // Shortlisted cards, for as long as the widget is open. The real shortlist
   // lives behind /api/saved and keys off a property id — these ids belong to
@@ -364,6 +403,7 @@ function ChatbotWidget() {
   const uploading = uploads.some((u) => u.status === "uploading");
   // Full by default, so a restored conversation shows the greeting complete
   // rather than replaying it. Opening a fresh chat restarts the typing.
+  const [greeting, setGreeting] = useState(WELCOME_TEXT);
   const [welcomeText, setWelcomeText] = useState(WELCOME_TEXT);
   // A separate switch drives the animation. Keying the effect off `welcomeText`
   // instead would tear the interval down on its own first tick, since every
@@ -426,15 +466,15 @@ function ChatbotWidget() {
     let shown = 0;
     const timer = setInterval(() => {
       shown += 3;
-      setWelcomeText(WELCOME_TEXT.slice(0, shown));
-      if (shown >= WELCOME_TEXT.length) {
+      setWelcomeText(greeting.slice(0, shown));
+      if (shown >= greeting.length) {
         clearInterval(timer);
         setTyping(false);
       }
     }, 18);
 
     return () => clearInterval(timer);
-  }, [open, typing]);
+  }, [open, typing, greeting]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -493,6 +533,7 @@ function ChatbotWidget() {
       setUploads([]);
       setAttaching(false);
       setActiveSession(sessionId);
+      setGreeting(WELCOME_TEXT);
       setWelcomeText(WELCOME_TEXT);
       setTyping(false);
       setMessages([
@@ -521,8 +562,10 @@ function ChatbotWidget() {
 
       const stored = readGuestChat();
       if (stored.length) {
+        const opener = stored.find((m) => m.id === "welcome")?.text || WELCOME_TEXT;
         setMessages(stored);
-        setWelcomeText(WELCOME_TEXT);
+        setGreeting(opener);
+        setWelcomeText(opener);
         setTyping(false);
       } else {
         setWelcomeText("");
@@ -544,6 +587,7 @@ function ChatbotWidget() {
     setAttaching(false);
     setEditing(false);
     setActiveSession(null);
+    setGreeting(WELCOME_TEXT);
     setMessages(INITIAL_MESSAGES);
     setWelcomeText("");
     setTyping(true);
@@ -574,10 +618,17 @@ function ChatbotWidget() {
     });
   }
 
-  function startNewChat() {
+  /**
+   * `intent` opens the chat on a desk instead of on the greeting: the greeting
+   * invites the visitor to describe what they want to find, which is the wrong
+   * thing to say to someone who just asked to post a property. The transcript
+   * starts empty and the desk's own first line streams into it.
+   */
+  function startNewChat(intent?: string) {
     // A guest has one conversation and no way to save it, so starting another
     // means losing this one — that is their call to make, not ours.
     if (!signedIn && messages.some((m) => m.role === "user")) {
+      intentAfterClearRef.current = intent ?? null;
       setGuestPrompt(true);
       return;
     }
@@ -594,15 +645,34 @@ function ChatbotWidget() {
     setAttaching(false);
     setEditing(false);
     setActiveSession(null);
-    setMessages(INITIAL_MESSAGES);
-    setWelcomeText("");
-    setTyping(true);
+    openTranscript(intent);
     setError(null);
     setInput("");
     void refreshSessions();
   }
 
+  /**
+   * The first frame of a new chat: the greeting, typed in either way — only
+   * which greeting depends on whether a desk was asked for.
+   */
+  function openTranscript(intent?: string) {
+    const opener = (intent && DESK_WELCOME[intent]) || WELCOME_TEXT;
+
+    setGreeting(opener);
+    setMessages([{ id: "welcome", role: "bot", text: opener }]);
+    setWelcomeText("");
+    setTyping(true);
+
+    // Held until the greeting has finished typing. Sent alongside it, the
+    // desk's reply streams in over a greeting that is still mid-sentence and
+    // lands first — the effect below waits for the typewriter to stop.
+    pendingOpenerRef.current = intent ?? null;
+  }
+
   function clearGuestAndRestart() {
+    const intent = intentAfterClearRef.current ?? undefined;
+    intentAfterClearRef.current = null;
+
     clearGuestChat();
     slotsRef.current = null;
     deskRef.current = null;
@@ -610,9 +680,7 @@ function ChatbotWidget() {
     listingRef.current = null;
     setUploads([]);
     setAttaching(false);
-    setMessages(INITIAL_MESSAGES);
-    setWelcomeText("");
-    setTyping(true);
+    openTranscript(intent);
     setGuestPrompt(false);
     setError(null);
     setInput("");
@@ -679,10 +747,21 @@ function ChatbotWidget() {
     void sendText(input);
   }
 
-  async function sendText(raw: string) {
+  /**
+   * `opener` marks the send that puts a visitor at a desk after the sidebar
+   * asked for one. It differs from a typed message in two ways:
+   *
+   * - the transcript and the uploads this closure reads are still the previous
+   *   conversation's, because the reset that emptied them was queued in this
+   *   same tick, so both are taken as empty rather than read;
+   * - no user row is written. Nobody typed it, and a line the visitor did not
+   *   write sitting in their own transcript reads as the assistant putting
+   *   words in their mouth. The desk still receives it.
+   */
+  async function sendText(raw: string, options?: { opener?: boolean }) {
     // Files in hand are an answer on their own, so a send with nothing typed
     // still goes -- the transcript needs a line for it either way.
-    const ready = uploads.filter((u) => u.status === "done" && u.asset);
+    const ready = options?.opener ? [] : uploads.filter((u) => u.status === "done" && u.asset);
     const text =
       raw.trim() ||
       (ready.length ? `${ready.length} file${ready.length > 1 ? "s" : ""} attached` : "");
@@ -699,7 +778,9 @@ function ChatbotWidget() {
     const replyId = newId();
     setMessages((current) => [
       ...current,
-      { id: newId(), role: "user", text },
+      ...(options?.opener
+        ? []
+        : [{ id: newId(), role: "user" as Role, text }]),
       { id: replyId, role: "bot", text: "", pending: true },
     ]);
 
@@ -725,10 +806,15 @@ function ChatbotWidget() {
                 lead: leadRef.current,
                 listing: listingRef.current,
                 attachments: ready.length,
-                history: messages
-                  .filter((m) => m.id !== "welcome" && m.text)
-                  .slice(-20)
-                  .map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.text })),
+                history: options?.opener
+                  ? []
+                  : messages
+                      .filter((m) => m.id !== "welcome" && m.text)
+                      .slice(-20)
+                      .map((m) => ({
+                        role: m.role === "user" ? "user" : "assistant",
+                        content: m.text,
+                      })),
               },
         ),
       });
@@ -872,6 +958,22 @@ function ChatbotWidget() {
     }
   }
 
+  // The other half of `openTranscript`: the greeting has landed, so the desk it
+  // was opened for can speak. A reset in the meantime clears the ref, and the
+  // desk is simply never opened.
+  useEffect(() => {
+    if (typing) return;
+
+    const intent = pendingOpenerRef.current;
+    if (!intent) return;
+
+    pendingOpenerRef.current = null;
+    void sendText(intent, { opener: true });
+    // `sendText` is redeclared every render, so listing it would rerun this on
+    // every one. The ref it drains is what decides whether anything happens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typing]);
+
   return (
     <>
       {/* Chat window */}
@@ -979,8 +1081,19 @@ function ChatbotWidget() {
                 </div>
 
                 <div className="space-y-2.5 px-5 pt-3">
-                  <SidebarAction icon={Plus} label="New Search" onClick={startNewChat} />
-                  <SidebarAction icon={Building2} label="Post Property" />
+                  {/* Wrapped, not passed by reference: the click event would
+                      arrive as the opening intent. */}
+                  <SidebarAction icon={Plus} label="New Search" onClick={() => startNewChat()} />
+                  <SidebarAction
+                    icon={Building2}
+                    label="Post Property"
+                    onClick={() => startNewChat(POST_PROPERTY_INTENT)}
+                  />
+                  <SidebarAction
+                    icon={Newspaper}
+                    label="Latest News"
+                    onClick={() => startNewChat(NEWS_INTENT)}
+                  />
                 </div>
 
                 <div className="mt-6 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-slate-200 px-5 pt-5 mmdark:border-[#223140]">
@@ -1583,6 +1696,7 @@ function ChatbotWidget() {
                     <div className="mt-5 flex flex-col gap-2">
                       <button
                         onClick={() => {
+                          intentAfterClearRef.current = null;
                           setGuestPrompt(false);
                           openAuthModal("login");
                         }}
@@ -1597,7 +1711,10 @@ function ChatbotWidget() {
                         Clear and start over
                       </button>
                       <button
-                        onClick={() => setGuestPrompt(false)}
+                        onClick={() => {
+                          intentAfterClearRef.current = null;
+                          setGuestPrompt(false);
+                        }}
                         className="h-9 text-sm font-semibold text-slate-400 transition hover:text-slate-600 mmdark:hover:text-[#b9cadb]"
                       >
                         Cancel

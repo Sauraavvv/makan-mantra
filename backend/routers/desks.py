@@ -20,8 +20,9 @@ RECOMMEND = "recommend"
 NEWS = "news"
 POST = "post"
 
-# What the welcome message offers. The frontend renders these; the patterns
-# below have to keep matching them.
+# What the frontend names a desk by. "Recommend property" is the welcome
+# message's one remaining chip; the other two are sidebar buttons, each of which
+# opens a chat of its own. The patterns below have to keep matching all three.
 MENU = ["Recommend property", "Latest news", "Post property"]
 
 # Order is the tie-breaker, not regex quality: "post property" and "recommend
@@ -42,11 +43,14 @@ DESKS: list[tuple[str, re.Pattern[str]]] = [
 # POST does too, for the same reason: it is filling in the Post Property form a
 # field at a time, and every answer after the first is meaningless without it.
 #
-# NEWS does not. It answers in one turn and asks for nothing back, so there is
-# no half-finished state to carry -- and carrying it anyway sends the next real
-# question to the wrong desk: a property search answered with the same headlines
-# again, no slots read from it and nothing found.
-STATEFUL = {RECOMMEND, POST}
+# NEWS does now too, but only for the one turn it is waiting on: it asks which
+# topic the visitor wants before it fetches anything, and the answer to that is
+# a bare category name that names no desk of its own. The moment the stories go
+# out, chat.py clears the desk on the way back -- so it is never carried past
+# the question, which is what would send the next real question to the wrong
+# desk: a property search answered with the same headlines again, no slots read
+# from it and nothing found.
+STATEFUL = {RECOMMEND, POST, NEWS}
 
 
 def carries_forward(desk: str | None) -> bool:
