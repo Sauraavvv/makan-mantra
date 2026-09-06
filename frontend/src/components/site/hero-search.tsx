@@ -314,7 +314,11 @@ export function HeroSearch({
           })}
         </div>
 
-        <div className="relative z-20 rounded-2xl border border-white/20 bg-[#061727]/90 p-3 shadow-[0_18px_45px_rgba(2,12,25,0.3)] backdrop-blur-md">
+        {/* Wider than the cards above and the trending strip below, which are
+            both 88% — the search row is the thing being reached for, so it
+            still oversails them. Just by less than the full 6% a side that
+            running to the container's own edge gave it. */}
+        <div className="relative z-20 mx-auto w-[96%] rounded-2xl border border-white/20 bg-[#061727]/90 p-3 shadow-[0_18px_45px_rgba(2,12,25,0.3)] backdrop-blur-md">
           <div className="flex flex-col rounded-xl bg-white shadow-[0_10px_24px_rgba(2,12,25,0.18)] sm:h-14 sm:flex-row sm:items-center">
             <div
               ref={listingMenuRef}

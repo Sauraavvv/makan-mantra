@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { ArrowRight, BedDouble, ChevronDown, Home, LockKeyhole, Mail, MailCheck, MapPin, Menu, Phone, Plus, Search, ShieldCheck, UserRound, X } from "lucide-react";
+import { ArrowRight, BedDouble, ChevronDown, ChevronRight, Home, Loader2, LocateFixed, LockKeyhole, Mail, MailCheck, MapPin, Menu, Phone, Plus, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { loginAction, registerModalAction } from "@/app/actions/auth";
 import { ResendSetPasswordForm } from "@/components/auth/resend-set-password-form";
 import { UserMenu } from "@/components/site/user-menu";
@@ -27,6 +27,15 @@ const TOP_STATES = [
   "Tamil Nadu", "Gujarat", "Uttar Pradesh", "Rajasthan",
 ];
 
+/**
+ * India's seven largest property markets, spelled the way the location pages
+ * spell them — the sheet has "New Delhi" rather than "Delhi", which is a city
+ * record; Delhi the state is the one the picker above deals in.
+ */
+const TOP_CITIES = [
+  "Mumbai", "New Delhi", "Bangalore", "Hyderabad", "Pune", "Chennai", "Kolkata",
+];
+
 /** The picker lists every state A–Z; TOP_STATES only drives the shortcut chips. */
 const STATES_ALPHABETICAL = [...STATES].sort((a, b) => a.localeCompare(b));
 
@@ -43,35 +52,53 @@ function StateCard({
     <button
       onClick={onClick}
       /*
-       * Ruled apart rather than spaced apart: the tiles sit flush and a short
-       * hairline stands between them — half the height of a cell down its right
-       * edge, half the width along its foot. Stopping the lines short keeps the
-       * grid from reading as a table, which is what full rules would make of it.
+       * Ruled apart rather than spaced apart: the tiles sit flush and a hairline
+       * runs the full height of a cell down its right edge and the full width
+       * along its foot, so the grid closes into a table of cells rather than
+       * floating tick marks between them.
        *
-       * `nth-child(3n)` is the last tile of a row at three columns; its right
+       * `nth-child(4n)` is the last tile of a row at four columns; its right
        * rule would hang on the panel's inner edge with nothing beyond it.
        */
-      className={`group relative flex flex-col items-center p-1 text-center transition-colors duration-150 hover:brightness-95
-        after:absolute after:right-0 after:top-1/4 after:h-1/2 after:w-px after:bg-black/10 after:content-['']
-        before:absolute before:bottom-0 before:left-1/4 before:h-px before:w-1/2 before:bg-black/10 before:content-['']
-        [&:nth-child(3n)]:after:hidden ${selected ? "ring-2 ring-inset ring-saffron/50" : ""}`}
+      className={`group relative flex flex-col items-center p-1 text-center
+        after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-black/10 after:content-['']
+        before:absolute before:inset-x-0 before:bottom-0 before:h-px before:bg-black/10 before:content-['']
+        [&:nth-child(4n)]:after:hidden ${selected ? "ring-2 ring-inset ring-saffron/50" : ""}`}
     >
       {/* Grey until it is pointed at, so the grid reads as one field of shapes
           and the state under the cursor is the only one wearing colour. The one
-          already picked keeps its colour — it is not waiting to be found. */}
+          already picked keeps its colour — it is not waiting to be found.
+
+          The colour arriving is the whole of the hover: the tile itself does
+          not light up. Doing both said the same thing twice, and the shading
+          was the half that drowned out the drawing. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={stateCardImage(state)}
-        alt={state}
+        // The name is set below rather than read off the picture, so the button
+        // is already labelled and this would only say it twice.
+        alt=""
         width={150}
-        height={100}
+        height={150}
         // A set height, not one derived from the tile's width: the row height is
         // what the grid below is measured in, and deriving it from the width
         // made that measurement drift with the panel's border and padding.
-        className={`h-16 w-full rounded-lg object-contain transition-[filter] duration-150 group-hover:grayscale-0 ${
+        className={`h-14 w-full rounded-lg object-contain transition-[filter] duration-150 group-hover:grayscale-0 ${
           selected ? "grayscale-0" : "grayscale"
         }`}
       />
+      {/* Type, not pixels. The names used to be drawn into the artwork, which
+          meant each one was set at whatever size its tile had been scaled to —
+          "Chandigarh" twice the size of "Kerala" two tiles over. Two lines are
+          reserved whether or not the second is used, so every row is the same
+          height and the grid's measurement below holds. */}
+      <span
+        className={`mt-1 line-clamp-2 h-[26px] w-full text-[10px] font-medium leading-[13px] ${
+          selected ? "text-saffron" : "text-foreground"
+        }`}
+      >
+        {state}
+      </span>
     </button>
   );
 }
@@ -122,7 +149,7 @@ export function Header({
   overlayTone = "tint",
   minimal = false,
 }: HeaderProps = {}) {
-  const { meta, setStateByName } = useLocation();
+  const { meta, setStateByName, requestPreciseLocation, locating } = useLocation();
   const { user: sessionUser, loaded: sessionLoaded } = useSession();
   const pathname = usePathname();
   const isHome = pathname === "/";
@@ -131,7 +158,14 @@ export function Header({
   const [loginOpen, setLoginOpen] = useState(false);
   const [authInitial, setAuthInitial] = useState<{ mode: AuthMode; email?: string; devOtp?: string }>({ mode: "login" });
   const [search, setSearch] = useState("");
+  const [cities, setCities] = useState<string[]>([]);
+  const [citiesStatus, setCitiesStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [allCitiesOpen, setAllCitiesOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Guards the fetch below without being a dependency of it: a failed attempt
+  // clears this so reopening the picker tries again, which a state variable
+  // would turn into a retry loop while the panel stayed open.
+  const citiesRequested = useRef(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filtered = STATES_ALPHABETICAL.filter((s) =>
@@ -169,6 +203,11 @@ export function Header({
     return () => window.clearTimeout(timeoutId);
   }, []);
 
+  function closeDropdown() {
+    setDropdownOpen(false);
+    setAllCitiesOpen(false);
+  }
+
   function openAuthModal(mode: AuthMode = "login") {
     setAuthInitial({ mode });
     setLoginOpen(true);
@@ -179,10 +218,43 @@ export function Header({
   // is already mounted on never gets a second one.
   useEffect(() => subscribeAuthModal((mode) => openAuthModal(mode)), []);
 
+  // Every city we publish a page for, fetched the first time the side panel is
+  // asked for rather than on every page load — the seven above it are a
+  // constant, so most visitors never need this at all.
+  useEffect(() => {
+    if (!allCitiesOpen || citiesRequested.current) return;
+
+    citiesRequested.current = true;
+    setCitiesStatus("loading");
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/cities");
+        if (!res.ok) throw new Error(String(res.status));
+
+        const data = (await res.json()) as { cities?: string[] };
+        if (cancelled) return;
+
+        setCities(data.cities ?? []);
+        setCitiesStatus("ready");
+      } catch {
+        if (cancelled) return;
+
+        citiesRequested.current = false;
+        setCitiesStatus("error");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [allCitiesOpen]);
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
+        closeDropdown();
         setSearch("");
       }
     }
@@ -249,7 +321,7 @@ export function Header({
           }}
           onMouseLeave={() => {
             closeTimerRef.current = setTimeout(() => {
-              setDropdownOpen(false);
+              closeDropdown();
               setSearch("");
             }, 150);
           }}
@@ -264,7 +336,23 @@ export function Header({
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-1/2 top-full z-50 -translate-x-1/2 mt-3 w-[min(calc(100vw-2rem),19rem)] overflow-hidden rounded-xl border border-border bg-popover text-foreground shadow-2xl">
+            /* Centred under the chip while it is one column, and pinned by its
+               right edge once the city list opens.
+
+               Growing rightward was the obvious reading of "add a column on the
+               right", and it is wrong here: the chip sits at the right end of
+               the header, so a panel that keeps its left edge and reaches for
+               another 13rem runs off the window and puts the whole page on a
+               horizontal scrollbar. 9.5rem - 32rem = -22.5rem holds the right
+               edge exactly where the single column already ended, so the panel
+               opens inward. Below `sm` the second column never opens and the
+               plain centring stands. */
+            <div
+              className={`absolute left-1/2 top-full z-50 mt-3 flex -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-popover text-foreground shadow-2xl ${
+                allCitiesOpen ? "sm:-translate-x-[22.5rem]" : ""
+              }`}
+            >
+            <div className="w-[min(calc(100vw-2rem),19rem)] shrink-0">
               {/* Search */}
               <div className="bg-muted p-2">
                 <div className="relative">
@@ -279,28 +367,52 @@ export function Header({
                 </div>
               </div>
 
-              {/* Selected + All India */}
+              {/* Detect + Reset.
+                  The state being shown is not named here any more: the chip
+                  this panel hangs off already carries it, and the row is worth
+                  more as two things to do than as a label repeating what is an
+                  inch above it. */}
               <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
-                <span className="truncate text-xs font-semibold text-muted-foreground">
-                  Selected: <span className="text-foreground">{meta.label}</span>
-                </span>
+                {/* The IP already put the visitor in a state; this is for anyone
+                    who wants the locality-accurate one, and it is the only place
+                    the browser's permission prompt can come from. */}
                 <button
-                  onClick={() => { setStateByName(null); setDropdownOpen(false); }}
+                  onClick={async () => {
+                    await requestPreciseLocation();
+                    closeDropdown();
+                  }}
+                  disabled={locating}
+                  className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-foreground transition-colors hover:text-primary disabled:opacity-60"
+                >
+                  {locating ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+                  ) : (
+                    <LocateFixed className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  )}
+                  <span className="truncate">
+                    {locating ? "Finding your location…" : "Detect my location"}
+                  </span>
+                </button>
+                {/* Back to the all-India view, which is a pick like any other —
+                    detection will not quietly undo it on the next visit. */}
+                <button
+                  onClick={() => { setStateByName(null); closeDropdown(); }}
                   className="shrink-0 text-xs font-medium text-primary hover:underline"
                 >
-                  All India
+                  Reset
                 </button>
               </div>
 
               {search ? (
-                /* List mode when searching */
-                <div className="max-h-[360px] overflow-y-auto p-1.5">
+                /* List mode when searching. Capped at the grid's own height so
+                   the panel does not jump as the field is typed into. */
+                <div className="max-h-[196px] overflow-y-auto p-1.5">
                   {filtered.map((state) => {
                     const selected = meta.label === state;
                     return (
                       <button
                         key={state}
-                        onClick={() => { setStateByName(state); setDropdownOpen(false); }}
+                        onClick={() => { setStateByName(state); closeDropdown(); }}
                         className={`group flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent ${selected ? "bg-saffron/10 font-semibold text-saffron" : "text-foreground"}`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -325,27 +437,97 @@ export function Header({
                 /* Grid mode. White, the same ground the icons are drawn on, so
                    a tile ends at its rule rather than at a change of colour. */
                 <div className="flex flex-col bg-white">
-                  {/* Four whole rows and nothing of the fifth.
-                      A tile is a 64px icon in 4px of padding either side, so a
-                      row is 72px, and the rows are flush now that rules divide
-                      them: four rows (288) plus this box's own 16px of padding
-                      is 304. That holds at any panel width, the icon's height
-                      being fixed rather than taken from its width. */}
-                  <div className="h-[304px] overflow-y-auto p-1 pt-2 pb-2">
-                    <div className="grid grid-cols-3">
+                  {/* Two whole rows and nothing of the third.
+                      A tile is 4px of padding, a 56px icon, a 4px gap, two
+                      reserved lines of 13px, and 4px of padding again — 94px,
+                      and the rows are flush now that rules divide them. Two
+                      rows (188) under 8px of head room is 196.
+
+                      No padding at the foot, deliberately. With it the box ran
+                      8px past the second row's rule, and that rule then read as
+                      a line floating over a strip of white rather than as the
+                      edge the grid stops at. */}
+                  <div className="h-[196px] overflow-y-auto p-1 pt-2 pb-0">
+                    <div className="grid grid-cols-4">
                       {pickerStates.map((state) => (
                         <StateCard
                           key={state}
                           state={state}
                           selected={meta.label === state}
-                          onClick={() => { setStateByName(state); setDropdownOpen(false); }}
+                          onClick={() => { setStateByName(state); closeDropdown(); }}
                         />
                       ))}
                     </div>
                   </div>
                 </div>
               )}
+
+              {/* Ruled underneath only: the grid above already ends on a rule,
+                  and a border here too would double it. */}
+              <p className="border-b border-border bg-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Top Cities
+              </p>
+              {/* Two to a row: seven names down a single column would be taller
+                  than the whole state grid above them, for a list nobody has to
+                  read in order. Reading only for now — the site's location is a
+                  state, so a city here has nothing to set. */}
+              <div className="grid grid-cols-2 gap-x-2 bg-white p-1.5">
+                {TOP_CITIES.map((city) => (
+                  <p
+                    key={city}
+                    title={city}
+                    className="truncate rounded-md px-2 py-1.5 text-sm text-foreground"
+                  >
+                    {city}
+                  </p>
+                ))}
+              </div>
+
+              {/* The rest of them, off to the side rather than below: three
+                  hundred names in this column would bury the states, and the
+                  panel has room to its right that it is not otherwise using. */}
+              <button
+                onClick={() => setAllCitiesOpen((open) => !open)}
+                aria-expanded={allCitiesOpen}
+                className="flex w-full items-center justify-between gap-2 border-t border-border bg-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Other Cities
+                <ChevronRight
+                  className={`h-3.5 w-3.5 shrink-0 transition-transform ${allCitiesOpen ? "rotate-180" : ""}`}
+                />
+              </button>
             </div>
+
+            {/* Absolutely filled rather than laid out, so its three hundred rows
+                do not decide the panel's height — it takes the height the
+                column beside it already has, and scrolls inside that. */}
+            {allCitiesOpen && (
+              <aside className="relative hidden w-52 shrink-0 border-l border-border bg-white sm:block">
+                <div className="absolute inset-0 flex flex-col">
+                  <p className="shrink-0 border-b border-border bg-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    All Cities
+                  </p>
+                  <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
+                    {citiesStatus === "ready" && cities.length > 0 ? (
+                      cities.map((city) => (
+                        <p
+                          key={city}
+                          title={city}
+                          className="truncate rounded-md px-2 py-1.5 text-sm text-foreground"
+                        >
+                          {city}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="px-2 py-2 text-xs text-muted-foreground">
+                        {citiesStatus === "error" ? "Couldn't load cities" : "Loading cities…"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </aside>
+            )}
+          </div>
           )}
         </div>
         )}

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { LocationProvider } from "@/context/location-context";
+import { resolveLocation } from "@/lib/geo-server";
 import { SavedProvider } from "@/context/saved-context";
 import { RecentPropertiesProvider } from "@/context/recent-properties-context";
 import { SearchHistoryProvider } from "@/context/search-history-context";
 import { SessionProvider } from "@/context/session-context";
 import { Chatbot } from "@/components/site/chatbot";
+import { LocationSuggestion } from "@/components/site/location-suggestion";
 import "./globals.css";
 
 const interSans = Inter({
@@ -23,11 +25,16 @@ export const metadata: Metadata = {
   description: "Find properties for sale, rent and PG across India",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read here rather than in the provider so the server and the first client
+  // render agree on the state: the header, the hero and the market snapshot
+  // all come out of the first paint already showing it.
+  const { initial, edgeState } = await resolveLocation();
+
   return (
     <html
       lang="en"
@@ -40,8 +47,9 @@ export default function RootLayout({
         <SessionProvider>
           <SearchHistoryProvider>
             <RecentPropertiesProvider>
-              <LocationProvider>
+              <LocationProvider initial={initial} edgeState={edgeState}>
                 <SavedProvider>{children}</SavedProvider>
+                <LocationSuggestion />
               </LocationProvider>
             </RecentPropertiesProvider>
           </SearchHistoryProvider>

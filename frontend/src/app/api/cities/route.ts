@@ -192,15 +192,48 @@ async function nearbyDistricts(state: string, district: string) {
 }
 
 /**
+ * Every city we publish a page for, A-Z.
+ *
+ * Read once and held, because it is a `distinct` over the whole collection
+ * answering a list that changes when pages are seeded, not when someone opens
+ * a menu.
+ */
+let allCities: { names: string[]; expires: number } | null = null;
+
+const ALL_CITIES_TTL_MS = 60 * 60 * 1000;
+
+async function everyCity() {
+  if (allCities && allCities.expires > Date.now()) return allCities.names;
+
+  const pages = await getLocationPagesCollection();
+  const names = uniqueNames(await pages.distinct("location.city", { is_active: { $ne: false } })).sort(
+    (first, second) => first.localeCompare(second),
+  );
+
+  allCities = { names, expires: Date.now() + ALL_CITIES_TTL_MS };
+  return names;
+}
+
+/**
  * Shared search/hero locations. State requests mix cities and districts;
  * district requests start with the district's cities, then nearby districts.
+ *
+ * With no state at all the answer is the plain alphabetical list of every city,
+ * which is what the header's picker shows beside the states. That one is sorted
+ * rather than shuffled: a list this long is read by looking for a name, not by
+ * browsing whatever happens to be on top.
  */
 export async function GET(req: NextRequest) {
   const requestedState = req.nextUrl.searchParams.get("state")?.trim();
   const requestedDistrict = req.nextUrl.searchParams.get("district")?.trim();
 
   if (!requestedState) {
-    return NextResponse.json({ error: "state is required" }, { status: 400 });
+    try {
+      const cities = await everyCity();
+      return NextResponse.json({ state: null, district: null, cities, locations: cities });
+    } catch {
+      return NextResponse.json({ state: null, district: null, cities: [], locations: [] }, { status: 503 });
+    }
   }
 
   const state = canonicalStateName(requestedState) ?? requestedState;

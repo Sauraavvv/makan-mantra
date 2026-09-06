@@ -5,44 +5,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 import { useLocation } from "@/context/location-context";
 
-const ISO_TO_STATE: Record<string, string> = {
-  "IN-AP": "Andhra Pradesh", "IN-AR": "Arunachal Pradesh", "IN-AS": "Assam",
-  "IN-BR": "Bihar", "IN-CT": "Chhattisgarh", "IN-GA": "Goa", "IN-GJ": "Gujarat",
-  "IN-HR": "Haryana", "IN-HP": "Himachal Pradesh", "IN-JH": "Jharkhand",
-  "IN-KA": "Karnataka", "IN-KL": "Kerala", "IN-MP": "Madhya Pradesh",
-  "IN-MH": "Maharashtra", "IN-MN": "Manipur", "IN-ML": "Meghalaya",
-  "IN-MZ": "Mizoram", "IN-NL": "Nagaland", "IN-OR": "Odisha", "IN-PB": "Punjab",
-  "IN-RJ": "Rajasthan", "IN-SK": "Sikkim", "IN-TN": "Tamil Nadu",
-  "IN-TG": "Telangana", "IN-TR": "Tripura", "IN-UP": "Uttar Pradesh",
-  "IN-UT": "Uttarakhand", "IN-WB": "West Bengal", "IN-CH": "Chandigarh",
-  "IN-DL": "Delhi", "IN-JK": "Jammu and Kashmir", "IN-LA": "Ladakh",
-  "IN-PY": "Puducherry", "IN-AN": "Andaman and Nicobar Islands",
-  "IN-LD": "Lakshadweep",
-};
-
-async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-      { headers: { "Accept-Language": "en" } }
-    );
-    const data = await res.json();
-    const addr = data?.address;
-    if (!addr) return null;
-
-    // most states return address.state directly
-    if (addr.state) return addr.state;
-
-    // union territories (Delhi, Chandigarh etc.) only have ISO code
-    const isoCode = addr["ISO3166-2-lvl4"] as string | undefined;
-    if (isoCode && ISO_TO_STATE[isoCode]) return ISO_TO_STATE[isoCode];
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 function uniqueLocationNames(...groups: Array<readonly string[] | undefined>) {
   const names: string[] = [];
   const seen = new Set<string>();
@@ -66,7 +28,7 @@ export function HeroText({
 }: {
   align?: "center" | "left";
 }) {
-  const { meta, setDetectedState } = useLocation();
+  const { meta } = useLocation();
   const [backendCitiesByState, setBackendCitiesByState] =
     useState<Record<string, string[]>>({});
   const [areaIndex, setAreaIndex] = useState(0);
@@ -102,18 +64,6 @@ export function HeroText({
       }
     })();
   }, [meta.label]);
-
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        const state = await reverseGeocode(coords.latitude, coords.longitude);
-        setDetectedState(state);
-      },
-      () => {},
-      { timeout: 8000 }
-    );
-  }, [setDetectedState]);
 
   const backendAreas = uniqueLocationNames(backendCitiesByState[meta.label]);
   // Once the shared API responds, it is the sole source for both this rotation
