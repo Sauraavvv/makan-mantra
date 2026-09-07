@@ -6,6 +6,7 @@ import { ArrowRight, BedDouble, ChevronDown, ChevronRight, Home, Loader2, Locate
 import { loginAction, registerModalAction } from "@/app/actions/auth";
 import { ResendSetPasswordForm } from "@/components/auth/resend-set-password-form";
 import { UserMenu } from "@/components/site/user-menu";
+import { ShortlistMenu } from "@/components/site/shortlist-menu";
 import { useSession } from "@/context/session-context";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -28,13 +29,25 @@ const TOP_STATES = [
 ];
 
 /**
- * India's seven largest property markets, spelled the way the location pages
- * spell them — the sheet has "New Delhi" rather than "Delhi", which is a city
- * record; Delhi the state is the one the picker above deals in.
+ * India's largest property markets, spelled the way the location pages spell
+ * them — the sheet has "New Delhi" rather than "Delhi", which is a city record;
+ * Delhi the state is the one the picker above deals in. Likewise "Gurugram",
+ * not the "Gurgaon" people still type.
+ *
+ * Twelve of them, which is exactly four rows of the three-wide grid below.
  */
 const TOP_CITIES = [
-  "Mumbai", "New Delhi", "Bangalore", "Hyderabad", "Pune", "Chennai", "Kolkata",
+  "Mumbai", "New Delhi", "Bangalore", "Hyderabad",
+  "Pune", "Chennai", "Kolkata", "Gurugram",
+  "Noida", "Ahmedabad", "Jaipur", "Lucknow",
 ];
+
+/** The picker's first column, `w-[…19rem]` below, in the pixels it measures in. */
+const PANEL_PX = 304;
+/** Its second column, `w-52`. */
+const ALL_CITIES_PX = 208;
+/** Air left between the panel and the window edge before the side is flipped. */
+const VIEWPORT_MARGIN_PX = 8;
 
 /** The picker lists every state A–Z; TOP_STATES only drives the shortcut chips. */
 const STATES_ALPHABETICAL = [...STATES].sort((a, b) => a.localeCompare(b));
@@ -161,6 +174,7 @@ export function Header({
   const [cities, setCities] = useState<string[]>([]);
   const [citiesStatus, setCitiesStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [allCitiesOpen, setAllCitiesOpen] = useState(false);
+  const [citiesSide, setCitiesSide] = useState<"right" | "left">("right");
   const dropdownRef = useRef<HTMLDivElement>(null);
   // Guards the fetch below without being a dependency of it: a failed attempt
   // clears this so reopening the picker tries again, which a state variable
@@ -206,6 +220,32 @@ export function Header({
   function closeDropdown() {
     setDropdownOpen(false);
     setAllCitiesOpen(false);
+  }
+
+  /**
+   * Opens the city column to the right, and to the left when the right is not
+   * wide enough to hold it.
+   *
+   * Right is where it belongs — it is the column being added, and it should
+   * appear after the one it belongs to. But the chip sits at the right end of
+   * the header, so on a narrow window the second column can run past the edge
+   * and put the whole page on a horizontal scrollbar. Measuring the room at the
+   * moment it opens costs one layout read and never gets that wrong; guessing a
+   * side and living with it does.
+   */
+  function toggleAllCities() {
+    if (allCitiesOpen) {
+      setAllCitiesOpen(false);
+      return;
+    }
+
+    const chip = dropdownRef.current?.getBoundingClientRect();
+    // The panel already reaches half its own width past the chip's centre.
+    const panelRight = chip ? chip.left + chip.width / 2 + PANEL_PX / 2 : 0;
+    const room = chip ? window.innerWidth - panelRight - VIEWPORT_MARGIN_PX : 0;
+
+    setCitiesSide(room >= ALL_CITIES_PX ? "right" : "left");
+    setAllCitiesOpen(true);
   }
 
   function openAuthModal(mode: AuthMode = "login") {
@@ -336,21 +376,21 @@ export function Header({
           </button>
 
           {dropdownOpen && (
-            /* Centred under the chip while it is one column, and pinned by its
-               right edge once the city list opens.
+            /* Hung off the header rather than floating under the chip: 15px
+               clears the button's 14px of centring and the header's own 1px
+               rule, and with no top border and no top radius the panel reads as
+               the navbar continuing downward.
 
-               Growing rightward was the obvious reading of "add a column on the
-               right", and it is wrong here: the chip sits at the right end of
-               the header, so a panel that keeps its left edge and reaches for
-               another 13rem runs off the window and puts the whole page on a
-               horizontal scrollbar. 9.5rem - 32rem = -22.5rem holds the right
-               edge exactly where the single column already ended, so the panel
-               opens inward. Below `sm` the second column never opens and the
-               plain centring stands. */
+               Whichever side the city column takes, the first column does not
+               move: opening right pins the panel's left edge where it already
+               was (-9.5rem, which is what -translate-x-1/2 comes to at 19rem),
+               and opening left pins its right edge instead (9.5 - 32 =
+               -22.5rem). Both leave the states exactly 9.5rem either side of
+               the chip. Below `sm` the second column never opens at all. */
             <div
-              className={`absolute left-1/2 top-full z-50 mt-3 flex -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-popover text-foreground shadow-2xl ${
-                allCitiesOpen ? "sm:-translate-x-[22.5rem]" : ""
-              }`}
+              className={`absolute left-1/2 top-full z-50 mt-[15px] flex -translate-x-1/2 overflow-hidden rounded-b-xl border border-t-0 border-border bg-popover text-foreground shadow-2xl ${
+                allCitiesOpen && citiesSide === "left" ? "flex-row-reverse sm:-translate-x-[22.5rem]" : ""
+              } ${allCitiesOpen && citiesSide === "right" ? "sm:-translate-x-[9.5rem]" : ""}`}
             >
             <div className="w-[min(calc(100vw-2rem),19rem)] shrink-0">
               {/* Search */}
@@ -467,16 +507,28 @@ export function Header({
               <p className="border-b border-border bg-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Top Cities
               </p>
-              {/* Two to a row: seven names down a single column would be taller
-                  than the whole state grid above them, for a list nobody has to
-                  read in order. Reading only for now — the site's location is a
-                  state, so a city here has nothing to set. */}
-              <div className="grid grid-cols-2 gap-x-2 bg-white p-1.5">
+              {/* Three to a row, four rows deep, ruled the way the state grid
+                  above is: a hairline down the right of every cell but the
+                  last in its row, and along the bottom of every row but the
+                  last — which already has the "Other Cities" rule under it,
+                  and would otherwise carry two lines a pixel apart.
+
+                  The grid is flush to the panel's edges so those rules run its
+                  full width, matching the headings above and below them; the
+                  padding that used to sit here moved inside the cells, so the
+                  block is the same height it was.
+
+                  Reading only for now — the site's location is a state, so a
+                  city here has nothing to set. */}
+              <div className="grid grid-cols-3 bg-white">
                 {TOP_CITIES.map((city) => (
                   <p
                     key={city}
                     title={city}
-                    className="truncate rounded-md px-2 py-1.5 text-sm text-foreground"
+                    className="relative truncate px-3 py-2 text-sm text-foreground
+                      after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-black/10 after:content-['']
+                      before:absolute before:inset-x-0 before:bottom-0 before:h-px before:bg-black/10 before:content-['']
+                      [&:nth-child(3n)]:after:hidden [&:nth-child(n+10)]:before:hidden"
                   >
                     {city}
                   </p>
@@ -487,13 +539,17 @@ export function Header({
                   hundred names in this column would bury the states, and the
                   panel has room to its right that it is not otherwise using. */}
               <button
-                onClick={() => setAllCitiesOpen((open) => !open)}
+                onClick={toggleAllCities}
                 aria-expanded={allCitiesOpen}
                 className="flex w-full items-center justify-between gap-2 border-t border-border bg-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
               >
                 Other Cities
+                {/* Turns to face the column it opened, so it reads as the way
+                    back once there is something to close. */}
                 <ChevronRight
-                  className={`h-3.5 w-3.5 shrink-0 transition-transform ${allCitiesOpen ? "rotate-180" : ""}`}
+                  className={`h-3.5 w-3.5 shrink-0 transition-transform ${
+                    allCitiesOpen && citiesSide === "right" ? "rotate-180" : ""
+                  }`}
                 />
               </button>
             </div>
@@ -502,7 +558,11 @@ export function Header({
                 do not decide the panel's height — it takes the height the
                 column beside it already has, and scrolls inside that. */}
             {allCitiesOpen && (
-              <aside className="relative hidden w-52 shrink-0 border-l border-border bg-white sm:block">
+              <aside
+                className={`relative hidden w-52 shrink-0 border-border bg-white sm:block ${
+                  citiesSide === "left" ? "border-r" : "border-l"
+                }`}
+              >
                 <div className="absolute inset-0 flex flex-col">
                   <p className="shrink-0 border-b border-border bg-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     All Cities
@@ -572,6 +632,14 @@ export function Header({
               <span className="ml-1 rounded bg-white/20 px-1 text-[10px] font-bold">FREE</span>
             </Link>
         )}
+
+        {/* Beside the CTA rather than in the account menu: a shortlist is
+            checked far more often than an account is, and a signed-out visitor
+            has one too. Shares `order-5` with the button above it, so source
+            order settles which comes first. */}
+        <div className={isHome ? "order-5" : ""}>
+          <ShortlistMenu />
+        </div>
 
         {/* Nothing is rendered until the first session read settles, so the
             Login button never flashes for someone who is already signed in. */}
