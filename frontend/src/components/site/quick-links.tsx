@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -10,12 +9,9 @@ import {
   Building2,
   Home,
   LandPlot,
-  MapPin,
-  ShieldCheck,
   ShoppingBag,
   Store,
   Tag,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,27 +63,6 @@ const LISTING_TABS = [
     dotHover: "group-hover:bg-saffron",
     header: "bg-saffron/10 text-foreground",
     tile: "bg-saffron/20 text-saffron",
-  },
-];
-
-const HIGHLIGHTS = [
-  {
-    icon: Zap,
-    tile: "bg-violet-50 text-violet-600",
-    title: "Quick Access",
-    body: "Top property pages in one click",
-  },
-  {
-    icon: ShieldCheck,
-    tile: "bg-orange-50 text-orange-500",
-    title: "Curated Links",
-    body: "Handpicked most searched pages",
-  },
-  {
-    icon: MapPin,
-    tile: "bg-green-50 text-green-600",
-    title: null,
-    body: null,
   },
 ];
 
@@ -191,50 +166,6 @@ export function QuickLinks({
           </div>
         </div>
       )}
-
-      {/* Highlight bar — skyline illustration sits flush at the bottom-right.
-
-          A row from `lg`, not an absolute image over a 60%-wide list: the
-          illustration is `h-full w-auto`, so its width is whatever the bar's
-          height happens to be times its 3.26 aspect. On a narrower screen the
-          text wraps, the bar grows taller, the illustration grows wider with it
-          — and at some width it reached back under the text. Sharing a row means
-          the two divide the width instead of both claiming their own slice. */}
-      <div className="relative mt-4 flex overflow-hidden rounded-xl border border-border bg-white">
-        <div className="relative grid min-w-0 flex-1 grid-cols-1 gap-y-5 px-5 py-5 sm:grid-cols-2 sm:gap-x-5 lg:grid-cols-3 lg:gap-x-0 lg:divide-x lg:divide-border">
-          {HIGHLIGHTS.map((item) => (
-            <div
-              key={item.title ?? "coverage"}
-              className="flex items-center gap-3 lg:px-5 lg:first:pl-0 lg:last:pr-0"
-            >
-              <span
-                className={`grid size-11 shrink-0 place-items-center rounded-full ${item.tile}`}
-              >
-                <item.icon className="size-5" strokeWidth={2} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold leading-tight text-foreground">
-                  {item.title ?? `Across ${displayName}`}
-                </p>
-                <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-                  {item.body ?? `Cities & districts across ${displayName}`}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Capped so a tall bar cannot hand it half the width; `object-contain`
-            then letterboxes it against the bottom rather than cropping it. */}
-        <Image
-          src="/quick-links-skyline.webp"
-          alt=""
-          width={1819}
-          height={558}
-          aria-hidden
-          className="pointer-events-none hidden max-w-[38%] shrink select-none self-stretch object-contain object-bottom lg:block lg:h-auto lg:w-auto"
-        />
-      </div>
     </div>
   );
 }
