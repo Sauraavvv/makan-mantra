@@ -338,7 +338,11 @@ export function Header({
           </span>
         </Link>
 
-        {!minimal && isHome && (
+        {/* Beside the wordmark on every page. It used to sit here on the home
+            page and be re-rendered further down with `ml-auto` everywhere else,
+            so Buy and Rent jumped from the left of the bar to the right the
+            moment you opened a state page. */}
+        {!minimal && (
           <nav className="ml-3 hidden items-center gap-1 lg:flex">
             {NAV.map((item) => (
               <MegaNavItem
@@ -609,19 +613,12 @@ export function Header({
           />
         </form>
 
-        {minimal ? (
-          <div className="ml-auto" />
-        ) : !isHome ? (
-            <nav className="ml-auto hidden items-center gap-1 lg:flex">
-              {NAV.map((item) => (
-                <MegaNavItem
-                  key={item.label}
-                  label={item.label}
-                  listingType={item.label === "Rent" ? "rent" : "sale"}
-                />
-              ))}
-            </nav>
-        ) : null}
+        {/* What pushes the actions to the right edge. The home page does not
+            need it: its location chip carries an `ml-auto` of its own, and the
+            chip only renders there. The search box cannot do this job — it is
+            `hidden md:block` and collapses to no width when there is nothing to
+            search, so on a phone it would push nothing. */}
+        {!isHome && <div className="ml-auto" />}
 
         {!minimal && (
             <Link

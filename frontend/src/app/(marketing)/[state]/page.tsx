@@ -17,11 +17,9 @@ import { ExploreSectionNav } from "@/components/site/explore-section-nav";
 import { LineClampedDescription } from "@/components/site/line-clamped-description";
 import { PriceTrendChart } from "@/components/site/price-trend-chart";
 import { SocialInfrastructureCarousel } from "@/components/site/social-infrastructure-carousel";
-import { TopBuilders } from "@/components/site/top-builders";
 import { NearbyStates } from "@/components/site/nearby-states";
 import { neighbouringStates } from "@/lib/state-neighbours";
 import { QuickLinks, type QuickLinkGroup } from "@/components/site/quick-links";
-import { getBuilderProfile } from "@/lib/constants/builders";
 import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
 import { HeroSearch } from "@/components/site/hero-search";
 import { GoogleMapEmbed } from "@/components/map/google-map-embed";
@@ -88,11 +86,6 @@ type PriceTrendPoint = {
   averagePricePerSqft: number;
 };
 
-type BuilderDisplayItem = {
-  title: string;
-  details: Array<[string, string]>;
-};
-
 function asText(value: unknown) {
   if (value === null || value === undefined || value === "") return "Not available";
   return String(value);
@@ -131,68 +124,6 @@ function labelFromKey(key: string) {
   return key
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function asReadableValue(value: unknown): string {
-  if (Array.isArray(value)) {
-    return value.filter(hasDisplayValue).map(asReadableValue).join(" · ");
-  }
-
-  if (value && typeof value === "object") {
-    return Object.entries(value as Record<string, unknown>)
-      .filter(([, item]) => hasDisplayValue(item))
-      .map(([key, item]) => `${labelFromKey(key)}: ${asReadableValue(item)}`)
-      .join(" · ");
-  }
-
-  return String(value);
-}
-
-function asBuilderItems(value: unknown, limit = 12): BuilderDisplayItem[] {
-  const titleKeys = new Set(["name", "builder_name", "developer_name", "company", "title"]);
-
-  const fromRecord = (record: Record<string, unknown>, fallbackTitle?: string): BuilderDisplayItem | null => {
-    const titleValue = record.name || record.builder_name || record.developer_name || record.company || record.title || fallbackTitle;
-    if (!hasDisplayValue(titleValue)) return null;
-
-    return {
-      title: String(titleValue),
-      details: Object.entries(record)
-        .filter(([key, item]) => !titleKeys.has(key) && hasDisplayValue(item))
-        .map(([key, item]) => [labelFromKey(key), asReadableValue(item)]),
-    };
-  };
-
-  const items = Array.isArray(value)
-    ? value
-        .filter(hasDisplayValue)
-        .map((item) => (
-          item && typeof item === "object"
-            ? fromRecord(item as Record<string, unknown>)
-            : { title: String(item), details: [] }
-        ))
-    : value && typeof value === "object"
-      ? Object.entries(value as Record<string, unknown>)
-          .filter(([, item]) => hasDisplayValue(item))
-          .map(([key, item]) => (
-            item && typeof item === "object"
-              ? fromRecord(item as Record<string, unknown>, labelFromKey(key))
-              : { title: labelFromKey(key), details: [[labelFromKey(key), String(item)]] }
-          ))
-      : hasDisplayValue(value)
-        ? [{ title: String(value), details: [] }]
-        : [];
-
-  const seen = new Set<string>();
-  return items
-    .filter((item): item is BuilderDisplayItem => Boolean(item))
-    .filter((item) => {
-      const key = item.title.trim().toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, limit);
 }
 
 function asPriceTrend(value: unknown): PriceTrendPoint[] {
@@ -451,23 +382,6 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   const growthDrivers = uniqueItems(investment_angle.key_growth_drivers, 10);
   const investmentRisks = uniqueItems(investment_angle.investment_risks, 10);
   const hasInvestmentComparison = growthDrivers.length > 0 || investmentRisks.length > 0;
-  const topBuildersValue = [
-    data.real_estate_overview?.top_builders,
-    data.real_estate_overview?.major_builders,
-    data.real_estate_overview?.leading_builders,
-    data.real_estate_overview?.developers,
-    investment_angle.top_builders,
-    investment_angle.major_builders,
-    investment_angle.leading_builders,
-    investment_angle.developers,
-    overview.top_builders,
-    overview.major_builders,
-    overview.leading_builders,
-  ].find(hasDisplayValue);
-  const topBuilders = asBuilderItems(topBuildersValue).map((builder) => ({
-    ...builder,
-    ...getBuilderProfile(builder.title, parentStateName),
-  }));
   const neighbourStates = neighbouringStates(parentStateName);
   const socialCardEntries = Object.entries(social_infrastructure || {})
     .filter(([key]) => key !== "markets_and_essentials_summary")
@@ -562,7 +476,6 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
           { label: "Cities & Towns", href: "#cities-towns" },
           ...(connectivityCards.length > 0 ? [{ label: "Connectivity", href: "#connectivity" as const }] : []),
           { label: "Living", href: "#social" },
-          ...(topBuilders.length > 0 ? [{ label: "Top Builders", href: "#top-builders" as const }] : []),
           ...(priceTrend.length > 1 ? [{ label: "Price Trend", href: "#price-trend" as const }] : []),
           ...(hasInvestmentComparison ? [{ label: "Growth & Risks", href: "#growth-risks" as const }] : []),
           ...(quickLinkGroups.length > 0 ? [{ label: "Quick Links", href: "#quick-links" as const }] : []),
@@ -640,14 +553,6 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
           <SocialInfrastructureCarousel cards={socialCards} displayName={displayName} />
         </div>
       </section>
-
-      {topBuilders.length > 0 && (
-        <section id="top-builders" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto w-full max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-            <TopBuilders builders={topBuilders} displayName={displayName} />
-          </div>
-        </section>
-      )}
 
       {priceTrend.length > 1 && (
         <section id="price-trend" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">

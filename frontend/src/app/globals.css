@@ -168,3 +168,47 @@
     }
   }
 }
+
+/*
+ * The home page's state marquee.
+ *
+ * The keyframes and the class that uses them have to sit together here.
+ * Tailwind drops a `@keyframes` block that nothing in the CSS refers to, and
+ * this animation was first set from an inline `style` — which Tailwind cannot
+ * see, so the keyframes were pruned and the rows stood still. Naming the
+ * animation from a real rule keeps both.
+ *
+ * Driving it from CSS rather than inline also lets the two rules below land at
+ * all: an inline `animation` shorthand outranks any class, so a hover pause and
+ * a reduced-motion override written as utilities would both have been ignored.
+ */
+@keyframes mm-marquee {
+  from {
+    transform: translateX(0);
+  }
+  /* One set of cards wide, so a track holding two identical sets loops
+     seamlessly: at -50% the second set stands exactly where the first began. */
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.mm-marquee {
+  animation: mm-marquee 70s linear infinite;
+}
+
+.mm-marquee-reverse {
+  animation-direction: reverse;
+}
+
+/* Paused from a hover anywhere on the block, not row by row — catching one row
+   while the other keeps moving reads as a glitch. */
+.group:hover .mm-marquee {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mm-marquee {
+    animation: none;
+  }
+}

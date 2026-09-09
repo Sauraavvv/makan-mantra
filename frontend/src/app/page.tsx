@@ -4,6 +4,7 @@ import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { HeroSearch } from "@/components/site/hero-search";
 import { StateExplorer } from "@/components/site/state-explorer";
+import { ExploreStateDock } from "@/components/site/explore-state-dock";
 import { HeroText } from "@/components/site/hero-text";
 import { HomeActivityPanel } from "@/components/site/home-activity-panel";
 import { HomeRecommendations } from "@/components/site/home-recommendations";
@@ -253,6 +254,7 @@ export default async function Home() {
         </div>
       </section>
 
+      <ExploreStateDock />
       <Footer />
     </div>
   );
