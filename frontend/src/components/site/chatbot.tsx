@@ -354,8 +354,6 @@ function ChatbotWidget() {
   const signedIn = Boolean(user);
 
   const [open, setOpen] = useState(false);
-  const [showBubble, setShowBubble] = useState(false);
-  const [avatarVisible, setAvatarVisible] = useState(false);
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -412,27 +410,6 @@ function ChatbotWidget() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const { isSupported: micSupported, status: micStatus, error: micError, toggle: toggleMic } =
     useSpeechRecognition((text) => setInput(text));
-  const bubbleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Avatar enters after 3s
-  useEffect(() => {
-    const t = setTimeout(() => setAvatarVisible(true), 3000);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Bubble cycles every 10s when chat is closed
-  useEffect(() => {
-    if (open || !avatarVisible) return;
-
-    const show = () => {
-      setShowBubble(true);
-      setTimeout(() => setShowBubble(false), 4000);
-    };
-
-    show();
-    bubbleTimerRef.current = setInterval(show, 10000);
-    return () => { if (bubbleTimerRef.current) clearInterval(bubbleTimerRef.current); };
-  }, [open, avatarVisible]);
-
   // Freeze the page behind the chat.
   //
   // `overscroll-contain` alone only stops scroll *chaining* once an inner list
@@ -551,8 +528,6 @@ function ChatbotWidget() {
 
   function handleOpen() {
     setOpen(true);
-    setShowBubble(false);
-    if (bubbleTimerRef.current) clearInterval(bubbleTimerRef.current);
     setTheme(readTheme());
 
     if (!signedIn) {
@@ -1728,47 +1703,34 @@ function ChatbotWidget() {
         )}
       </AnimatePresence>
 
-      {/* Avatar + bubble */}
-      <AnimatePresence>
-        {avatarVisible && !open && (
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="fixed bottom-6 right-4 z-50 flex flex-col items-end gap-2"
-          >
-            {/* Speech bubble */}
-            <AnimatePresence>
-              {showBubble && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                  className="relative mr-1 rounded-2xl rounded-br-none border border-border bg-white px-4 py-2.5 shadow-lg"
-                >
-                  <p className="whitespace-nowrap text-sm font-medium text-gray-800">
-                    Still didn&apos;t find? <span className="text-primary">Ask me</span> 💬
-                  </p>
-                  <span className="absolute -bottom-2 right-4 h-0 w-0 border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-white" />
-                </motion.div>
-              )}
-            </AnimatePresence>
+      {/* The launcher.
 
-            {/* Avatar button */}
-            <motion.button
-              onClick={handleOpen}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-[#0A2036] shadow-xl ring-2 ring-saffron/50"
-              aria-label="Open property assistant"
+          Plain and always there while the chat is closed: it used to fade up
+          three seconds after load and carry a speech bubble that reappeared
+          every ten seconds, so the corner of every page kept moving on its own
+          long after the reader had decided to ignore it. */}
+      {!open && (
+        <div className="fixed bottom-6 right-4 z-50">
+          <motion.button
+            onClick={handleOpen}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-[#0A2036] ring-2 ring-saffron/50"
+            aria-label="Open property assistant"
+          >
+            {/* The site's own wordmark, cut down to the two initials it is
+                built from — same two-tone split as "Makan Mantraa" in the
+                header and in this window's own sidebar, so the button is
+                recognisably the brand rather than a stock chat glyph. */}
+            <span
+              aria-hidden
+              className="text-xl font-bold leading-none tracking-tight text-white"
             >
-              <span className="text-2xl">🏠</span>
-            </motion.button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              M<span className="text-saffron">M</span>
+            </span>
+          </motion.button>
+        </div>
+      )}
     </>
   );
 }

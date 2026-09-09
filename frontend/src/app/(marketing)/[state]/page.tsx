@@ -17,7 +17,9 @@ import { ExploreSectionNav } from "@/components/site/explore-section-nav";
 import { LineClampedDescription } from "@/components/site/line-clamped-description";
 import { PriceTrendChart } from "@/components/site/price-trend-chart";
 import { SocialInfrastructureCarousel } from "@/components/site/social-infrastructure-carousel";
-import { TopBuildersCarousel } from "@/components/site/top-builders-carousel";
+import { TopBuilders } from "@/components/site/top-builders";
+import { NearbyStates } from "@/components/site/nearby-states";
+import { neighbouringStates } from "@/lib/state-neighbours";
 import { QuickLinks, type QuickLinkGroup } from "@/components/site/quick-links";
 import { getBuilderProfile } from "@/lib/constants/builders";
 import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
@@ -466,6 +468,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     ...builder,
     ...getBuilderProfile(builder.title, parentStateName),
   }));
+  const neighbourStates = neighbouringStates(parentStateName);
   const socialCardEntries = Object.entries(social_infrastructure || {})
     .filter(([key]) => key !== "markets_and_essentials_summary")
     .filter(([, value]) => hasDisplayValue(value));
@@ -563,6 +566,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
           ...(priceTrend.length > 1 ? [{ label: "Price Trend", href: "#price-trend" as const }] : []),
           ...(hasInvestmentComparison ? [{ label: "Growth & Risks", href: "#growth-risks" as const }] : []),
           ...(quickLinkGroups.length > 0 ? [{ label: "Quick Links", href: "#quick-links" as const }] : []),
+          ...(neighbourStates.length > 0 ? [{ label: "Nearby States", href: "#nearby-states" as const }] : []),
           ...(faq.length > 0 ? [{ label: "FAQ", href: "#faq" as const }] : []),
         ]}
       />
@@ -640,7 +644,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       {topBuilders.length > 0 && (
         <section id="top-builders" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto w-full max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-            <TopBuildersCarousel builders={topBuilders} displayName={displayName} />
+            <TopBuilders builders={topBuilders} displayName={displayName} />
           </div>
         </section>
       )}
@@ -699,6 +703,14 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         <section id="quick-links" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
           <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-6">
             <QuickLinks groups={quickLinkGroups} displayName={displayName} />
+          </div>
+        </section>
+      )}
+
+      {neighbourStates.length > 0 && (
+        <section id="nearby-states" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
+            <NearbyStates stateName={parentStateName} />
           </div>
         </section>
       )}
