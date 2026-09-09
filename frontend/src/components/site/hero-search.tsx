@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowUpRight,
@@ -9,6 +10,7 @@ import {
   ChevronDown,
   Home,
   LandPlot,
+  MapPin,
   Mic,
   Search,
   Store,
@@ -39,6 +41,39 @@ const CATEGORY_BY_TAB: Record<Tab, string> = {
   Commercial: "Commercial",
 };
 
+/**
+ * The tab, in the wording `location_pages` stores.
+ *
+ * This is what turns the tabs from labels into a filter: every row in that
+ * collection is one place under one property type and one listing type, and it
+ * carries the slug of the page for exactly that combination. So the tab and
+ * Buy/Rent do not colour the results — they choose which page a place goes to.
+ *
+ * Commercial maps to shops. The site stores three commercial types — shop,
+ * showroom and office_space — under one tab, and shops are much the commonest
+ * of them; splitting the tab is a separate decision.
+ */
+const PROPERTY_TYPE_BY_TAB: Record<Tab, string> = {
+  Flat: "flat",
+  Villa: "villa",
+  PG: "pg",
+  Plot: "plot",
+  Commercial: "shop",
+};
+
+/** Short of this a search matches most of the country, so we do not ask. */
+const SUGGEST_MIN_CHARS = 3;
+
+/** Long enough that a typed word costs one request rather than one per letter. */
+const SUGGEST_DEBOUNCE_MS = 200;
+
+type Suggestion = {
+  name: string;
+  category: string;
+  context: string;
+  slug: string;
+};
+
 const SEARCH_PROMPTS = ["Search by City", "Search by Locality", "Search by Keyword"] as const;
 const TRENDING_LOCATION_LIMIT = 6;
 
@@ -63,6 +98,7 @@ export function HeroSearch({
   alignTabsWithHeading = false,
   animateIn = false,
 }: HeroSearchProps = {}) {
+  const router = useRouter();
   const { meta } = useLocation();
   const shouldReduceMotion = useReducedMotion();
   const { track } = useSearchHistory();
@@ -73,9 +109,16 @@ export function HeroSearch({
   const [promptIndex, setPromptIndex] = useState(0);
   const [promptLength, setPromptLength] = useState(0);
   const [deletingPrompt, setDeletingPrompt] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  // -1 is "nothing picked yet", which is not the same as "the first one" — it
+  // is what lets Enter fall through to a plain search when the reader typed
+  // something the list does not cover.
+  const [highlight, setHighlight] = useState(-1);
   const [locationsByScope, setLocationsByScope] = useState<Record<string, string[]>>({});
   const [visibleTrendingCount, setVisibleTrendingCount] = useState(TRENDING_LOCATION_LIMIT);
   const listingMenuRef = useRef<HTMLDivElement>(null);
+  const suggestBoxRef = useRef<HTMLDivElement>(null);
   const requestedAreaScopes = useRef(new Set<string>());
   const trendingRowRef = useRef<HTMLDivElement>(null);
   const trendingMeasureRef = useRef<HTMLDivElement>(null);
@@ -138,6 +181,61 @@ export function HeroSearch({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [listingMenuOpen]);
+
+  /**
+   * The type-ahead.
+   *
+   * Re-runs on the filters as well as on the text, because the filters are part
+   * of the question: the same three letters under Flat/Buy and under Villa/Rent
+   * lead to two different pages, and the list has to say which.
+   */
+  useEffect(() => {
+    // Nothing to clear on the way out: what is on screen is derived from the
+    // query below, so a query that has shrunk under the threshold hides the
+    // list without this effect having to write state to say so.
+    const term = query.trim();
+    if (term.length < SUGGEST_MIN_CHARS) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({
+            q: term,
+            type: PROPERTY_TYPE_BY_TAB[activeTab],
+            listing: listingType === "buy" ? "sale" : "rent",
+          });
+          const response = await fetch(`/api/locations/suggest?${params.toString()}`);
+          if (!response.ok || cancelled) return;
+
+          const data = (await response.json()) as { suggestions?: Suggestion[] };
+          if (cancelled) return;
+
+          setSuggestions(data.suggestions ?? []);
+          setHighlight(-1);
+          setSuggestOpen(true);
+        } catch {
+          // Leave whatever is on screen; the next keystroke tries again.
+        }
+      })();
+    }, SUGGEST_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [activeTab, listingType, query]);
+
+  useEffect(() => {
+    if (!suggestOpen) return;
+
+    const close = (event: PointerEvent) => {
+      if (!suggestBoxRef.current?.contains(event.target as Node)) setSuggestOpen(false);
+    };
+
+    window.addEventListener("pointerdown", close);
+    return () => window.removeEventListener("pointerdown", close);
+  }, [suggestOpen]);
 
   useEffect(() => {
     if (areaState === "India" || requestedAreaScopes.current.has(areaScopeKey)) return;
@@ -259,6 +357,33 @@ export function HeroSearch({
     });
   }
 
+  // Derived rather than stored, so the list cannot outlive the text it belongs
+  // to — deleting back to two characters hides it in the same render.
+  const showSuggestions =
+    suggestOpen && suggestions.length > 0 && query.trim().length >= SUGGEST_MIN_CHARS;
+
+  /** Takes the reader to the page for this place under the filters on screen. */
+  function selectSuggestion(suggestion: Suggestion) {
+    saveSearch(suggestion.name);
+    setSuggestOpen(false);
+    setQuery(suggestion.name);
+    router.push(`/${suggestion.slug}`);
+  }
+
+  function handleSearchKeys(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (!showSuggestions) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHighlight((index) => (index + 1) % suggestions.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlight((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
+    } else if (event.key === "Escape") {
+      setSuggestOpen(false);
+    }
+  }
+
   // Reduced-motion visitors get the bar in its final place, no travel.
   const playEntry = animateIn && !shouldReduceMotion;
 
@@ -278,6 +403,16 @@ export function HeroSearch({
         <form
           onSubmit={(event) => {
             event.preventDefault();
+
+            // Enter on a highlighted row takes it; Enter with the list open and
+            // nothing highlighted takes the best match, which is what pressing
+            // Enter on a search box is understood to mean.
+            const chosen = suggestions[highlight >= 0 ? highlight : 0];
+            if (showSuggestions && chosen) {
+              selectSuggestion(chosen);
+              return;
+            }
+
             saveSearch(query);
           }}
           /* The cards sit over a single surface, so the slim navy area at either
@@ -380,15 +515,85 @@ export function HeroSearch({
               )}
             </div>
 
-            <div className="flex h-11 min-w-0 flex-1 items-center gap-2.5 px-4 sm:h-full">
+            <div
+              ref={suggestBoxRef}
+              className="relative flex h-11 min-w-0 flex-1 items-center gap-2.5 px-4 sm:h-full"
+            >
               <Search className="size-5 shrink-0 text-muted-foreground" strokeWidth={2} />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={handleSearchKeys}
+                onFocus={() => {
+                  if (suggestions.length > 0) setSuggestOpen(true);
+                }}
                 placeholder={micStatus === "listening" ? "Listening…" : searchPlaceholder}
                 aria-label="Search by locality, builder or project"
+                /* The browser's own history dropdown draws over ours and does
+                   not know about the filters, so it is turned off outright —
+                   along with the phone keyboard's autocorrect, which mangles
+                   place names it has never met. */
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                role="combobox"
+                aria-expanded={showSuggestions}
+                aria-controls="hero-search-suggestions"
+                aria-autocomplete="list"
+                aria-activedescendant={
+                  highlight >= 0 ? `hero-search-suggestion-${highlight}` : undefined
+                }
                 className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
               />
+
+              {showSuggestions && (
+                /* Hung off the text field rather than the whole white row, so
+                   it lines up under what was typed. Above the listing menu's
+                   own z-30 — both can be open at once, and this one is the one
+                   being read. */
+                <div
+                  id="hero-search-suggestions"
+                  role="listbox"
+                  aria-label="Matching locations"
+                  className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-40 max-h-[19rem] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white py-1 shadow-[0_18px_40px_rgba(2,12,25,0.28)]"
+                >
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={suggestion.slug}
+                      id={`hero-search-suggestion-${index}`}
+                      type="button"
+                      role="option"
+                      aria-selected={index === highlight}
+                      onPointerDown={(event) => event.preventDefault()}
+                      onClick={() => selectSuggestion(suggestion)}
+                      onMouseEnter={() => setHighlight(index)}
+                      className={`flex w-full items-center gap-3 px-3 py-2 text-left ${
+                        index === highlight ? "bg-slate-100" : ""
+                      }`}
+                    >
+                      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-saffron/10 text-saffron">
+                        <MapPin className="size-4" strokeWidth={2} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-[#0A2036]">
+                          {suggestion.name}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {suggestion.context}
+                        </span>
+                      </span>
+                      {/* Which kind of page this is. Three rows can carry the
+                          same name — a city, the district around it and the
+                          state above that — and the label is what separates
+                          them. */}
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        {suggestion.category}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {micSupported && (
                 <button
                   type="button"

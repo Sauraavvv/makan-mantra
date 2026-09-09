@@ -119,7 +119,14 @@ export default async function Home() {
         {/* 540px from `md`, with the content centred in it rather than sized by
             its own padding. Below that the height is left to the content: a
             phone would spend most of 540px on empty sky. */}
-        <section className="relative flex overflow-hidden md:h-[590px]">
+        {/* `overflow-x-clip`, not `overflow-hidden`. The search bar's suggestion
+            list opens downwards from the middle of this box and runs past its
+            bottom edge, and `overflow-hidden` cut it off there. Clipping only
+            the horizontal axis leaves the vertical one visible — `overflow-x:
+            hidden` could not do this, since it forces the other axis to `auto`,
+            but `clip` does not — so the list escapes while the block still
+            holds the search treatment's 6% leftward shift inside the page. */}
+        <section className="relative flex overflow-x-clip md:h-[590px]">
           {/* Preloaded by hand: this is the LCP element, and a plain `img` gets
               none of the preload `next/image` would have added for it. React
               hoists the tag into the head. */}
