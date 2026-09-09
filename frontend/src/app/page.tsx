@@ -151,6 +151,11 @@ export default async function Home() {
               <HeroSearch align="left" alignTabsWithHeading animateIn />
             </div>
           </div>
+
+          {/* Inside the hero, so it scrolls away with it. It used to be `fixed`
+              and rode the right edge down the whole page, which put a second
+              standing button beside the chat launcher on every section. */}
+          <ExploreStateDock />
         </section>
 
         {/* Placeholder — holds the rest of the first screen until we fill it,
@@ -254,7 +259,6 @@ export default async function Home() {
         </div>
       </section>
 
-      <ExploreStateDock />
       <Footer />
     </div>
   );
