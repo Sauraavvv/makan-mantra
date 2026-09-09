@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
-import { Building2, ChevronRight, Landmark, MapPin, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, TrendingDown, TrendingUp } from "lucide-react";
 import { stateExploreHref, stateSlug } from "@/lib/state-routes";
 
 type PriceTrendPoint = {
@@ -26,271 +25,336 @@ export type DistrictItem = {
 
 type PreparedDistrict = DistrictItem & {
   href: string;
+  stateLabel: string;
   description: string;
   majorCities: string[];
-  majorTowns: string[];
   priceTrend: PriceTrendPoint[];
 };
 
-export function DistrictCarousel({ districts, stateName }: { districts: DistrictItem[]; stateName: string }) {
-  const preparedDistricts = useMemo(
+/** How many city names a card names before it starts counting them instead. */
+const CITY_CHIPS = 3;
+
+/**
+ * Every district in the state, one card each, as a row that scrolls sideways.
+ *
+ * This replaced a master-detail panel — a list of names down the left, one
+ * district's full profile on the right — which showed a state's districts one
+ * at a time and made comparing two of them a matter of clicking back and forth.
+ * The point of this section is to find the district worth opening, so the cards
+ * carry a line about the place and the figures that separate it from its
+ * neighbours. Everything else is on the page the card links to.
+ *
+ * The figures are read off the ten-year price series each district stores —
+ * present, and exactly 2017 to 2026, for every district we have — so no card in
+ * the row comes up empty and every card's rows mean the same thing.
+ */
+export function DistrictCarousel({
+  districts,
+  stateName,
+}: {
+  districts: DistrictItem[];
+  stateName: string;
+}) {
+  const prepared = useMemo(
     () => districts.map((district) => prepareDistrict(district, stateName)),
     [districts, stateName],
   );
-  const [selectedName, setSelectedName] = useState(preparedDistricts[0]?.name ?? "");
-  const selected = preparedDistricts.find((district) => district.name === selectedName) ?? preparedDistricts[0];
 
-  if (!selected) return null;
+  const scroller = useRef<HTMLDivElement>(null);
+  // Held together because they are read together, and because the initial
+  // "nothing overflows" is what hides the arrows until a measurement says
+  // otherwise — rather than showing two dead buttons on a state with one
+  // district, which several of them have.
+  const [scroll, setScroll] = useState({ overflowing: false, atStart: true, atEnd: false });
+
+  const sync = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+
+    const max = el.scrollWidth - el.clientWidth;
+    setScroll({
+      // A pixel of slack: fractional layout widths make an exactly-fitting row
+      // report a scrollWidth a hair over its clientWidth.
+      overflowing: max > 1,
+      atStart: el.scrollLeft <= 1,
+      atEnd: el.scrollLeft >= max - 1,
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(sync);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [sync]);
+
+  const page = (direction: 1 | -1) => {
+    const el = scroller.current;
+    // A viewport at a time rather than a card at a time: the row is read in
+    // screenfuls, and paging by one card leaves the reader tracking which of
+    // the four in front of them is new.
+    el?.scrollBy({ left: direction * el.clientWidth, behavior: "smooth" });
+  };
+
+  if (prepared.length === 0) return null;
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold leading-tight text-foreground md:text-4xl">
-          Districts in {stateName}
-        </h2>
-      </div>
-
-      <div className="grid min-w-0 gap-5 lg:h-[530px] lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch">
-        <aside className="flex h-[530px] overflow-hidden rounded-xl border border-border bg-white shadow-sm lg:h-full">
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex h-[92px] shrink-0 items-center gap-3 border-b border-border px-5">
-              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-saffron/10 text-saffron">
-                <MapPin className="size-5" strokeWidth={2} />
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-base font-bold leading-5 text-foreground">Districts</h3>
-                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                  Select a district to view detailed insights
-                </p>
-              </div>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {preparedDistricts.map((district) => {
-                const active = district.name === selected.name;
-
-                return (
-                  <button
-                    key={`${district.slug || district.name}`}
-                    type="button"
-                    onClick={() => setSelectedName(district.name)}
-                    className={`relative flex h-16 w-full shrink-0 items-center gap-3 border-b border-border px-4 text-left transition-colors last:border-b-0 ${
-                      active
-                        ? "bg-[#fff7f2] text-saffron"
-                        : "text-foreground hover:bg-secondary/55"
-                    }`}
-                  >
-                    {active && <span className="absolute inset-y-0 left-0 w-[3px] bg-saffron" />}
-                    <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${
-                      active ? "bg-saffron/12 text-saffron" : "bg-secondary text-muted-foreground"
-                    }`}>
-                      <MapPin className="size-[17px]" strokeWidth={2} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-bold leading-5">{district.name}</span>
-                    </span>
-                    <ChevronRight className={`size-4 shrink-0 ${active ? "text-saffron" : "text-muted-foreground"}`} strokeWidth={2} />
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex h-[52px] shrink-0 items-center justify-center border-t border-border bg-secondary/40 px-5 text-center text-[11px] font-medium text-muted-foreground">
-              <span>Scroll to explore more districts</span>
-            </div>
-          </div>
-        </aside>
-
-        <article className="flex min-h-[520px] min-w-0 flex-col rounded-xl border border-border bg-white p-3 shadow-sm lg:h-full lg:min-h-0">
-          <DistrictHero district={selected} />
-
-          <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
-            <PriceInsightCard district={selected} />
-
-            <div className="grid min-h-0 min-w-0 flex-1 gap-3 md:grid-cols-2">
-              <ChipPanel
-                title="Major Cities"
-                subtitle={`Key cities in ${selected.name}`}
-                icon={Building2}
-                items={selected.majorCities}
-                emptyText="City data is not available yet."
-              />
-              <ChipPanel
-                title="Major Towns"
-                subtitle={`Important towns in ${selected.name}`}
-                icon={Landmark}
-                items={selected.majorTowns}
-                emptyText="Town data is not available yet."
-              />
-            </div>
-
-            <div className="flex min-h-[58px] shrink-0 flex-col gap-3 rounded-lg border border-saffron/20 bg-[#fff8f3] px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-saffron/12 text-saffron">
-                  <TrendingUp className="size-[18px]" strokeWidth={2} />
-                </span>
-                <p className="line-clamp-2 text-[11px] leading-4 text-muted-foreground">
-                  Explore the full district guide for locality, connectivity, growth, and property signals.
-                </p>
-              </div>
-              <Link
-                href={selected.href}
-                className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-saffron/60 bg-white px-3.5 text-[11px] font-bold text-saffron transition-colors hover:bg-saffron/10"
-              >
-                View Full District Page
-                <ChevronRight className="size-3.5" strokeWidth={1.9} />
-              </Link>
-            </div>
-          </div>
-        </article>
-      </div>
-    </div>
-  );
-}
-
-function DistrictHero({ district }: { district: PreparedDistrict }) {
-  return (
-    <div className="flex min-h-[126px] min-w-0 shrink-0 items-center overflow-hidden rounded-lg border border-border bg-[#fffaf7] px-5 py-4">
-      <div className="min-w-0">
-        <p className="text-[10px] font-bold uppercase text-saffron">
-          Selected District
-        </p>
-        <h3 className="mt-1.5 text-2xl font-bold leading-8 text-foreground md:text-[28px]">
-          {district.name}
-        </h3>
-        <p className="mt-2 line-clamp-2 max-w-[650px] text-[11px] leading-[17px] text-muted-foreground">
-          {district.description}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function prepareDistrict(district: DistrictItem, fallbackStateName: string): PreparedDistrict {
-  const stateName = district.stateName || fallbackStateName;
-  const href = district.routeSlug
-    ? `/${district.routeSlug}`
-    : district.slug
-      ? stateExploreHref(district.slug)
-      : stateExploreHref(`${district.name}-${stateSlug(stateName)}`);
-  const majorCities = uniqueItems(district.overview?.major_cities, 6);
-  const majorTowns = uniqueItems(district.overview?.major_towns, 6);
-  const description = firstText(
-    district.seo?.page_description,
-    district.seo?.meta_description,
-    `Explore price movement, cities, towns, and real estate signals across ${district.name}.`,
-  );
-
-  return {
-    ...district,
-    href,
-    description,
-    majorCities,
-    majorTowns,
-    priceTrend: asPriceTrend(district.investmentAngle?.price_trend),
-  };
-}
-
-function PriceInsightCard({ district }: { district: PreparedDistrict }) {
-  const trend = district.priceTrend;
-  const yearlyGrowth = growthSince(trend, 1);
-  const metrics = [
-    { label: "Quarterly", value: growthLabel(scaleGrowth(yearlyGrowth, 0.25)), detail: "vs. last quarter" },
-    { label: "Half Yearly", value: growthLabel(scaleGrowth(yearlyGrowth, 0.5)), detail: "vs. last 6 months" },
-    { label: "Yearly", value: growthLabel(yearlyGrowth), detail: "vs. last year" },
-  ];
-
-  return (
-    <div className="min-w-0 shrink-0 rounded-lg border border-border bg-white px-4 py-3">
-      <div className="grid min-w-0 gap-3 sm:grid-cols-3 lg:grid-cols-[1.3fr_repeat(3,minmax(0,1fr))] lg:items-center">
-        <div className="flex min-w-0 items-center gap-3 sm:col-span-3 lg:col-span-1">
-          <div className="min-w-0">
-            <p className="text-[13px] font-bold leading-5 text-foreground">Average Price Growth</p>
-            <p className="mt-0.5 max-w-[220px] text-[11px] leading-4 text-muted-foreground">
-              Average growth in property prices across {district.name}
-            </p>
-          </div>
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-3xl font-bold leading-tight text-foreground md:text-4xl">
+            Districts in {stateName}
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {prepared.length === 1
+              ? "Price movement and the pages beneath it."
+              : `Price movement across ${prepared.length} districts.`}
+          </p>
         </div>
 
-        {metrics.map((metric) => (
-          <div key={metric.label} className="border-l border-border pl-3 lg:pl-5">
-            <p className="text-[11px] font-medium leading-4 text-foreground/80">{metric.label}</p>
-            <p className="mt-1 flex items-center gap-1.5 text-xl font-bold leading-6 text-emerald-700">
-              {metric.value}
-              {metric.value !== "N/A" && <TrendingUp className="size-3.5" strokeWidth={2.4} />}
-            </p>
-            <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">{metric.detail}</p>
+        {scroll.overflowing && (
+          <div className="hidden shrink-0 gap-2 sm:flex">
+            <ArrowButton
+              label="Previous districts"
+              disabled={scroll.atStart}
+              onClick={() => page(-1)}
+            >
+              <ChevronLeft className="size-5" strokeWidth={2.2} />
+            </ArrowButton>
+            <ArrowButton label="More districts" disabled={scroll.atEnd} onClick={() => page(1)}>
+              <ChevronRight className="size-5" strokeWidth={2.2} />
+            </ArrowButton>
           </div>
+        )}
+      </div>
+
+      {/* Snapped to the start of a card, so a page never lands mid-card. */}
+      <div
+        ref={scroller}
+        onScroll={sync}
+        className="flex snap-x snap-mandatory gap-4 overflow-x-auto no-scrollbar"
+      >
+        {prepared.map((district) => (
+          <DistrictCard key={district.slug || district.name} district={district} />
         ))}
       </div>
     </div>
   );
 }
 
-function ChipPanel({
-  title,
-  subtitle,
-  icon: Icon,
-  items,
-  emptyText,
+function ArrowButton({
+  label,
+  disabled,
+  onClick,
+  children,
 }: {
-  title: string;
-  subtitle: string;
-  icon: LucideIcon;
-  items: string[];
-  emptyText: string;
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
 }) {
-  const visibleItems = items.slice(0, 6);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="grid size-10 place-items-center rounded-full border border-border bg-white text-foreground transition-colors hover:border-saffron/60 hover:text-saffron disabled:cursor-default disabled:border-border disabled:bg-secondary/50 disabled:text-muted-foreground/50"
+    >
+      {children}
+    </button>
+  );
+}
+
+function DistrictCard({ district }: { district: PreparedDistrict }) {
+  const trend = district.priceTrend;
+  const latest = trend.at(-1);
+  const cities = district.majorCities;
+  const hidden = cities.length - CITY_CHIPS;
 
   return (
-    <div className="flex min-h-[156px] min-w-0 flex-col rounded-lg border border-border bg-white p-3.5">
-      <div className="mb-3 flex min-h-10 items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-saffron/10 text-saffron">
-            <Icon className="size-[17px]" strokeWidth={2} />
-          </span>
-          <div className="min-w-0">
-            <h4 className="text-[13px] font-bold leading-5 text-foreground">{title}</h4>
-            <p className="truncate text-[10px] leading-4 text-muted-foreground">{subtitle}</p>
-          </div>
-        </div>
-      </div>
+    <Link
+      href={district.href}
+      className="group flex w-[320px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-white transition-colors hover:border-saffron/60"
+    >
+      {/* The head, banded — the same shape the market-snapshot cards use: the
+          name over the place it is in, a tinted tile holding the section's own
+          icon, and the sentence about the district in a note beneath. The tint lives here rather than over the whole card, so the
+          figures below sit on white.
 
-      {items.length > 0 ? (
-        <div className="grid flex-1 auto-rows-[34px] grid-cols-2 gap-1.5">
-          {visibleItems.map((item) => (
-            <span
-              key={item}
-              title={item}
-              className="flex min-w-0 items-center rounded-lg border border-border bg-secondary/30 px-3 text-[11px] font-medium text-foreground"
-            >
-              <span className="truncate">{item}</span>
-            </span>
-          ))}
+          The note hangs half out of the band: the band takes no bottom
+          padding, and the note pulls the band's foot up by half its own 90px
+          — so the tint stops across the note's middle and its lower half sits
+          on the white body, which is what ties the two halves of the card
+          together. That is also why the note's fill is an opaque tint rather
+          than another `bg-saffron/…`: a translucent one would read darker
+          above the band's edge than below it. The body then starts clear of
+          the overhang. */}
+      <header className="shrink-0 bg-saffron/[0.08] px-3.5 pt-3.5 transition-colors group-hover:bg-saffron/[0.14]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-lg font-bold leading-tight text-foreground">
+              {district.name}
+            </h3>
+            <p className="truncate text-xs text-muted-foreground">in {district.stateLabel}</p>
+          </div>
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-saffron/[0.16] text-saffron transition-colors group-hover:bg-saffron/25">
+            <MapPin className="size-5" strokeWidth={1.9} />
+          </span>
         </div>
-      ) : (
-        <p className="text-xs leading-5 text-muted-foreground">{emptyText}</p>
-      )}
+
+        {/* Four lines of the district's own write-up, cut where it runs out of
+            room rather than at a sentence — the stored text is a full page of
+            prose and any rule for finding "the first sentence" in it breaks on
+            the first abbreviation or figure it meets.
+
+            A fixed height, not just a clamp: it is what makes every card's
+            head the same depth, so the figures below line up across the row
+            and can be read as a column. */}
+        <div className="relative -mb-[45px] mt-2.5 rounded-xl border border-saffron/25 bg-[#feefe6] px-2.5 py-2">
+          <p className="h-[72px] overflow-hidden text-[12px] font-medium leading-[18px] text-foreground/85">
+            <span className="line-clamp-4">{district.description}</span>
+          </p>
+        </div>
+      </header>
+
+      <div className="flex flex-1 flex-col px-3.5 pb-3 pt-[57px]">
+        {trend.length > 1 && latest ? (
+          <div className="overflow-hidden rounded-lg border border-border bg-white">
+            <p className="border-b border-border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Price per sqft
+            </p>
+            {/* Ruled like a table because that is what it is: the same three
+                rows in the same order on every card. */}
+            <dl className="divide-y divide-border px-2.5 text-[13px]">
+              <Row label={`Avg ${latest.year}`}>
+                <span className="font-bold tabular-nums text-foreground">
+                  ₹{latest.averagePricePerSqft.toLocaleString("en-IN")}
+                </span>
+              </Row>
+              <Row label="1 year">
+                <Growth value={growthOverSteps(trend, 1)} />
+              </Row>
+              <Row label="5 years">
+                <Growth value={growthOverSteps(trend, 5)} />
+              </Row>
+            </dl>
+          </div>
+        ) : (
+          /* The handful of districts we know only by name — the state page
+             lists them from its own overview when there is no district record
+             behind them. Same box, so the row keeps its shape. */
+          <div className="grid h-[120px] place-items-center rounded-lg border border-dashed border-border bg-white px-3 text-center text-[11px] text-muted-foreground">
+            Price data coming soon
+          </div>
+        )}
+
+        {/* The district's own cities, under its figures.
+
+            Three of them and a count, on one line that never wraps: the row
+            below is scanned across cards, so this has to be the same height on
+            every one of them. The names share the width and truncate
+            individually, which matters here — a few districts store a city as
+            a whole descriptive phrase, and letting that one shrink first keeps
+            its short neighbours whole. */}
+        {cities.length > 0 && (
+          <div className="mt-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Major cities
+            </p>
+            <div className="mt-1.5 flex gap-1.5">
+              {cities.slice(0, CITY_CHIPS).map((city) => (
+                <span
+                  key={city}
+                  title={city}
+                  className="min-w-0 truncate rounded-md border border-border bg-secondary/60 px-2 py-0.5 text-[11px] font-medium text-foreground"
+                >
+                  {city}
+                </span>
+              ))}
+              {hidden > 0 && (
+                <span
+                  title={cities.slice(CITY_CHIPS).join(", ")}
+                  className="shrink-0 rounded-md border border-border bg-secondary/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                >
+                  +{hidden}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <dt className="truncate text-muted-foreground">{label}</dt>
+      <dd className="shrink-0">{children}</dd>
     </div>
   );
 }
 
-function asArray(value: unknown) {
-  return Array.isArray(value) ? value.filter(Boolean).map(String) : [];
+function Growth({ value }: { value: number | null }) {
+  if (value === null) return <span className="text-muted-foreground">—</span>;
+
+  const rising = value >= 0;
+
+  return (
+    <span
+      className={`flex items-center gap-1 font-bold tabular-nums ${
+        rising ? "text-emerald-700" : "text-red-600"
+      }`}
+    >
+      {rising ? (
+        <TrendingUp className="size-3.5" strokeWidth={2.4} />
+      ) : (
+        <TrendingDown className="size-3.5" strokeWidth={2.4} />
+      )}
+      {`${value > 0 ? "+" : ""}${value.toFixed(1)}%`}
+    </span>
+  );
 }
 
-function uniqueItems(value: unknown, limit: number) {
+function prepareDistrict(district: DistrictItem, fallbackStateName: string): PreparedDistrict {
+  const stateLabel = district.stateName || fallbackStateName;
+  const href = district.routeSlug
+    ? `/${district.routeSlug}`
+    : district.slug
+      ? stateExploreHref(district.slug)
+      : stateExploreHref(`${district.name}-${stateSlug(stateLabel)}`);
+
+  return {
+    ...district,
+    href,
+    stateLabel,
+    description: firstText(
+      district.seo?.page_description,
+      district.seo?.meta_description,
+      `Property prices, connectivity and growth across ${district.name}.`,
+    ),
+    majorCities: uniqueItems(district.overview?.major_cities),
+    priceTrend: asPriceTrend(district.investmentAngle?.price_trend),
+  };
+}
+
+/** Names, trimmed and de-duplicated case-insensitively, in the stored order. */
+function uniqueItems(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
   const seen = new Set<string>();
-  return asArray(value)
+  return value
+    .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
-    .filter(Boolean)
     .filter((item) => {
-      const key = item.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
+      if (!item || seen.has(item.toLowerCase())) return false;
+      seen.add(item.toLowerCase());
       return true;
-    })
-    .slice(0, limit);
+    });
 }
 
 function asPriceTrend(value: unknown): PriceTrendPoint[] {
@@ -310,23 +374,24 @@ function asPriceTrend(value: unknown): PriceTrendPoint[] {
     .sort((a, b) => a.year - b.year);
 }
 
-function growthSince(points: PriceTrendPoint[], yearsBack: number) {
-  if (points.length < 2 || yearsBack <= 0) return null;
-  const latest = points.at(-1);
-  const previous = points[Math.max(0, points.length - 1 - yearsBack)];
-  if (!latest || !previous || previous.averagePricePerSqft <= 0 || latest === previous) return null;
-  return ((latest.averagePricePerSqft - previous.averagePricePerSqft) / previous.averagePricePerSqft) * 100;
-}
+/**
+ * Growth from `steps` entries back to the latest one, as a percentage.
+ *
+ * Counted in entries rather than in years because the series is what we have:
+ * a gap in it would make "five years back" and "five entries back" different
+ * questions, and the one we can answer honestly is the second. Every district
+ * currently carries an unbroken 2017–2026, so today they are the same question.
+ */
+function growthOverSteps(points: PriceTrendPoint[], steps: number) {
+  if (points.length < 2 || steps <= 0 || steps >= points.length) return null;
 
-function scaleGrowth(value: number | null, scale: number) {
-  if (value === null || !Number.isFinite(value)) return null;
-  return value * scale;
-}
+  const latest = points[points.length - 1];
+  const previous = points[points.length - 1 - steps];
+  if (previous.averagePricePerSqft <= 0) return null;
 
-function growthLabel(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return "N/A";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(1)}%`;
+  return (
+    ((latest.averagePricePerSqft - previous.averagePricePerSqft) / previous.averagePricePerSqft) * 100
+  );
 }
 
 function firstText(...values: unknown[]) {
