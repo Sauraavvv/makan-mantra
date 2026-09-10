@@ -363,11 +363,11 @@ export function HeroSearch({
     suggestOpen && suggestions.length > 0 && query.trim().length >= SUGGEST_MIN_CHARS;
 
   /** Takes the reader to the page for this place under the filters on screen. */
-  function selectSuggestion(suggestion: Suggestion) {
-    saveSearch(suggestion.name);
+  function selectSuggestion(item: Suggestion) {
+    saveSearch(item.name);
     setSuggestOpen(false);
-    setQuery(suggestion.name);
-    router.push(`/${suggestion.slug}`);
+    setQuery(item.name);
+    router.push(`/${item.slug}`);
   }
 
   function handleSearchKeys(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -483,7 +483,11 @@ export function HeroSearch({
                     <div
                       role="listbox"
                       aria-label="Listing type"
-                      className="absolute left-0 top-[calc(100%+0.4rem)] z-30 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white p-1 shadow-[0_14px_28px_rgba(2,12,25,0.22)]"
+                      /* The header's location panel, in miniature: no top
+                         border and square top corners, so it reads as the bar
+                         continuing downwards rather than as a second card
+                         floating under it. Its own width, not the field's. */
+                      className="absolute left-0 top-full z-30 w-32 overflow-hidden rounded-b-xl border border-t-0 border-border bg-popover p-1 text-foreground shadow-2xl"
                     >
                       {(["buy", "rent"] as const).map((type) => {
                         const selected = listingType === type;
@@ -502,7 +506,7 @@ export function HeroSearch({
                             className={`flex h-9 w-full items-center rounded-md px-3 text-left text-sm font-semibold transition-colors ${
                               selected
                                 ? "bg-[#0A2036] text-white"
-                                : "text-[#0A2036] hover:bg-slate-100"
+                                : "text-foreground hover:bg-accent"
                             }`}
                           >
                             {label}
@@ -552,43 +556,46 @@ export function HeroSearch({
                    it lines up under what was typed. Above the listing menu's
                    own z-30 — both can be open at once, and this one is the one
                    being read. */
+                /* Its own width rather than the full stretch of the field —
+                   a list of place names does not need the whole bar — and the
+                   header's panel styling: flat top corners meeting the bar's
+                   own bottom edge, so it reads as the bar continuing down. */
                 <div
                   id="hero-search-suggestions"
                   role="listbox"
                   aria-label="Matching locations"
-                  className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-40 max-h-[19rem] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white py-1 shadow-[0_18px_40px_rgba(2,12,25,0.28)]"
+                  className="absolute left-0 top-full z-40 max-h-[19rem] w-[min(calc(100vw-3rem),24rem)] overflow-y-auto overscroll-contain rounded-b-xl border border-t-0 border-border bg-popover py-1 text-foreground shadow-2xl"
                 >
-                  {suggestions.map((suggestion, index) => (
+                  {suggestions.map((item, index) => (
                     <button
-                      key={suggestion.slug}
+                      key={item.slug}
                       id={`hero-search-suggestion-${index}`}
                       type="button"
                       role="option"
                       aria-selected={index === highlight}
                       onPointerDown={(event) => event.preventDefault()}
-                      onClick={() => selectSuggestion(suggestion)}
+                      onClick={() => selectSuggestion(item)}
                       onMouseEnter={() => setHighlight(index)}
                       className={`flex w-full items-center gap-3 px-3 py-2 text-left ${
-                        index === highlight ? "bg-slate-100" : ""
+                        index === highlight ? "bg-accent/60" : ""
                       }`}
                     >
                       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-saffron/10 text-saffron">
                         <MapPin className="size-4" strokeWidth={2} />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-[#0A2036]">
-                          {suggestion.name}
+                        <span className="block truncate text-sm font-semibold text-foreground">
+                          {item.name}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground">
-                          {suggestion.context}
+                          {item.context}
                         </span>
                       </span>
-                      {/* Which kind of page this is. Three rows can carry the
-                          same name — a city, the district around it and the
-                          state above that — and the label is what separates
-                          them. */}
-                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                        {suggestion.category}
+                      {/* Three rows can carry the same name — a city, the
+                          district around it and the state above that — so the
+                          label is what separates them. */}
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        {item.category}
                       </span>
                     </button>
                   ))}

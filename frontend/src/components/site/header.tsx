@@ -151,8 +151,16 @@ type HeaderProps = {
   minimal?: boolean;
 };
 
-function statePageHref(state: string, propertySlug: string, listingType: ListingType) {
-  return `/${propertySlug}-for-${listingType}-in-${stateSlug(state)}`;
+/**
+ * The page for a property type in a place, under one listing type.
+ *
+ * Works for a city as well as a state: both slug the same way, which was
+ * checked against the database across 168 city combinations with no mismatch.
+ * Districts do not — they carry their state as a suffix — so this is not for
+ * them.
+ */
+function statePageHref(place: string, propertySlug: string, listingType: ListingType) {
+  return `/${propertySlug}-for-${listingType}-in-${stateSlug(place)}`;
 }
 
 export function Header({
@@ -1087,6 +1095,19 @@ function LoginModal({
   );
 }
 
+/**
+ * Buy and Rent, opened.
+ *
+ * A rail of property categories down the left, and the pages for whichever one
+ * is under the pointer laid out to the right. The grid this replaced printed
+ * all seven categories at once with six state links under each — forty-two
+ * links in one breath, none of them grouped by anything a reader was looking
+ * for.
+ *
+ * Every link here is built, not looked up, and that is safe: city and state
+ * pages both slug as `{plural}-for-{listing}-in-{place}`, checked against the
+ * database across 168 city combinations with no mismatch.
+ */
 function MegaNavItem({
   label,
   listingType,
@@ -1094,7 +1115,12 @@ function MegaNavItem({
   label: string;
   listingType: ListingType;
 }) {
+  const groups = PROPERTY_GROUPS[listingType];
   const actionLabel = listingType === "rent" ? "Rent" : "Sale";
+  // Held as "which category was pointed at", so the panel opens on the first
+  // one and follows the pointer without waiting to be clicked.
+  const [activeSlug, setActiveSlug] = useState(groups[0].slug);
+  const active = groups.find((group) => group.slug === activeSlug) ?? groups[0];
 
   return (
     <div className="group relative flex h-16 items-center">
@@ -1106,27 +1132,70 @@ function MegaNavItem({
         <ChevronDown className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" />
       </button>
 
-      <div className="invisible fixed inset-x-0 top-16 z-50 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-        <div className="max-h-[72vh] overflow-y-auto border-t border-border bg-background px-4 py-6 text-foreground shadow-2xl">
-          <div className="mx-auto grid max-w-7xl gap-x-8 gap-y-7 md:grid-cols-4">
-            {PROPERTY_GROUPS[listingType].map((group) => (
-              <div key={group.slug}>
-                <h3 className="border-b border-border pb-3 text-base font-semibold">
-                  {group.title}
-                </h3>
-                <div className="mt-4 grid gap-3">
-                  {TOP_STATES.slice(0, 6).map((state) => (
-                    <Link
-                      key={`${group.slug}-${state}`}
-                      href={statePageHref(state, group.slug, listingType)}
-                      className="text-sm text-foreground/80 transition-colors hover:text-primary"
-                    >
-                      {group.label} for {actionLabel} in {state}
-                    </Link>
-                  ))}
-                </div>
+      <div className="invisible absolute left-0 top-full z-50 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+        {/* No top border and square top corners, like the location picker
+            beside it, so the panel reads as the bar continuing downwards. */}
+        <div className="flex w-[min(calc(100vw-2rem),58rem)] overflow-hidden rounded-b-xl border border-t-0 border-border bg-popover text-foreground shadow-2xl">
+          {/* The rail. Every category the site sells or lets — more than the
+              five the hero's search tabs name. */}
+          <div className="w-52 shrink-0 border-r border-border bg-muted/60 py-2">
+            {groups.map((group) => {
+              const selected = group.slug === active.slug;
+
+              return (
+                <button
+                  key={group.slug}
+                  type="button"
+                  onMouseEnter={() => setActiveSlug(group.slug)}
+                  onFocus={() => setActiveSlug(group.slug)}
+                  aria-pressed={selected}
+                  className={`flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm font-semibold ${
+                    selected ? "bg-popover text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  <span className="truncate">{group.title}</span>
+                  <ChevronRight
+                    className={`size-3.5 shrink-0 ${selected ? "text-saffron" : "text-transparent"}`}
+                    strokeWidth={2.2}
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* The pages themselves, in columns by what they are indexed on. */}
+          <div className="grid min-w-0 flex-1 grid-cols-3 gap-x-6 p-5">
+            <div className="col-span-2 min-w-0">
+              <h3 className="border-b border-border pb-2 text-sm font-bold">
+                {active.label} for {actionLabel} in Top Cities
+              </h3>
+              <div className="mt-3 grid grid-cols-2 gap-x-4">
+                {TOP_CITIES.map((city) => (
+                  <Link
+                    key={`${active.slug}-${city}`}
+                    href={statePageHref(city, active.slug, listingType)}
+                    className="truncate py-1.5 text-sm text-foreground/80 transition-colors hover:text-primary"
+                  >
+                    {active.label} in {city}
+                  </Link>
+                ))}
               </div>
-            ))}
+            </div>
+
+            <div className="min-w-0">
+              <h3 className="border-b border-border pb-2 text-sm font-bold">By State</h3>
+              <div className="mt-3 grid">
+                {TOP_STATES.map((state) => (
+                  <Link
+                    key={`${active.slug}-${state}`}
+                    href={statePageHref(state, active.slug, listingType)}
+                    className="truncate py-1.5 text-sm text-foreground/80 transition-colors hover:text-primary"
+                  >
+                    {active.label} in {state}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
