@@ -81,7 +81,14 @@ function preferenceRank(row: Row) {
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const query = (params.get("q") ?? "").trim();
-  const propertyType = params.get("type") ?? "";
+  // Comma-separated, because property type is many-choice in the bar: a
+  // visitor can ask for flats and builder floors at once. Unknown values are
+  // dropped rather than refused — a hand-typed query cannot reach for
+  // anything the site does not store.
+  const propertyTypes = (params.get("type") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => PROPERTY_TYPES.has(value));
   const listingType = params.get("listing") ?? "";
 
   if (query.length < MIN_QUERY_LENGTH) {
@@ -92,14 +99,20 @@ export async function GET(request: NextRequest) {
   // over every page for the place — which is what the bar's filters mean when
   // they are cleared, and what they used to be unable to say: an absent type
   // returned nothing at all rather than everything.
-  const narrowed: Record<string, string> = {};
-  if (PROPERTY_TYPES.has(propertyType)) narrowed.property_type = propertyType;
+  const narrowed: Record<string, unknown> = {};
+  if (propertyTypes.length === 1) narrowed.property_type = propertyTypes[0];
+  else if (propertyTypes.length > 1)
+    narrowed.property_type = { $in: propertyTypes };
   if (LISTING_TYPES.has(listingType)) narrowed.listing_type = listingType;
 
-  // A place has one row per type-and-listing pair, so an unnarrowed search
-  // pulls up to sixteen rows for each of them. Enough room that the cut below
-  // still has eight distinct places to make.
-  const rowLimit = MAX_RESULTS * 6 * (16 / (2 ** Object.keys(narrowed).length * 2));
+  // A place has one row per type-and-listing pair — eight types by two
+  // listings. Whatever is not pinned down multiplies the rows a place brings
+  // back, so the budget is sized by what is left open rather than by how many
+  // clauses were written: asking for three types is looser than asking for
+  // one. Enough room that the cut below still has eight distinct places.
+  const typeSpread = propertyTypes.length || PROPERTY_TYPES.size;
+  const listingSpread = LISTING_TYPES.has(listingType) ? 1 : LISTING_TYPES.size;
+  const rowLimit = MAX_RESULTS * 6 * typeSpread * listingSpread;
 
   try {
     const collection = await getLocationPagesCollection();

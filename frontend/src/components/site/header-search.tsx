@@ -93,7 +93,8 @@ type Suggestion = {
 
 /** Everything the panel edits, held apart from what the search is running on. */
 type Filters = {
-  property: string | null;
+  /** Many-choice: a visitor can ask for flats and builder floors at once. */
+  property: string[];
   listing: string | null;
   extras: Record<string, string[]>;
 };
@@ -104,10 +105,10 @@ type PanelPlacement = {
   width: number;
 };
 
-const NO_FILTERS: Filters = { property: null, listing: null, extras: {} };
+const NO_FILTERS: Filters = { property: [], listing: null, extras: {} };
 
 const OPENING_FILTERS: Filters = {
-  property: PROPERTY_TYPES[0].type,
+  property: [PROPERTY_TYPES[0].type],
   listing: LISTING_TYPES[0].type,
   // These are the three project stages shown first in the expanded navbar
   // search. They are broad enough to be useful as the opening state, while
@@ -117,7 +118,7 @@ const OPENING_FILTERS: Filters = {
 
 function countFilters(filters: Filters) {
   return (
-    (filters.property ? 1 : 0) +
+    filters.property.length +
     (filters.listing ? 1 : 0) +
     Object.values(filters.extras).reduce(
       (total, chosen) => total + chosen.length,
@@ -136,8 +137,8 @@ function countFilters(filters: Filters) {
  *
  * The filter button opens a sheet over the bar holding the field itself, the
  * filters, and the options of whichever one is open, all in the one surface.
- * Nothing in it takes effect until Search: the panel edits a draft, and Cancel
- * throws the draft away. A filter row that applied as you touched it would be
+ * Nothing in it takes effect until Search: the panel edits a draft, and any
+ * other way out — a click outside, Escape — throws the draft away. A filter row that applied as you touched it would be
  * re-running the search under every half-made combination on the way to the
  * one that was wanted.
  */
@@ -181,6 +182,10 @@ export function HeaderSearch({
   const panelRef = useRef<HTMLDivElement>(null);
 
   const { property, listing } = filters;
+  // The effect below compares its dependencies by identity, and `property` is
+  // a fresh array on every render. Joined, it changes only when the choice
+  // does — which is also the form the endpoint wants it in.
+  const propertyParam = property.join(",");
 
   // The type-ahead.
   useEffect(() => {
@@ -195,7 +200,7 @@ export function HeaderSearch({
       void (async () => {
         try {
           const params = new URLSearchParams({ q: term });
-          if (property) params.set("type", property);
+          if (propertyParam) params.set("type", propertyParam);
           if (listing) params.set("listing", listing);
 
           const response = await fetch(
@@ -223,7 +228,7 @@ export function HeaderSearch({
     };
     // On the filters as well as the text: they are part of the question, and
     // the list has to say where these letters lead under the pair now set.
-  }, [listing, property, query]);
+  }, [listing, propertyParam, query]);
 
   useEffect(() => {
     if (!open && !filtersOpen) return;
@@ -237,7 +242,7 @@ export function HeaderSearch({
         return;
 
       setOpen(false);
-      // Away without Search is away without applying — same as Cancel.
+      // Away without Search is away without applying: the draft is dropped.
       setFiltersOpen(false);
       setOpenChip(null);
     };
@@ -295,10 +300,11 @@ export function HeaderSearch({
     // Seeded here rather than watched in an effect: the panel is only ever
     // opened by a click, so the click is where the draft comes from.
     setDraft(filters);
-    // The project-stage answers belong immediately under the chips. This gives
-    // the panel its useful opening state rather than making the first click a
-    // second, otherwise empty, interaction.
-    setOpenChip("availability");
+    // Property type is what the suggest endpoint is actually narrowed by, so
+    // its answers are what the panel opens on — the useful opening state,
+    // rather than making the first click a second, otherwise empty,
+    // interaction.
+    setOpenChip("property");
     updatePanelPlacement();
     setOpen(false);
     setFiltersOpen(true);
@@ -342,8 +348,17 @@ export function HeaderSearch({
     setOpenChip(null);
   }
 
-  function setDraftValue(key: "property" | "listing", value: string | null) {
-    setDraft((current) => ({ ...current, [key]: value }));
+  function setDraftListing(value: string | null) {
+    setDraft((current) => ({ ...current, listing: value }));
+  }
+
+  function toggleDraftProperty(type: string) {
+    setDraft((current) => ({
+      ...current,
+      property: current.property.includes(type)
+        ? current.property.filter((entry) => entry !== type)
+        : [...current.property, type],
+    }));
   }
 
   function toggleDraftExtra(key: string, option: string) {
@@ -368,9 +383,12 @@ export function HeaderSearch({
       void track({
         label,
         tab: listing === "rent" ? "Rent" : "Buy",
+        // The first of what was asked for. With several chosen there is no one
+        // category the search belongs to, and the first is the one the reader
+        // picked first.
         category:
-          PROPERTY_TYPES.find((entry) => entry.type === property)?.category ??
-          "Property",
+          PROPERTY_TYPES.find((entry) => entry.type === property[0])
+            ?.category ?? "Property",
         query: label,
       });
     }
@@ -409,6 +427,76 @@ export function HeaderSearch({
   }
 
   /** The field, wherever it is standing — in the bar, or inside the panel. */
+  /**
+   * The matches, drawn one of two ways.
+   *
+   * Hanging off the compact navbar field it is a dropdown in its own right:
+   * bordered, shadowed, floating over the page. Inside the panel it is the
+   * panel's own second half — no border, no shadow, the full width of the
+   * sheet — because the sheet is already the surface it would have been
+   * floating on.
+   */
+  function suggestionList(inPanel: boolean) {
+    return (
+      <div
+        id="header-search-suggestions"
+        role="listbox"
+        aria-label="Matching locations"
+        className={
+          inPanel
+            ? "max-h-[22rem] overflow-y-auto overscroll-contain py-2"
+            : "absolute left-0 top-full z-50 mt-1 max-h-[19rem] w-full min-w-[18rem] overflow-y-auto overscroll-contain rounded-xl border py-1 shadow-2xl"
+        }
+        style={
+          inPanel
+            ? undefined
+            : { backgroundColor: PANEL_RAISED_BG, borderColor: PANEL_LINE }
+        }
+      >
+        {suggestions.map((item, index) => (
+          <button
+            key={item.slug}
+            id={`header-search-suggestion-${index}`}
+            type="button"
+            role="option"
+            aria-selected={index === highlight}
+            /* The list closes on `pointerdown` anywhere outside it, and a
+               click is a pointerdown first — without this the row would be
+               gone before the click landed on it. */
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => selectSuggestion(item)}
+            onMouseEnter={() => setHighlight(index)}
+            className={`flex w-full items-center gap-3 text-left ${
+              inPanel ? "px-5 py-2.5 sm:px-8" : "px-3 py-2"
+            } ${index === highlight ? "bg-[#EDF4FF]" : ""}`}
+            style={{ color: PANEL_INK }}
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-saffron/10 text-saffron">
+              <MapPin className="size-4" strokeWidth={2} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">
+                {item.name}
+              </span>
+              <span className="block truncate text-xs opacity-60">
+                {item.context}
+              </span>
+            </span>
+            {/* Three rows can carry the same name — a city, the district
+                around it and the state above that — so the label is what
+                separates them. */}
+            <span
+              className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide opacity-60"
+              style={{ backgroundColor: PANEL_BG }}
+            >
+              {item.category}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   function field(inPanel: boolean) {
     return (
       <form className="relative min-w-0 flex-1" onSubmit={submit}>
@@ -447,61 +535,7 @@ export function HeaderSearch({
           }
         />
 
-        {showSuggestions && (
-          <div
-            id="header-search-suggestions"
-            role="listbox"
-            aria-label="Matching locations"
-            className={`absolute left-0 top-full z-50 mt-1 max-h-[19rem] min-w-[18rem] overflow-y-auto overscroll-contain rounded-xl border py-1 shadow-2xl ${
-              inPanel ? "w-[min(30rem,calc(100vw-3rem))]" : "w-full"
-            }`}
-            style={{
-              backgroundColor: PANEL_RAISED_BG,
-              borderColor: PANEL_LINE,
-            }}
-          >
-            {suggestions.map((item, index) => (
-              <button
-                key={item.slug}
-                id={`header-search-suggestion-${index}`}
-                type="button"
-                role="option"
-                aria-selected={index === highlight}
-                /* The list closes on `pointerdown` anywhere outside it, and a
-                   click is a pointerdown first — without this the row would be
-                   gone before the click landed on it. */
-                onPointerDown={(event) => event.preventDefault()}
-                onClick={() => selectSuggestion(item)}
-                onMouseEnter={() => setHighlight(index)}
-                className={`flex w-full items-center gap-3 px-3 py-2 text-left ${
-                  index === highlight ? "bg-[#EDF4FF]" : ""
-                }`}
-                style={{ color: PANEL_INK }}
-              >
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-saffron/10 text-saffron">
-                  <MapPin className="size-4" strokeWidth={2} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">
-                    {item.name}
-                  </span>
-                  <span className="block truncate text-xs opacity-60">
-                    {item.context}
-                  </span>
-                </span>
-                {/* Three rows can carry the same name — a city, the district
-                    around it and the state above that — so the label is what
-                    separates them. */}
-                <span
-                  className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide opacity-60"
-                  style={{ backgroundColor: PANEL_BG }}
-                >
-                  {item.category}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+        {!inPanel && showSuggestions && suggestionList(false)}
       </form>
     );
   }
@@ -550,175 +584,218 @@ export function HeaderSearch({
                   reference treatment: intent, place, a plain-language prompt,
                   then the optional voice affordance. */}
               <div className="flex min-h-[3.25rem] items-center gap-2 border-b border-slate-200 px-3 sm:min-h-[3.5rem] sm:gap-3 sm:px-6">
-                {/* Both sides showing, not one behind a chevron.
+                {/* One capsule split in two, not two buttons side by side.
 
-                    Buy and Rent is the one filter here with exactly two
+                    Buy and Rent is the only filter here with exactly two
                     answers, and a menu to choose between two is a click spent
-                    finding out what the other one was. In one capsule the
-                    choice is legible without opening anything.
+                    finding out what the other one was.
 
-                    The chosen side expands and the other shrinks — a real
-                    difference in size, not a shade apart. That is what carries
-                    the state: the capsule says which way it is set from across
-                    the bar, before any colour registers, and the growing is
-                    what makes the switch feel like a switch. */}
-                <div className="flex shrink-0 items-center self-stretch border-r border-slate-200 pr-2 sm:pr-4">
-                  <div className="flex items-center overflow-hidden rounded-full border border-slate-200">
-                    {LISTING_TYPES.map((entry, index) => {
-                      const selected = draft.listing === entry.type;
+                    The chosen half grows in both directions — wider and
+                    taller — so it stands out past the other's line and the
+                    capsule comes out stepped rather than flat. Navy for the
+                    side that is on and saffron for the side that is waiting:
+                    the site's own two colours, and the half you are not on is
+                    the one worth reaching for. Only the outer
+                    edges are rounded: the two meet square, which is what keeps
+                    them one shape instead of two lozenges touching. Which edge
+                    is round follows position, not selection, so the capsule
+                    keeps its ends while the step moves across it. */}
+                <div className="flex shrink-0 items-center">
+                  {LISTING_TYPES.map((entry, index) => {
+                    const selected = draft.listing === entry.type;
 
-                      return (
-                        <button
-                          key={entry.type}
-                          type="button"
-                          onClick={() => setDraftValue("listing", entry.type)}
-                          aria-pressed={selected}
-                          className={`font-bold transition-all ${
-                            index > 0 ? "border-l border-slate-200" : ""
-                          } ${
-                            selected
-                              ? "bg-[#0A2036] px-5 py-2 text-[15px] text-white"
-                              : "px-2.5 py-1 text-[10px] text-muted-foreground hover:text-[#0A2036]"
-                          }`}
-                        >
-                          {entry.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                    return (
+                      <button
+                        key={entry.type}
+                        type="button"
+                        onClick={() => setDraftListing(entry.type)}
+                        aria-pressed={selected}
+                        className={`flex items-center justify-center font-bold transition-all duration-200 ${
+                          index === 0 ? "rounded-l-full" : "rounded-r-full"
+                        } ${
+                          selected
+                            ? "h-8 bg-[#0A2036] px-3.5 text-[13px] text-white"
+                            : "h-6 bg-saffron px-2.5 text-[10px] text-saffron-foreground hover:bg-saffron/90"
+                        }`}
+                      >
+                        {entry.label}
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {/* A rule of its own rather than a border on the capsule's
+                    box, so it can be shorter than the row: run the full
+                    height it meets the row's own top and bottom edges and
+                    reads as a wall between two panes. Held short and centred
+                    it is what it means — a pause between two controls. */}
+                <span
+                  aria-hidden
+                  className="h-7 w-px shrink-0 bg-slate-200 sm:mx-1"
+                />
 
                 {field(true)}
-              </div>
 
-              <div className="px-5 pb-5 pt-5 sm:px-8">
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="font-medium text-muted-foreground">
-                    Filters
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDraft(NO_FILTERS);
-                      setOpenChip(null);
-                    }}
-                    disabled={countFilters(draft) === 0}
-                    className="font-bold text-saffron transition-opacity hover:opacity-75 disabled:pointer-events-none disabled:opacity-40"
-                  >
-                    Clear all filters
-                  </button>
-                </div>
+                <span
+                  aria-hidden
+                  className="h-7 w-px shrink-0 bg-slate-200 sm:mx-1"
+                />
 
-                <div className="mt-5 flex flex-wrap gap-2.5">
-                  <FilterChip
-                    label="Property Types"
-                    count={(draft.extras.availability ?? []).length}
-                    open={openChip === "availability"}
-                    onToggle={() =>
-                      setOpenChip((was) =>
-                        was === "availability" ? null : "availability",
-                      )
-                    }
-                  />
-                  {EXTRA_FILTERS.map((filter) => (
-                    <FilterChip
-                      key={filter.key}
-                      label={filter.label}
-                      count={(draft.extras[filter.key] ?? []).length}
-                      open={openChip === filter.key}
-                      onToggle={() =>
-                        setOpenChip((was) =>
-                          was === filter.key ? null : filter.key,
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-
-                {/* Answers open beneath the chip row rather than covering the
-                    controls beside them, so changing one filter never blocks
-                    the next. */}
-                {openChip && (
-                  <div className="mt-5 flex flex-wrap gap-x-10 gap-y-3 rounded-lg border border-saffron/15 bg-saffron/[0.05] px-4 py-3.5">
-                    {openChip === "availability" &&
-                      PROJECT_STAGES.map((option) => (
-                        <FilterOption
-                          key={option}
-                          label={option}
-                          checked={(draft.extras.availability ?? []).includes(
-                            option,
-                          )}
-                          onToggle={() =>
-                            toggleDraftExtra("availability", option)
-                          }
-                        />
-                      ))}
-
-                    {openChip === "property" &&
-                      PROPERTY_TYPES.map((entry) => (
-                        <FilterOption
-                          key={entry.type}
-                          label={entry.label}
-                          checked={draft.property === entry.type}
-                          /* Picking the one already on turns it off, so a
-                             single-choice filter can be cleared from its own
-                             list and not only from Clear all. */
-                          onToggle={() =>
-                            setDraftValue(
-                              "property",
-                              draft.property === entry.type ? null : entry.type,
-                            )
-                          }
-                        />
-                      ))}
-
-                    {EXTRA_FILTERS.filter(
-                      (filter) => filter.key === openChip,
-                    ).map((filter) =>
-                      filter.options.map((option) => (
-                        <FilterOption
-                          key={option}
-                          label={option}
-                          checked={(draft.extras[filter.key] ?? []).includes(
-                            option,
-                          )}
-                          onToggle={() => toggleDraftExtra(filter.key, option)}
-                        />
-                      )),
-                    )}
-                  </div>
-                )}
-
-                <p className="mt-4 text-xs font-medium text-[#0A2036]">
-                  Looking for commercial project?{" "}
-                  <button
-                    type="button"
-                    className="font-bold text-saffron underline-offset-2 hover:underline"
-                  >
-                    Click here
-                  </button>
-                </p>
-              </div>
-
-              <div className="flex items-center gap-7 border-t border-slate-200 px-5 py-5 sm:px-6">
+                {/* In the bar rather than down in the footer: it is the end of
+                    the sentence the row is making — this, here, under these —
+                    and a reader who has just finished typing should not have
+                    to travel past the whole filter row to act on it. */}
                 <button
                   type="button"
                   onClick={applyDraft}
-                  className="h-10 rounded-lg bg-[#0A2036] px-6 text-sm font-bold text-white shadow-[0_3px_7px_rgba(2,12,25,0.22)] transition-colors hover:bg-[#12345d]"
+                  className="h-9 w-28 shrink-0 rounded-lg bg-[#0A2036] text-xs font-bold text-white shadow-[0_3px_7px_rgba(2,12,25,0.22)] transition-colors hover:bg-[#12345d]"
                 >
                   Search
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFiltersOpen(false);
-                    setOpenChip(null);
-                  }}
-                  className="text-sm font-bold text-saffron transition-opacity hover:opacity-75"
-                >
-                  Cancel
-                </button>
               </div>
+
+              {/* The matches take the panel over while they are showing.
+                  Filters answer "narrow this"; a list of places answers "which
+                  place" — and the reader typing a name is in the middle of the
+                  second question. Shown together the list floated over the
+                  chips and half covered them, which is worse than not showing
+                  them at all. They come back the moment the list goes. */}
+              {showSuggestions ? (
+                suggestionList(true)
+              ) : (
+                <div className="px-5 pb-5 pt-5 sm:px-8">
+                  {/* The filters lead the panel's body. The "Filters" label
+                    that used to head them is gone: it was naming a row of
+                    filters for a reader already looking at one. */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {/* The one filter the search is actually narrowed by, so it
+                      leads the row. It was missing: the chip standing here
+                      said "Property Types" and opened the project stages, and
+                      the real list had no way in at all. */}
+                    <FilterChip
+                      label="Property Type"
+                      count={draft.property.length}
+                      open={openChip === "property"}
+                      onToggle={() =>
+                        setOpenChip((was) =>
+                          was === "property" ? null : "property",
+                        )
+                      }
+                    />
+                    <FilterChip
+                      label="Availability"
+                      count={(draft.extras.availability ?? []).length}
+                      open={openChip === "availability"}
+                      onToggle={() =>
+                        setOpenChip((was) =>
+                          was === "availability" ? null : "availability",
+                        )
+                      }
+                    />
+                    {EXTRA_FILTERS.map((filter) => (
+                      <FilterChip
+                        key={filter.key}
+                        label={filter.label}
+                        count={(draft.extras[filter.key] ?? []).length}
+                        open={openChip === filter.key}
+                        onToggle={() =>
+                          setOpenChip((was) =>
+                            was === filter.key ? null : filter.key,
+                          )
+                        }
+                      />
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraft(NO_FILTERS);
+                        setOpenChip(null);
+                      }}
+                      disabled={countFilters(draft) === 0}
+                      /* Centred under the Search button, not merely ranged against
+                       its edge.
+
+                       Both are given the same `w-28` and the same right edge,
+                       so their centres fall on one line without either width
+                       having to be measured: `-mr-2` undoes the 8px the
+                       panel's body is inset past the search row above it —
+                       `px-5 sm:px-8` against `px-3 sm:px-6`. */
+                      className="-mr-2 ml-auto w-28 text-center text-sm font-bold text-saffron transition-opacity hover:opacity-75 disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      Clear filter
+                    </button>
+                  </div>
+
+                  {/* Answers open beneath the chip row rather than covering the
+                    controls beside them, so changing one filter never blocks
+                    the next.
+
+                    No box around them: a white card on a white panel was a
+                    border drawing a boundary with nothing on either side of
+                    it. The gap above and the chip left open are what say
+                    which filter these belong to. */}
+                  {openChip && (
+                    <div
+                      className={`mt-9 gap-y-3 ${
+                        openChip === "property"
+                          ? /* `max-content` columns, not four equal quarters:
+                             the panel is as wide as the navbar and quarters
+                             of it left the options strung out across the
+                             whole thing. Sized to their own labels they pack
+                             to the left and still line up in a grid. */
+                            "grid w-fit grid-cols-[repeat(4,max-content)] gap-x-9"
+                          : "flex flex-wrap gap-x-10"
+                      }`}
+                    >
+                      {openChip === "availability" &&
+                        PROJECT_STAGES.map((option) => (
+                          <FilterOption
+                            key={option}
+                            label={option}
+                            checked={(draft.extras.availability ?? []).includes(
+                              option,
+                            )}
+                            onToggle={() =>
+                              toggleDraftExtra("availability", option)
+                            }
+                          />
+                        ))}
+
+                      {/* Four across, so the eight fall into two even rows
+                        rather than one long line that runs the width of the
+                        panel and makes the reader track back to find the
+                        next. */}
+                      {openChip === "property" &&
+                        PROPERTY_TYPES.map((entry) => (
+                          <FilterOption
+                            key={entry.type}
+                            label={entry.label}
+                            checked={draft.property.includes(entry.type)}
+                            onToggle={() => toggleDraftProperty(entry.type)}
+                          />
+                        ))}
+
+                      {EXTRA_FILTERS.filter(
+                        (filter) => filter.key === openChip,
+                      ).map((filter) =>
+                        filter.options.map((option) => (
+                          <FilterOption
+                            key={option}
+                            label={option}
+                            checked={(draft.extras[filter.key] ?? []).includes(
+                              option,
+                            )}
+                            onToggle={() =>
+                              toggleDraftExtra(filter.key, option)
+                            }
+                          />
+                        )),
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>,
           document.body,
@@ -794,8 +871,11 @@ function FilterOption({
       className="flex items-center gap-2 text-xs font-medium text-muted-foreground"
     >
       <span
+        /* Navy, the panel's own "on" colour — the same one filling the
+           selected half of the Buy/Rent capsule and the Search button. Saffron
+           is what the panel uses to offer something, not to confirm it. */
         className={`grid size-5 shrink-0 place-items-center rounded-sm border transition-colors ${
-          checked ? "border-saffron bg-saffron" : ""
+          checked ? "border-[#0A2036] bg-[#0A2036]" : ""
         }`}
         style={checked ? undefined : { borderColor: PANEL_LINE }}
       >
