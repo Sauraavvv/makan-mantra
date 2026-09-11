@@ -21,6 +21,18 @@ const MIN_QUERY_LENGTH = 3;
 
 const MAX_RESULTS = 8;
 
+/**
+ * What a place's link points at when the search is not narrowed to a type.
+ *
+ * Every row is one place under one property type and one listing type, so with
+ * neither chosen a place has up to sixteen rows and the de-duplication below
+ * has to keep one of them. It keeps this pair — the same default the rest of
+ * the site links to — rather than whichever row the database happened to
+ * return first.
+ */
+const PREFERRED_PROPERTY_TYPE = "flat";
+const PREFERRED_LISTING_TYPE = "sale";
+
 /** What the site stores, so a hand-typed query cannot reach for anything else. */
 const PROPERTY_TYPES = new Set([
   "flat",
@@ -53,8 +65,18 @@ type Row = {
   slug?: string;
   location_name?: string;
   location_category?: string;
+  property_type?: string;
+  listing_type?: string;
   location?: { state?: string; district?: string };
 };
+
+/** Lower is kept. Ties are left alone, so the database's own order decides. */
+function preferenceRank(row: Row) {
+  return (
+    (row.property_type === PREFERRED_PROPERTY_TYPE ? 0 : 2) +
+    (row.listing_type === PREFERRED_LISTING_TYPE ? 0 : 1)
+  );
+}
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -62,13 +84,22 @@ export async function GET(request: NextRequest) {
   const propertyType = params.get("type") ?? "";
   const listingType = params.get("listing") ?? "";
 
-  if (
-    query.length < MIN_QUERY_LENGTH ||
-    !PROPERTY_TYPES.has(propertyType) ||
-    !LISTING_TYPES.has(listingType)
-  ) {
+  if (query.length < MIN_QUERY_LENGTH) {
     return NextResponse.json({ suggestions: [] });
   }
+
+  // Both narrow the search and neither is required. Left off, the search is
+  // over every page for the place — which is what the bar's filters mean when
+  // they are cleared, and what they used to be unable to say: an absent type
+  // returned nothing at all rather than everything.
+  const narrowed: Record<string, string> = {};
+  if (PROPERTY_TYPES.has(propertyType)) narrowed.property_type = propertyType;
+  if (LISTING_TYPES.has(listingType)) narrowed.listing_type = listingType;
+
+  // A place has one row per type-and-listing pair, so an unnarrowed search
+  // pulls up to sixteen rows for each of them. Enough room that the cut below
+  // still has eight distinct places to make.
+  const rowLimit = MAX_RESULTS * 6 * (16 / (2 ** Object.keys(narrowed).length * 2));
 
   try {
     const collection = await getLocationPagesCollection();
@@ -80,8 +111,7 @@ export async function GET(request: NextRequest) {
       .find(
         {
           is_active: true,
-          property_type: propertyType,
-          listing_type: listingType,
+          ...narrowed,
           location_name: { $regex: `^${escapeRegex(query)}`, $options: "i" },
         },
         {
@@ -90,6 +120,8 @@ export async function GET(request: NextRequest) {
             slug: 1,
             location_name: 1,
             location_category: 1,
+            property_type: 1,
+            listing_type: 1,
             "location.state": 1,
             "location.district": 1,
           },
@@ -97,11 +129,14 @@ export async function GET(request: NextRequest) {
       )
       // Room to sort and de-duplicate before the cut, rather than cutting first
       // and finding the eight rows were three places repeated.
-      .limit(MAX_RESULTS * 6)
+      .limit(Math.ceil(rowLimit))
       .toArray()) as unknown as Row[];
 
     const seen = new Set<string>();
     const suggestions = rows
+      // Ahead of the de-duplication, not after it: the first row for a place
+      // is the one that survives, so the preferred pair has to be first.
+      .sort((a, b) => preferenceRank(a) - preferenceRank(b))
       .map((row) => {
         const category = row.location_category ?? "";
         const name = row.location_name ?? "";

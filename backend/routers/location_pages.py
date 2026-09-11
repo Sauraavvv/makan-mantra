@@ -373,6 +373,102 @@ async def get_state_quick_links(limit: int = QUICK_LINK_LIMIT):
     return {"scope": "india", "day": day, "groups": groups}
 
 
+@router.get("/quick-links-nav")
+async def get_nav_quick_links(state: Optional[str] = None, limit: int = 8):
+    """
+    The three columns behind Buy and Rent in the header.
+
+    For each property type and listing type: a column of city pages, one of
+    district pages and one of state pages. The header used to build these
+    links from a hardcoded list of cities and states, which only held while
+    the slugs did — and they do not. The pool rotates at midnight IST, so the
+    names in the nav have to come from the same place the pages do.
+
+    Given the visitor's state, that state's pages come first and the rest of
+    the country fills in behind them. Ordering rather than filtering, because
+    the columns should stay full: a small state has no district pages at all
+    for some property types, and a state column filtered to one state is a
+    column of one. The same rule gives the visitor's own state page the top of
+    that column and its neighbours the rest.
+
+    Each column is seeded separately. Sharing one seed across the three would
+    shuffle a single pool and let a property type with few district pages take
+    its whole column from one state.
+    """
+    state_key = (state or "").strip().lower()
+    col = get_location_pages_collection()
+    query = {
+        "is_active": {"$ne": False},
+        "location_category": {"$in": ["city", "district", "state"]},
+    }
+    projection = {
+        "slug": 1,
+        "location_category": 1,
+        "location_name": 1,
+        "property_type": 1,
+        "listing_type": 1,
+        "seo.on_page_title": 1,
+        "location.state": 1,
+        "location.district": 1,
+        "location.city": 1,
+    }
+
+    docs = await col.find(query, projection).to_list(length=20000)
+
+    day = _ist_day()
+    buckets: dict = {}
+
+    for doc in docs:
+        property_type = doc.get("property_type")
+        listing_type = doc.get("listing_type")
+        category = doc.get("location_category")
+        if not property_type or not listing_type or not doc.get("slug"):
+            continue
+
+        link = _link(doc)
+        link["state"] = ((doc.get("location") or {}).get("state") or "").strip()
+        buckets.setdefault((property_type, listing_type), {}).setdefault(category, []).append(link)
+
+    groups = []
+    for (property_type, listing_type), by_category in buckets.items():
+        columns = {}
+        for category in ("city", "district", "state"):
+            pool = by_category.get(category, [])
+            seed = f"{state_key or 'india'}|{category}|{property_type}|{listing_type}|{day}"
+
+            if state_key:
+                own = [l for l in pool if l["state"].lower() == state_key]
+                rest = [l for l in pool if l["state"].lower() != state_key]
+                ordered = _shuffled(own, seed) + _shuffled(rest, seed)
+            else:
+                ordered = _shuffled(pool, seed)
+
+            columns[category] = [
+                {k: v for k, v in link.items() if k not in ("district", "state")}
+                for link in ordered[:limit]
+            ]
+
+        # A property type nothing has been built for yet drops out rather than
+        # opening a panel of three empty headings.
+        if not any(columns.values()):
+            continue
+
+        groups.append(
+            {
+                "key": f"{property_type}-{listing_type}",
+                "property_type": property_type,
+                "listing_type": listing_type,
+                "label": f"{PROPERTY_TYPE_LABELS.get(property_type, property_type.title())} "
+                f"{LISTING_TYPE_LABELS.get(listing_type, listing_type)}",
+                **columns,
+            }
+        )
+
+    groups.sort(key=lambda g: (g["listing_type"], g["property_type"]))
+
+    return {"scope": state or "india", "day": day, "groups": groups}
+
+
 PREFERRED_LINK_PROPERTY_TYPE = "flat"
 PREFERRED_LINK_LISTING_TYPE = "sale"
 

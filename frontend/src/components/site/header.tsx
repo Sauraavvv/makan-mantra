@@ -5,10 +5,10 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { ArrowRight, BedDouble, ChevronDown, ChevronRight, Home, Loader2, LocateFixed, LockKeyhole, Mail, MailCheck, MapPin, Menu, Phone, Plus, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { loginAction, registerModalAction } from "@/app/actions/auth";
 import { ResendSetPasswordForm } from "@/components/auth/resend-set-password-form";
+import { HeaderSearch } from "@/components/site/header-search";
 import { UserMenu } from "@/components/site/user-menu";
 import { ShortlistMenu } from "@/components/site/shortlist-menu";
 import { useSession } from "@/context/session-context";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useLocation } from "@/context/location-context";
 import { DotPattern } from "@/registry/magicui/dot-pattern";
@@ -116,24 +116,29 @@ function StateCard({
   );
 }
 
+/**
+ * `slug` is the plural the URLs are spelled with, `type` the singular the
+ * database stores. Both are needed: the mobile nav still builds its links from
+ * the slug, while the panel on desktop looks its links up by type.
+ */
 const PROPERTY_GROUPS = {
   sale: [
-    { title: "Flats", slug: "flats", label: "Flats" },
-    { title: "Villas", slug: "villas", label: "Villas" },
-    { title: "Builder Floors", slug: "builder-floors", label: "Builder Floors" },
-    { title: "Plots", slug: "plots", label: "Plots" },
-    { title: "Office Spaces", slug: "office-spaces", label: "Office Spaces" },
-    { title: "Shops", slug: "shops", label: "Shops" },
-    { title: "Showrooms", slug: "showrooms", label: "Showrooms" },
+    { title: "Flats", slug: "flats", label: "Flats", type: "flat" },
+    { title: "Villas", slug: "villas", label: "Villas", type: "villa" },
+    { title: "Builder Floors", slug: "builder-floors", label: "Builder Floors", type: "builder_floor" },
+    { title: "Plots", slug: "plots", label: "Plots", type: "plot" },
+    { title: "Office Spaces", slug: "office-spaces", label: "Office Spaces", type: "office_space" },
+    { title: "Shops", slug: "shops", label: "Shops", type: "shop" },
+    { title: "Showrooms", slug: "showrooms", label: "Showrooms", type: "showroom" },
   ],
   rent: [
-    { title: "Flats", slug: "flats", label: "Flats" },
-    { title: "Villas", slug: "villas", label: "Villas" },
-    { title: "Builder Floors", slug: "builder-floors", label: "Builder Floors" },
-    { title: "PGs", slug: "pgs", label: "PGs" },
-    { title: "Office Spaces", slug: "office-spaces", label: "Office Spaces" },
-    { title: "Shops", slug: "shops", label: "Shops" },
-    { title: "Showrooms", slug: "showrooms", label: "Showrooms" },
+    { title: "Flats", slug: "flats", label: "Flats", type: "flat" },
+    { title: "Villas", slug: "villas", label: "Villas", type: "villa" },
+    { title: "Builder Floors", slug: "builder-floors", label: "Builder Floors", type: "builder_floor" },
+    { title: "PGs", slug: "pgs", label: "PGs", type: "pg" },
+    { title: "Office Spaces", slug: "office-spaces", label: "Office Spaces", type: "office_space" },
+    { title: "Shops", slug: "shops", label: "Shops", type: "shop" },
+    { title: "Showrooms", slug: "showrooms", label: "Showrooms", type: "showroom" },
   ],
 };
 
@@ -175,6 +180,7 @@ export function Header({
   const pathname = usePathname();
   const isHome = pathname === "/";
   const [showSearch, setShowSearch] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [authInitial, setAuthInitial] = useState<{ mode: AuthMode; email?: string; devOtp?: string }>({ mode: "login" });
@@ -198,6 +204,7 @@ export function Header({
     ? [meta.label, ...STATES_ALPHABETICAL.filter((s) => s !== meta.label)]
     : STATES_ALPHABETICAL;
   const shouldShowSearch = showSearchBar || showSearch;
+  const searchTakesHeader = shouldShowSearch && searchExpanded;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -350,8 +357,13 @@ export function Header({
             page and be re-rendered further down with `ml-auto` everywhere else,
             so Buy and Rent jumped from the left of the bar to the right the
             moment you opened a state page. */}
-        {!minimal && (
-          <nav className="ml-3 hidden items-center gap-1 lg:flex">
+        {!minimal && !searchTakesHeader && (
+          /* `relative` here rather than on each item: both panels are `left-0`,
+             and hung off their own word they started at different places — Rent's
+             a word further right than Buy's. Anchored to the row instead, the
+             two open at the same edge and the panel stops moving as the pointer
+             crosses between them. */
+          <nav className="relative ml-3 hidden items-center gap-1 lg:flex">
             {NAV.map((item) => (
               <MegaNavItem
                 key={item.label}
@@ -363,7 +375,7 @@ export function Header({
         )}
 
         {/* Location dropdown — home page only */}
-        {isHome && (
+        {isHome && !searchTakesHeader && (
         <div
           ref={dropdownRef}
           className={`relative shrink-0 ${isHome ? "order-4 ml-auto" : ""}`}
@@ -604,22 +616,23 @@ export function Header({
         </div>
         )}
 
-        <form
-          className={`relative hidden transition-all duration-300 md:block ${
+        {/* `overflow-hidden` only while collapsed: expanded, the suggestion
+            list hangs below the bar and the clip that keeps the box from
+            showing at zero width would take the list with it. */}
+        <HeaderSearch
+          placeholder={searchPlaceholder}
+          active={shouldShowSearch}
+          onPanelOpenChange={setSearchExpanded}
+          className={`hidden transition-all duration-300 md:flex ${
             isHome ? "order-3 flex-1" : "flex-1"
           } ${
             shouldShowSearch
-              ? "max-w-md opacity-100"
+              ? searchTakesHeader
+                ? "max-w-none opacity-100"
+                : "max-w-xl lg:max-w-2xl opacity-100"
               : "pointer-events-none max-w-0 overflow-hidden opacity-0"
           }`}
-          onSubmit={(event) => event.preventDefault()}
-        >
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={searchPlaceholder}
-            className="h-9 border-white/15 bg-white text-foreground pl-9 focus-visible:ring-white/30"
-          />
-        </form>
+        />
 
         {/* What pushes the actions to the right edge. The home page does not
             need it: its location chip carries an `ml-auto` of its own, and the
@@ -1104,10 +1117,85 @@ function LoginModal({
  * links in one breath, none of them grouped by anything a reader was looking
  * for.
  *
- * Every link here is built, not looked up, and that is safe: city and state
- * pages both slug as `{plural}-for-{listing}-in-{place}`, checked against the
- * database across 168 city combinations with no mismatch.
+ * The links are read, not built. They used to be assembled from a hardcoded
+ * list of cities and states on the assumption that a page exists at
+ * `{plural}-for-{listing}-in-{place}` — but the published set is reseeded and
+ * reshuffled at midnight IST, so a nav that spells its own URLs is guessing at
+ * yesterday's answer. `/api/nav-links` returns the ones that exist today.
  */
+/**
+ * The slug, spelled out: `flats-for-sale-in-jind-haryana` reads as
+ * `Flats For Sale In Jind Haryana`.
+ *
+ * Every word is capitalised, small ones included. Sentence case would render
+ * these as names, and they are not names — they are the paths the rows go to,
+ * set down in something a reader can take in at a glance.
+ */
+function readableSlug(slug: string) {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+type NavLink = { slug: string; label: string; name: string };
+
+type NavLinkGroup = {
+  property_type: string;
+  listing_type: ListingType;
+  city: NavLink[];
+  district: NavLink[];
+  state: NavLink[];
+};
+
+/**
+ * `skeleton` is the width the loading rows stand at, in characters — roughly
+ * what a slug at that level runs to, since a district's repeats its state on
+ * the end and a city's does not.
+ */
+const NAV_COLUMNS = [
+  { key: "city", title: "By City", skeleton: 26 },
+  { key: "district", title: "By District", skeleton: 38 },
+  { key: "state", title: "By State", skeleton: 28 },
+] as const;
+
+/**
+ * One request per state, not one per nav item.
+ *
+ * Buy and Rent are separate components but want the same document — every
+ * property type and both listing types come back together — so the promise is
+ * held at module scope and the second caller joins the first one's fetch.
+ *
+ * Keyed by state rather than replaced, because the state is a thing the
+ * visitor changes back and forth in the picker beside this nav, and the answer
+ * for one they have already been shown is still the answer.
+ */
+const navLinks = new Map<string, Promise<NavLinkGroup[]>>();
+
+function loadNavLinks(state: string | null) {
+  // "India" is what the location context reports before a state has settled,
+  // and the backend reads a missing state the same way: nothing to put first,
+  // so the columns are drawn from the whole country.
+  const scope = state && state !== "India" ? state : "";
+  const cached = navLinks.get(scope);
+  if (cached) return cached;
+
+  const request = fetch(`/api/nav-links${scope ? `?state=${encodeURIComponent(scope)}` : ""}`)
+    .then((res) => (res.ok ? res.json() : { groups: [] }))
+    .then((data: { groups?: NavLinkGroup[] }) => data.groups ?? [])
+    .catch(() => {
+      // Dropped rather than kept: a held rejection would answer every later
+      // caller for the life of the page, and the next hover should be allowed
+      // to ask again.
+      navLinks.delete(scope);
+      return [] as NavLinkGroup[];
+    });
+
+  navLinks.set(scope, request);
+  return request;
+}
+
 function MegaNavItem({
   label,
   listingType,
@@ -1116,14 +1204,41 @@ function MegaNavItem({
   listingType: ListingType;
 }) {
   const groups = PROPERTY_GROUPS[listingType];
-  const actionLabel = listingType === "rent" ? "Rent" : "Sale";
   // Held as "which category was pointed at", so the panel opens on the first
   // one and follows the pointer without waiting to be clicked.
   const [activeSlug, setActiveSlug] = useState(groups[0].slug);
   const active = groups.find((group) => group.slug === activeSlug) ?? groups[0];
+  // `null` is "not answered yet" and an empty array is "answered, nothing to
+  // show" — the columns have to tell a panel still loading from one the
+  // backend had nothing for.
+  const [links, setLinks] = useState<NavLinkGroup[] | null>(null);
+
+  // The same settled value the rest of the site reads, so detecting Haryana
+  // from the visitor's IP or picking Jharkhand in the header beside this nav
+  // re-points the columns in the same breath.
+  const { meta } = useLocation();
+
+  // On mount rather than on hover: the panel opens the instant a pointer
+  // crosses the word, and a request started then would land after the reader
+  // is already looking at the empty columns.
+  useEffect(() => {
+    let cancelled = false;
+
+    void loadNavLinks(meta.label).then((groups) => {
+      if (!cancelled) setLinks(groups);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [meta.label]);
+
+  const column = links?.find(
+    (group) => group.property_type === active.type && group.listing_type === listingType,
+  );
 
   return (
-    <div className="group relative flex h-16 items-center">
+    <div className="group flex h-16 items-center">
       <button
         type="button"
         className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white group-hover:bg-white/10 group-hover:text-white"
@@ -1132,10 +1247,20 @@ function MegaNavItem({
         <ChevronDown className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" />
       </button>
 
-      <div className="invisible absolute left-0 top-full z-50 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+      {/* `:focus-visible`, not `:focus-within`. A mouse click on the button
+          focused it and `focus-within` then held the panel open after the
+          pointer had left, so hovering the other of Buy and Rent laid a second
+          panel over the first. `:focus-visible` is not set by a click, only by
+          keyboard focus, so the tab order still opens the panel while a click
+          no longer pins it. */}
+      <div className="invisible absolute left-0 top-full z-50 opacity-0 transition group-hover:visible group-hover:opacity-100 group-has-[:focus-visible]:visible group-has-[:focus-visible]:opacity-100">
         {/* No top border and square top corners, like the location picker
             beside it, so the panel reads as the bar continuing downwards. */}
-        <div className="flex w-[min(calc(100vw-2rem),58rem)] overflow-hidden rounded-b-xl border border-t-0 border-border bg-popover text-foreground shadow-2xl">
+        {/* The `15rem` subtracted is not a gutter — it is the room the panel
+            has already spent before it starts. It hangs `left-0` off the nav
+            row, which begins past the wordmark, so the width that fits is the
+            viewport minus that offset. */}
+        <div className="flex w-[min(calc(100vw-15rem),72rem)] overflow-hidden rounded-b-xl border border-t-0 border-border bg-popover text-foreground shadow-2xl">
           {/* The rail. Every category the site sells or lets — more than the
               five the hero's search tabs name. */}
           <div className="w-52 shrink-0 border-r border-border bg-muted/60 py-2">
@@ -1163,39 +1288,55 @@ function MegaNavItem({
             })}
           </div>
 
-          {/* The pages themselves, in columns by what they are indexed on. */}
-          <div className="grid min-w-0 flex-1 grid-cols-3 gap-x-6 p-5">
-            <div className="col-span-2 min-w-0">
-              <h3 className="border-b border-border pb-2 text-sm font-bold">
-                {active.label} for {actionLabel} in Top Cities
-              </h3>
-              <div className="mt-3 grid grid-cols-2 gap-x-4">
-                {TOP_CITIES.map((city) => (
-                  <Link
-                    key={`${active.slug}-${city}`}
-                    href={statePageHref(city, active.slug, listingType)}
-                    className="truncate py-1.5 text-sm text-foreground/80 transition-colors hover:text-primary"
-                  >
-                    {active.label} in {city}
-                  </Link>
-                ))}
+          {/* The pages themselves, one column per level the site indexes on,
+              each row printing the path it goes to rather than the name of the
+              place at the end of it. */}
+          {/* `auto` tracks, not three equal thirds. The columns hold slugs of
+              very different lengths — a district's carries its state on the
+              end, a city's carries nothing — so equal thirds wrapped every
+              district row onto two lines while the city column sat half
+              empty. Each track takes the width its own longest slug wants and
+              they share what is left over. */}
+          <div className="grid min-w-0 flex-1 grid-cols-[auto_auto_auto] gap-x-6 p-5">
+            {NAV_COLUMNS.map((meta) => (
+              <div key={meta.key} className="min-w-0">
+                <h3 className="border-b border-border pb-2 text-sm font-bold">{meta.title}</h3>
+                <div className="mt-3 grid">
+                  {links === null
+                    ? /* Held open at the height the rows will take, so the
+                         panel does not resize under the pointer when they
+                         arrive. */
+                      Array.from({ length: 8 }, (_, row) => (
+                        <div key={row} className="py-1.5" aria-hidden>
+                          {/* Sized to roughly the slug this row will hold, so
+                              the auto tracks settle near their final widths
+                              instead of snapping when the links arrive. */}
+                          <div
+                            className="h-3.5 animate-pulse rounded bg-muted"
+                            style={{ width: `${meta.skeleton}ch` }}
+                          />
+                        </div>
+                      ))
+                    : (column?.[meta.key] ?? []).map((link) => (
+                        <Link
+                          key={link.slug}
+                          href={`/${link.slug}`}
+                          /* Wrapped, not truncated: the part of a slug that
+                             names the place is at the end, so clipping the
+                             overflow would cut off the only half that differs
+                             between one row and the next. Spelled out the
+                             words break on their own spaces, so `break-all`
+                             is no longer needed to get a long one onto two
+                             lines. With the tracks sized above it only comes
+                             to that on a narrow window. */
+                          className="py-1.5 text-[12px] leading-4 text-foreground/80 transition-colors hover:text-primary"
+                        >
+                          {readableSlug(link.slug)}
+                        </Link>
+                      ))}
+                </div>
               </div>
-            </div>
-
-            <div className="min-w-0">
-              <h3 className="border-b border-border pb-2 text-sm font-bold">By State</h3>
-              <div className="mt-3 grid">
-                {TOP_STATES.map((state) => (
-                  <Link
-                    key={`${active.slug}-${state}`}
-                    href={statePageHref(state, active.slug, listingType)}
-                    className="truncate py-1.5 text-sm text-foreground/80 transition-colors hover:text-primary"
-                  >
-                    {active.label} in {state}
-                  </Link>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
