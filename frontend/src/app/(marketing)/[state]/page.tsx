@@ -20,7 +20,12 @@ import { SocialInfrastructureCarousel } from "@/components/site/social-infrastru
 import { NearbyStates } from "@/components/site/nearby-states";
 import { neighbouringStates } from "@/lib/state-neighbours";
 import { QuickLinks, type QuickLinkGroup } from "@/components/site/quick-links";
-import { getLocationPage, LocationPageView, locationPageMetadata } from "@/components/site/location-page";
+import {
+  getLocationPage,
+  LocationPageView,
+  locationPageMetadata,
+} from "@/components/site/location-page";
+import { LocationReviewDock } from "@/components/site/location-review-dock";
 import { HeroSearch } from "@/components/site/hero-search";
 import { GoogleMapEmbed } from "@/components/map/google-map-embed";
 import { stateExploreHref } from "@/lib/state-routes";
@@ -87,7 +92,8 @@ type PriceTrendPoint = {
 };
 
 function asText(value: unknown) {
-  if (value === null || value === undefined || value === "") return "Not available";
+  if (value === null || value === undefined || value === "")
+    return "Not available";
   return String(value);
 }
 
@@ -108,7 +114,9 @@ function uniqueItems(value: unknown, limit?: number) {
 }
 
 function compactText(...values: unknown[]) {
-  const value = values.find((item) => item !== null && item !== undefined && item !== "");
+  const value = values.find(
+    (item) => item !== null && item !== undefined && item !== "",
+  );
   return value ? String(value) : "Not available";
 }
 
@@ -116,7 +124,10 @@ function hasDisplayValue(value: unknown): boolean {
   if (value === null || value === undefined) return false;
   if (typeof value === "string") return value.trim().length > 0;
   if (Array.isArray(value)) return value.some(hasDisplayValue);
-  if (typeof value === "object") return Object.values(value as Record<string, unknown>).some(hasDisplayValue);
+  if (typeof value === "object")
+    return Object.values(value as Record<string, unknown>).some(
+      hasDisplayValue,
+    );
   return true;
 }
 
@@ -136,14 +147,17 @@ function asPriceTrend(value: unknown): PriceTrendPoint[] {
       const year = Number(record.year);
       const averagePricePerSqft = Number(record.average_price_per_sqft);
 
-      if (!Number.isFinite(year) || !Number.isFinite(averagePricePerSqft)) return null;
+      if (!Number.isFinite(year) || !Number.isFinite(averagePricePerSqft))
+        return null;
       return { year, averagePricePerSqft };
     })
     .filter((item): item is PriceTrendPoint => Boolean(item))
     .sort((a, b) => a.year - b.year);
 }
 
-async function getStateOverview(routeSlug: string): Promise<StateOverview | null> {
+async function getStateOverview(
+  routeSlug: string,
+): Promise<StateOverview | null> {
   try {
     const res = await fetch(`${API}/state-overview/${routeSlug}`, {
       cache: "no-store",
@@ -157,7 +171,9 @@ async function getStateOverview(routeSlug: string): Promise<StateOverview | null
   }
 }
 
-async function getDistrictOverview(routeSlug: string): Promise<StateOverview | null> {
+async function getDistrictOverview(
+  routeSlug: string,
+): Promise<StateOverview | null> {
   try {
     const res = await fetch(`${API}/district-overview/${routeSlug}`, {
       cache: "no-store",
@@ -175,11 +191,16 @@ async function getExploreOverview(routeSlug: string) {
   return (await getStateOverview(routeSlug)) || getDistrictOverview(routeSlug);
 }
 
-async function getStateDistrictPages(stateName: string): Promise<StateDistrictPage[]> {
+async function getStateDistrictPages(
+  stateName: string,
+): Promise<StateDistrictPage[]> {
   try {
-    const res = await fetch(`${API}/district-overview/?state=${encodeURIComponent(stateName)}&limit=100`, {
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `${API}/district-overview/?state=${encodeURIComponent(stateName)}&limit=100`,
+      {
+        cache: "no-store",
+      },
+    );
 
     if (!res.ok) return [];
     return res.json() as Promise<StateDistrictPage[]>;
@@ -190,10 +211,13 @@ async function getStateDistrictPages(stateName: string): Promise<StateDistrictPa
 
 async function getQuickLinks(stateName: string): Promise<QuickLinkGroup[]> {
   try {
-    const res = await fetch(`${API}/location-pages/quick-links/${encodeURIComponent(stateName)}`, {
-      // The set rotates once a day, so an hour of caching is plenty.
-      next: { revalidate: 3600 },
-    });
+    const res = await fetch(
+      `${API}/location-pages/quick-links/${encodeURIComponent(stateName)}`,
+      {
+        // The set rotates once a day, so an hour of caching is plenty.
+        next: { revalidate: 3600 },
+      },
+    );
 
     if (!res.ok) return [];
     const data = (await res.json()) as { groups?: QuickLinkGroup[] };
@@ -224,7 +248,9 @@ async function getDistrictQuickLinks(
   }
 }
 
-async function fetchLocationPages(params: URLSearchParams): Promise<StateLocationPage[]> {
+async function fetchLocationPages(
+  params: URLSearchParams,
+): Promise<StateLocationPage[]> {
   try {
     const res = await fetch(`${API}/location-pages/?${params.toString()}`, {
       cache: "no-store",
@@ -268,7 +294,11 @@ async function getExploreLocationPages({
   return fetchLocationPages(cityParams);
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ state: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ state: string }>;
+}): Promise<Metadata> {
   const { state } = await params;
 
   // First try as location page (city pages like shops-for-sale-in-mumbai)
@@ -283,15 +313,28 @@ export async function generateMetadata({ params }: { params: Promise<{ state: st
     return { title: "Overview Not Found" };
   }
 
-  const titleName = page.pageType === "district" ? `${page.district_name}, ${page.state_name}` : page.state_name;
+  const titleName =
+    page.pageType === "district"
+      ? `${page.district_name}, ${page.state_name}`
+      : page.state_name;
 
   return {
-    title: page.seo?.meta_title || page.seo?.page_title || `${titleName} Real Estate Overview | Makan Mantraa`,
-    description: page.seo?.meta_description || page.seo?.page_description || `Explore local context, connectivity, infrastructure, and real estate signals for ${titleName}.`,
+    title:
+      page.seo?.meta_title ||
+      page.seo?.page_title ||
+      `${titleName} Real Estate Overview | Makan Mantraa`,
+    description:
+      page.seo?.meta_description ||
+      page.seo?.page_description ||
+      `Explore local context, connectivity, infrastructure, and real estate signals for ${titleName}.`,
   };
 }
 
-export default async function StatePage({ params }: { params: Promise<{ state: string }> }) {
+export default async function StatePage({
+  params,
+}: {
+  params: Promise<{ state: string }>;
+}) {
   const { state } = await params;
 
   // First check if it's a location page (city pages like shops-for-sale-in-mumbai)
@@ -319,7 +362,9 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     stateName: parentStateName,
     districtName: isDistrictPage ? displayName : undefined,
   });
-  const districtPages = isDistrictPage ? [] : await getStateDistrictPages(parentStateName);
+  const districtPages = isDistrictPage
+    ? []
+    : await getStateDistrictPages(parentStateName);
   const quickLinkGroups = isDistrictPage
     ? await getDistrictQuickLinks(parentStateName, displayName)
     : await getQuickLinks(parentStateName);
@@ -330,20 +375,22 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   }));
   const coordinates = data.location?.coordinates;
   const mapCoordinates =
-    typeof coordinates?.latitude === "number" && typeof coordinates?.longitude === "number"
+    typeof coordinates?.latitude === "number" &&
+    typeof coordinates?.longitude === "number"
       ? { latitude: coordinates.latitude, longitude: coordinates.longitude }
       : null;
-  const districts = districtPages.length > 0
-    ? districtPages.map((district) => ({
-        name: district.district_name,
-        stateName: district.state_name,
-        slug: district.slug,
-        routeSlug: district.route_slug,
-        seo: district.seo,
-        overview: district.overview,
-        investmentAngle: district.investment_angle,
-      }))
-    : asArray(overview.districts).map((district) => ({ name: district }));
+  const districts =
+    districtPages.length > 0
+      ? districtPages.map((district) => ({
+          name: district.district_name,
+          stateName: district.state_name,
+          slug: district.slug,
+          routeSlug: district.route_slug,
+          seo: district.seo,
+          overview: district.overview,
+          investmentAngle: district.investment_angle,
+        }))
+      : asArray(overview.districts).map((district) => ({ name: district }));
   const majorCities = uniqueItems(overview.major_cities);
   const majorTowns = uniqueItems(overview.major_towns);
   const airportFields = [
@@ -352,26 +399,35 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     ["domestic_airports", connectivity?.domestic_airports],
     ["nearest_airports", connectivity?.nearest_airports],
   ].filter(([, value]) => hasDisplayValue(value)) as Array<[string, unknown]>;
-  const airportCard = airportFields.length > 0
-    ? {
-        key: "major_airports",
-        label: "Major Airports",
-        value: uniqueItems(airportFields.flatMap(([, value]) => asArray(value))),
-      }
-    : null;
+  const airportCard =
+    airportFields.length > 0
+      ? {
+          key: "major_airports",
+          label: "Major Airports",
+          value: uniqueItems(
+            airportFields.flatMap(([, value]) => asArray(value)),
+          ),
+        }
+      : null;
   const baseConnectivityCards = Object.entries(connectivity || {})
-      .filter(([key]) => !["connectivity_strength", "international_airports", "major_airports", "domestic_airports", "nearest_airports"].includes(key))
-      .filter(([, value]) => hasDisplayValue(value))
-      .map(([key, value]) => ({
-        key,
-        label: labelFromKey(key),
-        value,
-      }));
+    .filter(
+      ([key]) =>
+        ![
+          "connectivity_strength",
+          "international_airports",
+          "major_airports",
+          "domestic_airports",
+          "nearest_airports",
+        ].includes(key),
+    )
+    .filter(([, value]) => hasDisplayValue(value))
+    .map(([key, value]) => ({
+      key,
+      label: labelFromKey(key),
+      value,
+    }));
   const connectivityCards = airportCard
-    ? [
-        ...baseConnectivityCards,
-        airportCard,
-      ]
+    ? [...baseConnectivityCards, airportCard]
     : baseConnectivityCards;
   const overviewSectionTitle = compactText(
     data.seo?.page_title,
@@ -381,7 +437,8 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   const priceTrend = asPriceTrend(investment_angle.price_trend);
   const growthDrivers = uniqueItems(investment_angle.key_growth_drivers, 10);
   const investmentRisks = uniqueItems(investment_angle.investment_risks, 10);
-  const hasInvestmentComparison = growthDrivers.length > 0 || investmentRisks.length > 0;
+  const hasInvestmentComparison =
+    growthDrivers.length > 0 || investmentRisks.length > 0;
   const neighbourStates = neighbouringStates(parentStateName);
   const socialCardEntries = Object.entries(social_infrastructure || {})
     .filter(([key]) => key !== "markets_and_essentials_summary")
@@ -400,17 +457,21 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
     ...(!hasTouristAttractionsCard && hasDisplayValue(touristAttractionsValue)
       ? [["tourist_attractions", touristAttractionsValue] as [string, unknown]]
       : []),
-  ]
-    .map(([key, value]) => ({
-      key,
-      label: labelFromKey(key),
-      value,
-    }));
+  ].map(([key, value]) => ({
+    key,
+    label: labelFromKey(key),
+    value,
+  }));
   return (
     <div className="min-h-screen bg-secondary text-foreground selection:bg-primary/15">
       <Header />
 
-      <header className="relative overflow-hidden border-b border-black bg-[#0A2036] text-white md:h-[540px]">
+      {/* Named so the review dock can watch it: the dock only appears once
+          this has gone by. */}
+      <header
+        id="explore-hero"
+        className="relative overflow-hidden border-b border-black bg-[#0A2036] text-white md:h-[540px]"
+      >
         {stateBanner && (
           <>
             {/* The uploaded banner is delivered at the rendered width by Cloudinary. */}
@@ -430,7 +491,10 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         <nav className="relative z-10">
           <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-white/70">
             <li>
-              <Link href="/" className="flex items-center gap-1 hover:text-white">
+              <Link
+                href="/"
+                className="flex items-center gap-1 hover:text-white"
+              >
                 <Home className="h-3.5 w-3.5" /> India
               </Link>
             </li>
@@ -438,7 +502,10 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
             {isDistrictPage && (
               <>
                 <li>
-                  <Link href={stateExploreHref(parentStateName)} className="font-medium hover:text-white">
+                  <Link
+                    href={stateExploreHref(parentStateName)}
+                    className="font-medium hover:text-white"
+                  >
                     {parentStateName}
                   </Link>
                 </li>
@@ -469,48 +536,99 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         </div>
       </header>
 
+      {/* A sibling of the banner, not a child of it. It is `fixed` and it
+          watches `#explore-hero` to know when to appear, so living inside the
+          thing it watches only made it harder to reason about — and that
+          banner is `overflow-hidden`, which is no place to put something meant
+          to stand over the whole page.
+
+          The page above is written from data — prices, districts, connectivity
+          scored off a map. This is the part only someone who has been here can
+          add, offered where they are reading rather than at the foot of a page
+          most people never reach.
+
+          Keyed on the route slug, which is what the page is: one review per
+          person per place, and the same key the averages come back under. */}
+      <LocationReviewDock
+        slug={state}
+        placeName={displayName}
+        state={parentStateName}
+        district={isDistrictPage ? displayName : undefined}
+        side="left"
+      />
+
       <ExploreSectionNav
         items={[
           { label: "Overview", href: "#overview" },
-          ...(districts.length > 0 ? [{ label: "Districts", href: "#districts" as const }] : []),
+          ...(districts.length > 0
+            ? [{ label: "Districts", href: "#districts" as const }]
+            : []),
           { label: "Cities & Towns", href: "#cities-towns" },
-          ...(connectivityCards.length > 0 ? [{ label: "Connectivity", href: "#connectivity" as const }] : []),
+          ...(connectivityCards.length > 0
+            ? [{ label: "Connectivity", href: "#connectivity" as const }]
+            : []),
           { label: "Living", href: "#social" },
-          ...(priceTrend.length > 1 ? [{ label: "Price Trend", href: "#price-trend" as const }] : []),
-          ...(hasInvestmentComparison ? [{ label: "Growth & Risks", href: "#growth-risks" as const }] : []),
-          ...(quickLinkGroups.length > 0 ? [{ label: "Quick Links", href: "#quick-links" as const }] : []),
-          ...(neighbourStates.length > 0 ? [{ label: "Nearby States", href: "#nearby-states" as const }] : []),
+          ...(priceTrend.length > 1
+            ? [{ label: "Price Trend", href: "#price-trend" as const }]
+            : []),
+          ...(hasInvestmentComparison
+            ? [{ label: "Growth & Risks", href: "#growth-risks" as const }]
+            : []),
+          ...(quickLinkGroups.length > 0
+            ? [{ label: "Quick Links", href: "#quick-links" as const }]
+            : []),
+          ...(neighbourStates.length > 0
+            ? [{ label: "Nearby States", href: "#nearby-states" as const }]
+            : []),
           ...(faq.length > 0 ? [{ label: "FAQ", href: "#faq" as const }] : []),
         ]}
       />
 
-      <section id="overview" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+      <section
+        id="overview"
+        className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+      >
         <div className="mx-auto max-w-[1250px] px-5 py-5">
           <div>
             <h2 className="text-3xl font-bold leading-tight md:text-4xl">
               {overviewSectionTitle}
             </h2>
-            <LineClampedDescription text={overviewSectionDescription} lines={7} className="mt-2" />
+            <LineClampedDescription
+              text={overviewSectionDescription}
+              lines={7}
+              className="mt-2"
+            />
           </div>
         </div>
       </section>
 
       {districts.length > 0 && (
-        <section id="districts" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+        <section
+          id="districts"
+          className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+        >
           <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-            <DistrictCarousel districts={districts} stateName={parentStateName} />
+            <DistrictCarousel
+              districts={districts}
+              stateName={parentStateName}
+            />
           </div>
         </section>
       )}
 
-      <section id="cities-towns" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+      <section
+        id="cities-towns"
+        className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+      >
         <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
           <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
             Explore the top cities & towns
           </h2>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-stretch">
-            <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${mapCoordinates ? "lg:col-span-7" : "lg:col-span-12"}`}>
+            <div
+              className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${mapCoordinates ? "lg:col-span-7" : "lg:col-span-12"}`}
+            >
               {majorCities.length > 0 && (
                 <LocationListCard title="Major Cities" items={majorCities} />
               )}
@@ -535,7 +653,10 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       </section>
 
       {connectivityCards.length > 0 && (
-        <section id="connectivity" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+        <section
+          id="connectivity"
+          className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+        >
           <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <SocialInfrastructureCarousel
               cards={connectivityCards}
@@ -548,14 +669,23 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
         </section>
       )}
 
-      <section id="social" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+      <section
+        id="social"
+        className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+      >
         <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-          <SocialInfrastructureCarousel cards={socialCards} displayName={displayName} />
+          <SocialInfrastructureCarousel
+            cards={socialCards}
+            displayName={displayName}
+          />
         </div>
       </section>
 
       {priceTrend.length > 1 && (
-        <section id="price-trend" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+        <section
+          id="price-trend"
+          className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+        >
           <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
               Price Trends &amp; Premium Segments
@@ -566,20 +696,26 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
                 title="Price Trend"
                 description={`Average property price per sq.ft across ${displayName}, based on the yearly trend available for this market.`}
               />
-              <PremiumSegmentsCard items={uniqueItems(investment_angle.premium_segments, 8)} />
+              <PremiumSegmentsCard
+                items={uniqueItems(investment_angle.premium_segments, 8)}
+              />
             </div>
           </div>
         </section>
       )}
 
       {hasInvestmentComparison && (
-        <section id="growth-risks" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+        <section
+          id="growth-risks"
+          className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+        >
           <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <h2 className="mb-2 text-3xl font-bold leading-tight md:text-4xl">
               Growth Drivers vs Investment Risks
             </h2>
             <p className="mb-5 max-w-4xl text-sm leading-relaxed text-muted-foreground">
-              Compare the strongest market upside signals with the key watch points buyers should evaluate in {displayName}.
+              Compare the strongest market upside signals with the key watch
+              points buyers should evaluate in {displayName}.
             </p>
 
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -605,7 +741,10 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       )}
 
       {quickLinkGroups.length > 0 && (
-        <section id="quick-links" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+        <section
+          id="quick-links"
+          className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+        >
           <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-6">
             <QuickLinks groups={quickLinkGroups} displayName={displayName} />
           </div>
@@ -613,7 +752,10 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       )}
 
       {neighbourStates.length > 0 && (
-        <section id="nearby-states" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+        <section
+          id="nearby-states"
+          className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+        >
           <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <NearbyStates stateName={parentStateName} />
           </div>
@@ -621,7 +763,10 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       )}
 
       {faq.length > 0 && (
-        <section id="faq" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
+        <section
+          id="faq"
+          className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
+        >
           <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
             <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
               Frequently Asked Questions
@@ -630,10 +775,16 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
               {faq.map((item) => (
                 <details key={item.question} className="group py-3">
                   <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
-                    <span className="text-sm font-medium text-foreground">{item.question}</span>
-                    <span className="mt-0.5 shrink-0 text-primary transition-transform group-open:rotate-45">+</span>
+                    <span className="text-sm font-medium text-foreground">
+                      {item.question}
+                    </span>
+                    <span className="mt-0.5 shrink-0 text-primary transition-transform group-open:rotate-45">
+                      +
+                    </span>
                   </summary>
-                  <p className="mt-2 max-w-5xl text-sm leading-relaxed text-muted-foreground">{item.answer}</p>
+                  <p className="mt-2 max-w-5xl text-sm leading-relaxed text-muted-foreground">
+                    {item.answer}
+                  </p>
                 </details>
               ))}
             </div>
@@ -649,7 +800,13 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
   );
 }
 
-function LocationListCard({ title, items }: { title: string; items: string[] }) {
+function LocationListCard({
+  title,
+  items,
+}: {
+  title: string;
+  items: string[];
+}) {
   const isTownCard = title.toLowerCase().includes("town");
   const Icon = isTownCard ? MapPin : Building2;
   const subtitle = isTownCard ? "Town network" : "City network";
@@ -714,7 +871,8 @@ function PremiumSegmentsCard({ items }: { items: string[] }) {
 
         <div className="mt-3 flex min-h-[58px] items-center rounded-xl border-2 border-orange-200 bg-orange-100/70 px-3 py-2.5">
           <p className="text-xs font-medium leading-relaxed text-foreground/75">
-            Premium zones and segments that concentrate buyer interest and value.
+            Premium zones and segments that concentrate buyer interest and
+            value.
           </p>
         </div>
       </div>
@@ -747,24 +905,27 @@ function InvestmentComparisonCard({
   icon: LucideIcon;
   tone: "growth" | "risk";
 }) {
-  const theme = tone === "growth"
-    ? {
-        border: "border-emerald-200",
-        header: "bg-emerald-50",
-        tile: "bg-emerald-100",
-        infoBorder: "border-emerald-200",
-        infoBg: "bg-emerald-100/70",
-      }
-    : {
-        border: "border-rose-200",
-        header: "bg-rose-50",
-        tile: "bg-rose-100",
-        infoBorder: "border-rose-200",
-        infoBg: "bg-rose-100/70",
-      };
+  const theme =
+    tone === "growth"
+      ? {
+          border: "border-emerald-200",
+          header: "bg-emerald-50",
+          tile: "bg-emerald-100",
+          infoBorder: "border-emerald-200",
+          infoBg: "bg-emerald-100/70",
+        }
+      : {
+          border: "border-rose-200",
+          header: "bg-rose-50",
+          tile: "bg-rose-100",
+          infoBorder: "border-rose-200",
+          infoBg: "bg-rose-100/70",
+        };
 
   return (
-    <div className={`flex min-h-[360px] flex-col overflow-hidden rounded-xl border ${theme.border} bg-white text-foreground`}>
+    <div
+      className={`flex min-h-[360px] flex-col overflow-hidden rounded-xl border ${theme.border} bg-white text-foreground`}
+    >
       <div className={`${theme.header} p-3.5`}>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -775,12 +936,16 @@ function InvestmentComparisonCard({
               {subtitle}
             </p>
           </div>
-          <div className={`grid size-12 shrink-0 place-items-center rounded-xl ${theme.tile} text-foreground`}>
+          <div
+            className={`grid size-12 shrink-0 place-items-center rounded-xl ${theme.tile} text-foreground`}
+          >
             <Icon className="h-5 w-5" strokeWidth={1.65} />
           </div>
         </div>
 
-        <div className={`mt-3 flex min-h-[58px] items-center rounded-xl border-2 ${theme.infoBorder} ${theme.infoBg} px-3 py-2.5`}>
+        <div
+          className={`mt-3 flex min-h-[58px] items-center rounded-xl border-2 ${theme.infoBorder} ${theme.infoBg} px-3 py-2.5`}
+        >
           <p className="text-xs font-medium leading-relaxed text-foreground/75">
             {description}
           </p>
@@ -791,7 +956,10 @@ function InvestmentComparisonCard({
         {items.length > 0 ? (
           <ul className="divide-y divide-border">
             {items.map((item) => (
-              <li key={item} className="py-2 text-sm font-medium text-foreground">
+              <li
+                key={item}
+                className="py-2 text-sm font-medium text-foreground"
+              >
                 {item}
               </li>
             ))}

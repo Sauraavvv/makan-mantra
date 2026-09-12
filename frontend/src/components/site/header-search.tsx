@@ -541,7 +541,13 @@ export function HeaderSearch({
   }
 
   return (
-    <div ref={rowRef} className={`h-9 items-center gap-2 ${className}`}>
+    /* `id` so the explore page's review sidebar can measure where this starts
+       and stop its own right edge there. */
+    <div
+      id="header-search-row"
+      ref={rowRef}
+      className={`h-9 items-center gap-2 ${className}`}
+    >
       {/* The field stays in the bar until the panel takes it — two of them on
           screen at once would be two places to type the same thing. */}
       {!filtersOpen && field(false)}

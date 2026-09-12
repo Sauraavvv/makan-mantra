@@ -112,6 +112,12 @@ export async function getNewsCommentsCollection() {
   return c.db("makan_mantraa").collection("news_comments");
 }
 
+/** What visitors say about living in a place: a few scores and a paragraph. */
+export async function getLocationReviewsCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection("location_reviews");
+}
+
 export async function getNewsViewsCollection() {
   const c = await getClient();
   return c.db("makan_mantraa").collection("news_views");
