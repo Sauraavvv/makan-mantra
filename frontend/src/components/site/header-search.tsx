@@ -172,6 +172,10 @@ export function HeaderSearch({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
+  // False for the first frame the panel exists, so it has somewhere to come
+  // from. Without it the sheet is simply there, fully formed, on a frame the
+  // page was not expecting it.
+  const [entered, setEntered] = useState(false);
   const [panelPlacement, setPanelPlacement] = useState<PanelPlacement | null>(
     null,
   );
@@ -307,6 +311,7 @@ export function HeaderSearch({
     setOpenChip("property");
     updatePanelPlacement();
     setOpen(false);
+    setEntered(false);
     setFiltersOpen(true);
   }
 
@@ -327,6 +332,13 @@ export function HeaderSearch({
   useEffect(() => {
     if (!filtersOpen) return;
 
+    // Two frames: the first paints the panel where it starts, the second
+    // releases it. Released in the same frame as the paint, the browser sees
+    // no change to transition and the panel appears in place.
+    const frame = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setEntered(true)),
+    );
+
     updatePanelPlacement();
     window.addEventListener("resize", updatePanelPlacement);
 
@@ -337,6 +349,7 @@ export function HeaderSearch({
     if (rowRef.current) observer.observe(rowRef.current);
 
     return () => {
+      cancelAnimationFrame(frame);
       window.removeEventListener("resize", updatePanelPlacement);
       observer.disconnect();
     };
@@ -567,7 +580,9 @@ export function HeaderSearch({
                 busy listing grid compete with the controls. */}
             <div
               aria-hidden
-              className="fixed inset-0 z-[44] bg-[#061727]/55 backdrop-blur-[1px]"
+              className={`fixed inset-0 z-[44] bg-[#061727]/55 backdrop-blur-[1px] transition-opacity duration-200 ease-out motion-reduce:transition-none ${
+                entered ? "opacity-100" : "opacity-0"
+              }`}
             />
 
             <div
@@ -575,7 +590,14 @@ export function HeaderSearch({
               role="dialog"
               aria-modal="true"
               aria-label="Search properties"
-              className="fixed z-[45] max-h-[calc(100vh-5rem)] overflow-y-auto rounded-xl border border-[#0A2036]/10 bg-white text-[#0A2036] shadow-[0_22px_48px_rgba(2,12,25,0.38)]"
+              /* Only opacity and transform are eased. `left`, `top` and
+                 `width` are left alone on purpose: the observer above already
+                 has them following the header's own 300ms widening frame by
+                 frame, and a transition on top of that would make the panel
+                 trail the bar it is supposed to be growing out of. */
+              className={`fixed z-[45] max-h-[calc(100vh-5rem)] origin-top overflow-y-auto rounded-xl border border-[#0A2036]/10 bg-white text-[#0A2036] shadow-[0_22px_48px_rgba(2,12,25,0.38)] transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none ${
+                entered ? "scale-100 opacity-100" : "scale-[0.98] opacity-0"
+              }`}
               style={
                 panelPlacement
                   ? {

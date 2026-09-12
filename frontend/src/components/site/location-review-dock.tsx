@@ -556,25 +556,27 @@ export function LocationReviewDock({
               type="button"
               onClick={() => swapTo(true)}
               aria-label={`Write a review of ${placeName}`}
-              className={`flex flex-col items-center gap-2 border border-border bg-white px-2 py-4 shadow-lg ${
+              /* Near enough a square, and narrower than tall: the two short
+                 words set the width, and past that it is only taking room off
+                 the page it sits on.
+
+                 Not a strip of turned-up text. The words used to be
+                 set down the edge to fit, which is a line a reader has to tilt
+                 their head to take in; square, they sit the way words sit.
+                 Only the free side is rounded, so it still reads as something
+                 pulled out of the edge. */
+              className={`flex h-20 w-[3.75rem] shrink-0 flex-col items-center justify-center gap-1.5 border border-border bg-white px-1 shadow-lg transition-colors hover:bg-secondary ${
                 onLeft ? "rounded-r-2xl border-l-0" : "rounded-l-2xl border-r-0"
               }`}
             >
               <PenLine
-                className="size-[18px] shrink-0 text-saffron"
+                className="size-5 shrink-0 text-foreground"
                 strokeWidth={2.2}
               />
-              {/* Set down the edge rather than across it. A tab on the side of
-                the screen has height to spend and almost no width, so the
-                words run the way the tab does — and the half turn puts the
-                line bottom-to-top, which is the way a reader tilts their head
-                for something on the left. A pen on its own said "write"
-                without saying what. */}
-              <span
-                className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground [writing-mode:vertical-rl]"
-                style={{ transform: "rotate(180deg)" }}
-              >
-                Write a review
+              <span className="text-[10px] font-bold leading-tight text-foreground">
+                Write
+                <br />
+                review
               </span>
             </button>
           )}
