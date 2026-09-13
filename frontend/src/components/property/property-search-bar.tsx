@@ -11,7 +11,10 @@ export function PropertySearchBar({ locationName }: { locationName: string }) {
   const [location, setLocation] = useState(locationName);
 
   return (
-    <div className="rounded-xl border border-border bg-background p-4">
+    /* Shaped like one of the header's own menus: no top border and square
+       top corners, so where it meets the navbar there is no edge at all, and
+       both bottom corners rounded so it reads as hanging off it. */
+    <div className="rounded-b-xl border border-t-0 border-border bg-background p-4">
       <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr_0.8fr_auto_auto] lg:items-end">
         <div>
           <label className={LABEL} htmlFor="search-location">

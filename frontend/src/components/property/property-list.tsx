@@ -132,12 +132,6 @@ export function PropertyList({ cityName }: { cityName: string }) {
           </PageButton>
         </nav>
       )}
-
-      {pageFullyShown && (
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Showing {offset + 1}–{offset + shown} of {TOTAL_RESULTS.toLocaleString("en-IN")} properties
-        </p>
-      )}
     </div>
   );
 }

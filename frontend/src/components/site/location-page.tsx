@@ -6,9 +6,10 @@ import { Footer } from "@/components/site/footer";
 import { ExpandableDescription } from "@/components/site/expandable-description";
 import { PropertyFilters } from "@/components/property/property-filters";
 import { PropertyList } from "@/components/property/property-list";
-import { PropertySearchBar } from "@/components/property/property-search-bar";
-import { SortBy } from "@/components/property/property-results-header";
-import { Badge } from "@/components/ui/badge";
+import {
+  buildPropertyStats,
+  PropertyStatsBar,
+} from "@/components/property/property-stats-bar";
 import { stateExploreHref } from "@/lib/state-routes";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -79,7 +80,6 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
     (item) => item?.name && item?.acceptedAnswer?.text,
   ) || [];
   const descriptionParagraphs = asParagraphs(page.seo.on_page_description);
-  const keywords = page.seo.keywords || [];
   // The last crumb is the page itself ("Plots for Sale in Maharashtra"), not its location.
   const currentCrumb = page.seo.on_page_title || page.location_name;
   const showLocationCrumb =
@@ -87,92 +87,81 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-secondary">
-      <Header
-        showSearchBar
-        searchPlaceholder={`Search properties in ${page.location_name}`}
-      />
+      {/* No search in the bar on these pages. `showSearch`, the scrolled-in
+          version, keys off a `#hero-search` element that only the home page
+          has, so leaving both off keeps the header clear the whole way down. */}
+      <Header />
 
-      <div className="mx-auto w-full max-w-[1250px] px-4 pt-4">
-        <PropertySearchBar locationName={`${page.location_name}, ${stateName}`} />
+      <div className="mx-auto w-full max-w-[1250px] px-4 pt-5">
+        <nav aria-label="Breadcrumb">
+          <ol className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-5 text-xs text-muted-foreground">
+            <li>
+              <Link href="/" className="flex items-center gap-1 hover:text-foreground">
+                <Home className="h-3 w-3" /> Home
+              </Link>
+            </li>
+            <li className="flex items-center gap-1">
+              <ChevronRight className="h-3 w-3" />
+              <Link href={stateExploreHref(stateName)} className="hover:text-foreground">
+                {stateName}
+              </Link>
+            </li>
+            {/* City/district pages sit under the state; state pages would just repeat it. */}
+            {showLocationCrumb && (
+              <li className="flex items-center gap-1">
+                <ChevronRight className="h-3 w-3" />
+                {page.location_name}
+              </li>
+            )}
+            <li className="flex items-center gap-1 font-medium text-foreground" aria-current="page">
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+              {currentCrumb}
+            </li>
+          </ol>
+        </nav>
+
+        <h1 className="text-xl font-bold tracking-tight md:text-2xl">
+          {page.seo.on_page_title}
+        </h1>
+
+        {/* Directly under the title and across the whole page, not beside the
+            results: these figures answer what the title asks — what is here
+            and what it costs — so they belong with it rather than at the top
+            of the list they summarise. */}
+        <div className="mt-3">
+          <PropertyStatsBar
+            stats={buildPropertyStats({
+              propertyType: page.property_type,
+              listingType: page.listing_type,
+            })}
+          />
+        </div>
+
+        {/* Set below the heading rather than level with it: this is the
+            page's explanation, not its title. */}
+        {descriptionParagraphs.length > 0 && (
+          <div className="text-[13px] leading-relaxed">
+            <ExpandableDescription paragraphs={descriptionParagraphs} />
+          </div>
+        )}
       </div>
 
       <main className="mx-auto grid w-full max-w-[1250px] gap-5 px-4 py-5 lg:grid-cols-[280px_1fr] lg:items-start">
         <div className="lg:sticky lg:top-4">
-          <PropertyFilters />
+          <PropertyFilters
+            propertyType={page.property_type}
+            listingType={page.listing_type}
+            locationName={page.location_name}
+          />
         </div>
 
+        {/* No offset of its own: the rail beside it starts at the top of the
+            row, and anything here pushing the first card down would set the
+            two columns off by that much. */}
         <div className="min-w-0">
-          <nav aria-label="Breadcrumb">
-            <ol className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-3 text-sm text-muted-foreground">
-              <li>
-                <Link href="/" className="flex items-center gap-1 hover:text-foreground">
-                  <Home className="h-3.5 w-3.5" /> Home
-                </Link>
-              </li>
-              <li className="flex items-center gap-1">
-                <ChevronRight className="h-3.5 w-3.5" />
-                <Link href={stateExploreHref(stateName)} className="hover:text-foreground">
-                  {stateName}
-                </Link>
-              </li>
-              {/* City/district pages sit under the state; state pages would just repeat it. */}
-              {showLocationCrumb && (
-                <li className="flex items-center gap-1">
-                  <ChevronRight className="h-3.5 w-3.5" />
-                  {page.location_name}
-                </li>
-              )}
-              <li className="flex items-center gap-1 font-medium text-foreground" aria-current="page">
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                {currentCrumb}
-              </li>
-            </ol>
-          </nav>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-4">
-            <div className="min-w-0">
-              <h1 className="text-lg font-bold tracking-tight md:text-xl">
-                {page.seo.on_page_title}
-              </h1>
-              <p className="mt-0.5 text-[13px] text-muted-foreground">12,345+ properties available</p>
-            </div>
-
-            <SortBy />
-          </div>
-
-          <div className="mt-4">
-            <PropertyList cityName={page.location_name} />
-          </div>
+          <PropertyList cityName={page.location_name} />
         </div>
       </main>
-
-      {/* Outside the grid on purpose: the sticky filter rail ends with the
-          results, so everything below runs the full width of the page. */}
-      {descriptionParagraphs.length > 0 && (
-        <section className="mx-auto w-full max-w-[1250px] px-4 pb-5">
-          <div className="rounded-xl border border-border bg-background p-5">
-            <h2 className="text-lg font-bold">About {page.location_name}</h2>
-            <ExpandableDescription paragraphs={descriptionParagraphs} />
-          </div>
-        </section>
-      )}
-
-      <section className="bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span className="mr-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
-              Page tags
-            </span>
-            {page.property_type && (
-              <Badge variant="outline" className="capitalize">{page.property_type.replace(/_/g, " ")}</Badge>
-            )}
-            {page.listing_type && (
-              <Badge variant="outline" className="capitalize">{page.listing_type}</Badge>
-            )}
-            <Badge variant="outline">{stateName}</Badge>
-          </div>
-        </div>
-      </section>
 
       {faqItems.length > 0 && (
         <section className="bg-secondary px-4 py-4 md:py-5">
@@ -191,19 +180,6 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
                     {item.acceptedAnswer?.text}
                   </p>
                 </details>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {keywords.length > 0 && (
-        <section className="bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-            <h2 className="mb-3 text-sm font-semibold">Popular searches</h2>
-            <div className="flex flex-wrap gap-2">
-              {keywords.map((k) => (
-                <Badge key={k} variant="secondary" className="cursor-pointer hover:bg-accent">{k}</Badge>
               ))}
             </div>
           </div>

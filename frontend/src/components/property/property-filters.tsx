@@ -1,17 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Map, RotateCcw } from "lucide-react";
+import { ChevronDown, RotateCcw } from "lucide-react";
+import { LocationSearchBox } from "@/components/property/location-search-box";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
+/**
+ * What the site actually stores, in the wording `location_pages` uses.
+ *
+ * The ids are the values that collection holds, so a choice here is something
+ * the suggest endpoint and the pages themselves can be asked about. The list
+ * the panel carried before was none of them — "Apartment / Flat",
+ * "Independent House" and "Penthouse" are not property types the database has
+ * ever heard of, so nothing could have been filtered by them.
+ *
+ * Same order as the header's own filter panel, so the two read alike.
+ */
 const PROPERTY_TYPES = [
-  { id: "all", label: "All Residential", count: "12,345" },
-  { id: "apartment", label: "Apartment / Flat", count: "5,423" },
-  { id: "independent", label: "Independent House", count: "2,156" },
-  { id: "villa", label: "Villa", count: "1,023" },
-  { id: "builder_floor", label: "Builder Floor", count: "987" },
-  { id: "penthouse", label: "Penthouse", count: "312" },
+  { id: "flat", label: "Flat" },
+  { id: "villa", label: "Villa" },
+  { id: "builder_floor", label: "Builder Floor" },
+  { id: "plot", label: "Plot" },
+  { id: "pg", label: "PG" },
+  { id: "office_space", label: "Office Space" },
+  { id: "shop", label: "Shop" },
+  { id: "showroom", label: "Showroom" },
 ];
 
 const COLLAPSED_SECTIONS = [
@@ -59,9 +73,32 @@ function Section({
   );
 }
 
-export function PropertyFilters() {
-  const [selected, setSelected] = useState<string[]>(["all"]);
+export function PropertyFilters({
+  propertyType,
+  listingType,
+  locationName,
+}: {
+  propertyType?: string;
+  listingType?: string;
+  locationName?: string;
+} = {}) {
+  // The page is one property type, so that is what the panel opens with — a
+  // shops-for-sale page showing "Flat" ticked would be describing a different
+  // page than the one being read.
+  const [selected, setSelected] = useState<string[]>(
+    propertyType ? [propertyType] : [],
+  );
   const [budget, setBudget] = useState<[number, number]>([2000000, 20000000]);
+
+  // Client-side navigation to another location page keeps this component
+  // mounted, so the initial value above runs once and would leave the old
+  // page's type ticked. Adjusting during render rather than in an effect
+  // means the panel never paints the stale choice at all.
+  const [typeOnLastRender, setTypeOnLastRender] = useState(propertyType);
+  if (typeOnLastRender !== propertyType) {
+    setTypeOnLastRender(propertyType);
+    setSelected(propertyType ? [propertyType] : []);
+  }
 
   const toggle = (id: string) =>
     setSelected((current) =>
@@ -69,13 +106,17 @@ export function PropertyFilters() {
     );
 
   return (
-    <aside className="rounded-xl border border-border bg-background p-4">
-      <div className="flex items-center justify-between gap-3 pb-2">
+    <aside className="rounded-xl border border-border bg-background px-4 pb-4 pt-2.5">
+      {/* The same rule the sections below carry, so the heading reads as the
+          panel's own row rather than as the first filter in the list. */}
+      {/* Pulled out past the panel's padding and given it back as its own, so
+          the rule reaches both side borders while the heading stays inset. */}
+      <div className="-mx-4 flex items-center justify-between gap-3 border-b border-border px-4 pb-2">
         <h2 className="text-lg font-bold">Filters</h2>
         <button
           type="button"
           onClick={() => {
-            setSelected(["all"]);
+            setSelected(propertyType ? [propertyType] : []);
             setBudget([2000000, 20000000]);
           }}
           className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
@@ -84,6 +125,12 @@ export function PropertyFilters() {
           Reset All
         </button>
       </div>
+
+      <LocationSearchBox
+        propertyType={propertyType}
+        listingType={listingType}
+        currentLocation={locationName}
+      />
 
       <Section title="Property Type" defaultOpen>
         <ul className="space-y-2.5">
@@ -97,7 +144,6 @@ export function PropertyFilters() {
                   className="size-4 shrink-0 rounded accent-[var(--primary)]"
                 />
                 <span className="min-w-0 flex-1 truncate">{type.label}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">{type.count}</span>
               </label>
             </li>
           ))}
@@ -129,14 +175,6 @@ export function PropertyFilters() {
           <p className="text-xs text-muted-foreground">Coming soon.</p>
         </Section>
       ))}
-
-      <button
-        type="button"
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/40 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/5"
-      >
-        <Map className="size-4" />
-        View on Map
-      </button>
     </aside>
   );
 }
