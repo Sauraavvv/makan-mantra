@@ -1,3 +1,5 @@
+import { STATE_NAMES } from "@/lib/state-routes";
+
 export const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
   "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
@@ -91,4 +93,35 @@ export function generateProperties(state: string, count: number): Property[] {
       featured: i % 5 === 0,
     };
   });
+}
+
+/** The id prefix `generateProperties` gives a state's listings. */
+function idPrefix(state: string) {
+  return state.toLowerCase().replace(/\s+/g, "-");
+}
+
+let statesByPrefix: Map<string, string> | null = null;
+
+/**
+ * Finds a generated listing by its id (`<state-prefix>-<index>-<n>`).
+ *
+ * The state prefix can itself contain hyphens ("tamil-nadu",
+ * "jammu-&-kashmir"), so the id is split from the right and the prefix is
+ * looked up against every state name the site uses. Returns null for an id no
+ * generated listing has.
+ */
+export function findGeneratedProperty(id: string): Property | null {
+  const match = /^(.+)-(\d+)-(\d+)$/.exec(id);
+  if (!match) return null;
+
+  statesByPrefix ??= new Map(
+    [...INDIAN_STATES, ...STATE_NAMES].map((state) => [idPrefix(state), state]),
+  );
+
+  const state = statesByPrefix.get(match[1]);
+  const index = Number(match[2]);
+  if (!state || !Number.isSafeInteger(index) || index > 100_000) return null;
+
+  const property = generateProperties(state, index + 1)[index];
+  return property?.id === id ? property : null;
 }

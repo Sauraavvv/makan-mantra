@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { ArrowRight, BedDouble, ChevronDown, ChevronRight, Home, Loader2, LocateFixed, LockKeyhole, Mail, MailCheck, MapPin, Menu, Phone, Plus, Search, ShieldCheck, UserRound, X } from "lucide-react";
+import { ArrowRight, BedDouble, ChevronDown, ChevronRight, Clapperboard, Home, Loader2, LocateFixed, LockKeyhole, Mail, MailCheck, MapPin, Menu, Phone, Plus, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { loginAction, registerModalAction } from "@/app/actions/auth";
 import { ResendSetPasswordForm } from "@/components/auth/resend-set-password-form";
 import { HeaderSearch } from "@/components/site/header-search";
@@ -660,6 +660,17 @@ export function Header({
             checked far more often than an account is, and a signed-out visitor
             has one too. Shares `order-5` with the button above it, so source
             order settles which comes first. */}
+        {/* Property Reels — the full-screen, scroll-through feed. Beside the
+            shortlist: both are quick ways back into listings. */}
+        <Link
+          href="/reels"
+          aria-label="Property reels"
+          title="Property reels"
+          className={`${isHome ? "order-5" : ""} relative grid size-9 shrink-0 place-items-center rounded-full border border-white/15 bg-white/10 text-white transition-colors hover:bg-white/20`}
+        >
+          <Clapperboard className="size-4" />
+        </Link>
+
         <div className={isHome ? "order-5" : ""}>
           <ShortlistMenu />
         </div>

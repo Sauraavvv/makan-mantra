@@ -2,6 +2,7 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   Bath,
   BedDouble,
@@ -20,15 +21,23 @@ import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { generateProperties } from "@/lib/properties";
+import { findGeneratedProperty, generateProperties, type Property } from "@/lib/properties";
 import { stateExploreHref } from "@/lib/state-routes";
 import { useRecentProperties } from "@/context/recent-properties-context";
 
 export default function PropertyDetailPage({ params }: { params: Promise<{ id: string; slug: string }> }) {
   const { id } = use(params);
-  const stateFromId = (id.split("-")[0] || "maharashtra").replace(/^\w/, (c) => c.toUpperCase());
-  const list = useMemo(() => generateProperties(stateFromId, 36), [stateFromId]);
-  const property = list.find((item) => item.id === id) ?? list[0];
+  // Resolved from the full id: the state prefix can be several words
+  // ("tamil-nadu-…"), and the listing can sit at any index. An id no listing
+  // has is a 404, not some other property.
+  const property = useMemo(() => findGeneratedProperty(decodeURIComponent(id)), [id]);
+  if (!property) notFound();
+
+  return <PropertyDetail property={property} />;
+}
+
+function PropertyDetail({ property }: { property: Property }) {
+  const list = useMemo(() => generateProperties(property.state, 5), [property.state]);
   const [active, setActive] = useState(0);
   const { track } = useRecentProperties();
   const gallery = [property.image, ...list.slice(0, 4).map((item) => item.image)];

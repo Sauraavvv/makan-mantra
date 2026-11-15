@@ -27,8 +27,11 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({
   children,
+  modal,
 }: Readonly<{
   children: React.ReactNode;
+  /** `@modal` slot — routes intercepted to open over the current page (Reels). */
+  modal: React.ReactNode;
 }>) {
   // Read here rather than in the provider so the server and the first client
   // render agree on the state: the header, the hero and the market snapshot
@@ -48,7 +51,10 @@ export default async function RootLayout({
           <SearchHistoryProvider>
             <RecentPropertiesProvider>
               <LocationProvider initial={initial} edgeState={edgeState}>
-                <SavedProvider>{children}</SavedProvider>
+                <SavedProvider>
+                  {children}
+                  {modal}
+                </SavedProvider>
                 <LocationSuggestion />
               </LocationProvider>
             </RecentPropertiesProvider>

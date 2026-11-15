@@ -1,5 +1,5 @@
 import { makeDummyProperties } from "@/lib/dummy-properties";
-import { generateProperties, INDIAN_STATES } from "@/lib/properties";
+import { findGeneratedProperty } from "@/lib/properties";
 
 export type PropertySummary = {
   propertyId: string;
@@ -11,10 +11,6 @@ export type PropertySummary = {
   config?: string;
   area?: string;
 };
-
-function stateSlug(state: string) {
-  return state.toLowerCase().replace(/\s+/g, "-");
-}
 
 export function resolvePropertySummary(propertyId: string): PropertySummary | null {
   const dummyMatch = /^dummy-(\d+)$/.exec(propertyId);
@@ -33,27 +29,18 @@ export function resolvePropertySummary(propertyId: string): PropertySummary | nu
     };
   }
 
-  for (const state of INDIAN_STATES) {
-    const prefix = `${stateSlug(state)}-`;
-    if (!propertyId.startsWith(prefix)) continue;
+  const property = findGeneratedProperty(propertyId);
+  if (!property) return null;
 
-    const index = Number(propertyId.slice(prefix.length).split("-")[0]);
-    if (!Number.isInteger(index) || index < 0) return null;
-
-    const property = generateProperties(state, index + 1)[index];
-    if (!property || property.id !== propertyId) return null;
-
-    return {
-      propertyId,
-      title: property.title,
-      price: property.priceLabel,
-      locality: property.locality,
-      city: property.city,
-      image: property.image,
-      config: `${property.bhk} BHK + ${property.baths} Bath`,
-      area: `${property.area} Sq.Ft.`,
-    };
-  }
-
-  return null;
+  return {
+    propertyId,
+    title: property.title,
+    price: property.priceLabel,
+    locality: property.locality,
+    city: property.city,
+    image: property.image,
+    config: `${property.bhk} BHK + ${property.baths} Bath`,
+    area: `${property.area} Sq.Ft.`,
+  };
 }
+

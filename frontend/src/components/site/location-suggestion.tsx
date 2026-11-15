@@ -21,7 +21,7 @@ export function LocationSuggestion() {
   const pathname = usePathname();
 
   // The admin panel is a tool, not a storefront; it has no market to switch.
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/reels")) return null;
 
   return (
     <AnimatePresence>

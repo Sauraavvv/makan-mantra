@@ -291,8 +291,11 @@ function clearGuestChat() {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-/** Back-office screens the property assistant has no business appearing on. */
-const HIDDEN_PREFIXES = ["/admin"];
+/**
+ * Routes the assistant stays off: the back office, and the full-screen Reels
+ * window, where its launcher would sit on top of the photos.
+ */
+const HIDDEN_PREFIXES = ["/admin", "/reels"];
 
 /**
  * Mounted once in the root layout. The widget itself is kept behind this gate
