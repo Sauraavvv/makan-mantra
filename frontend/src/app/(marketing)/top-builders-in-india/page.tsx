@@ -6,6 +6,7 @@ import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { BuildersDirectory } from "./builders-directory";
 import { DIRECTORY_BUILDERS, DIRECTORY_STATS } from "@/lib/builders-directory";
+import { TOP_BUILDERS_HERO } from "@/lib/hero-image";
 
 export const metadata: Metadata = {
   title: "Top Builders in India — Real Estate Developers List | Makan Mantraa",
@@ -27,8 +28,35 @@ export default function TopBuildersInIndiaPage() {
     <div className="min-h-screen bg-secondary text-foreground selection:bg-primary/15">
       <Header />
 
-      <header className="border-b border-black bg-[#0A2036] text-white">
-        <nav>
+      <header className="relative overflow-hidden border-b border-black bg-[#0A2036] text-white">
+        {/* Preloaded by hand: this is the LCP element, and a plain `img` gets
+            none of the preload `next/image` would have added. React hoists the
+            tag into the head. */}
+        <link
+          rel="preload"
+          as="image"
+          imageSrcSet={TOP_BUILDERS_HERO.srcSet}
+          imageSizes="100vw"
+          fetchPriority="high"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={TOP_BUILDERS_HERO.src}
+          srcSet={TOP_BUILDERS_HERO.srcSet}
+          sizes="100vw"
+          alt={TOP_BUILDERS_HERO.alt}
+          fetchPriority="high"
+          decoding="async"
+          /* The banner is much wider than the photo's 16:9, so the crop is
+             held low: the lit towers and cranes stay in frame and the empty
+             upper sky is what gets cut. */
+          className="absolute inset-0 size-full object-cover object-[60%_85%]"
+        />
+        {/* Navy wash from the left keeps the heading and stats readable over
+            the sky; it thins out so the towers on the right stay bright. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0A2036]/85 via-[#0A2036]/45 to-[#0A2036]/10" />
+
+        <nav className="relative">
           <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-white/70">
             <li>
               <Link href="/" className="flex items-center gap-1 hover:text-white">
@@ -40,7 +68,7 @@ export default function TopBuildersInIndiaPage() {
           </ol>
         </nav>
 
-        <div className="mx-auto max-w-7xl px-4 py-10">
+        <div className="relative mx-auto max-w-7xl px-4 py-10">
           <div className="mb-4 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white/75">
             <span className="mr-2 h-2.5 w-2.5 rounded-full bg-saffron shadow-[0_0_12px_rgba(255,122,26,.95)]" />
             Builder directory

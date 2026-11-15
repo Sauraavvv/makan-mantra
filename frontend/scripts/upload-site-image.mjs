@@ -77,6 +77,7 @@ async function run() {
 }
 
 run().catch((error) => {
-  console.error(`Upload failed: ${error instanceof Error ? error.message : String(error)}`);
+  // Cloudinary rejects with a plain `{ message, http_code }` object, not an Error.
+  console.error(`Upload failed: ${error?.message ?? String(error)}`);
   process.exitCode = 1;
 });
