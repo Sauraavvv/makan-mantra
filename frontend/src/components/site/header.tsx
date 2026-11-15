@@ -154,6 +154,8 @@ type HeaderProps = {
   overlayTone?: "tint" | "solid";
   /** Hides the Buy/Rent nav and the "Post Property" CTA (used on the post-property page itself). */
   minimal?: boolean;
+  /** Bar colour outside overlay mode: brand navy by default, black on the Explore pages. */
+  tone?: "navy" | "black";
 };
 
 /**
@@ -174,6 +176,7 @@ export function Header({
   overlay = false,
   overlayTone = "tint",
   minimal = false,
+  tone = "navy",
 }: HeaderProps = {}) {
   const { meta, setStateByName, requestPreciseLocation, locating } = useLocation();
   const { user: sessionUser, loaded: sessionLoaded } = useSession();
@@ -343,7 +346,9 @@ export function Header({
           ? `absolute inset-x-0 top-0 z-40 w-full border-b border-white/10 text-white ${
               overlayTone === "tint" ? "bg-black/35 backdrop-blur-md" : "bg-[#0A2036]"
             }`
-          : "sticky top-0 z-40 w-full border-b border-white/10 bg-[#0A2036] text-white shadow-lg shadow-black/10"
+          : `sticky top-0 z-40 w-full border-b border-white/10 text-white shadow-lg shadow-black/10 ${
+              tone === "black" ? "bg-black" : "bg-[#0A2036]"
+            }`
       }
     >
       <div className="flex h-16 w-full items-center gap-3 px-4">

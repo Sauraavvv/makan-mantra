@@ -11,6 +11,7 @@ import {
   PropertyStatsBar,
 } from "@/components/property/property-stats-bar";
 import { stateExploreHref } from "@/lib/state-routes";
+import { FaqSection } from "@/components/site/faq-section";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -163,28 +164,12 @@ export function LocationPageView({ page }: { page: LocationPageData }) {
         </div>
       </main>
 
-      {faqItems.length > 0 && (
-        <section className="bg-secondary px-4 py-4 md:py-5">
-          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-            <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
-              Frequently Asked Questions
-            </h2>
-            <div className="divide-y divide-border rounded-xl border border-border bg-card/70 px-4 md:px-5">
-              {faqItems.map((item) => (
-                <details key={item.name} className="group py-3">
-                  <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
-                    <span className="text-sm font-medium text-foreground">{item.name}</span>
-                    <span className="mt-0.5 shrink-0 text-primary transition-transform group-open:rotate-45">+</span>
-                  </summary>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {item.acceptedAnswer?.text}
-                  </p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      <FaqSection
+        items={faqItems.map((item) => ({
+          question: item.name || "",
+          answer: item.acceptedAnswer?.text || "",
+        }))}
+      />
 
       <Footer />
     </div>

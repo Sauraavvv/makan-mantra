@@ -29,7 +29,8 @@ import { LocationReviewDock } from "@/components/site/location-review-dock";
 import { HeroSearch } from "@/components/site/hero-search";
 import { GoogleMapEmbed } from "@/components/map/google-map-embed";
 import { stateExploreHref } from "@/lib/state-routes";
-import { stateExploreBanner } from "@/lib/state-images";
+import { HERO_IMAGE_ALT, HERO_IMAGE_SRC, HERO_IMAGE_SRCSET } from "@/lib/hero-image";
+import { FaqSection } from "@/components/site/faq-section";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -357,7 +358,6 @@ export default async function StatePage({
   const stateName = data.state_name;
   const parentStateName = stateName;
   const displayName = isDistrictPage ? asText(data.district_name) : stateName;
-  const stateBanner = isDistrictPage ? null : stateExploreBanner(stateName);
   const locationPages = await getExploreLocationPages({
     stateName: parentStateName,
     districtName: isDistrictPage ? displayName : undefined,
@@ -464,7 +464,7 @@ export default async function StatePage({
   }));
   return (
     <div className="min-h-screen bg-secondary text-foreground selection:bg-primary/15">
-      <Header />
+      <Header tone="black" />
 
       {/* Named so the review dock can watch it: the dock only appears once
           this has gone by. */}
@@ -472,21 +472,28 @@ export default async function StatePage({
         id="explore-hero"
         className="relative overflow-hidden border-b border-black bg-[#0A2036] text-white md:h-[540px]"
       >
-        {stateBanner && (
-          <>
-            {/* The uploaded banner is delivered at the rendered width by Cloudinary. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={stateBanner}
-              alt={`${stateName} landscape`}
-              sizes="100vw"
-              fetchPriority="high"
-              decoding="async"
-              className="absolute inset-0 size-full object-cover object-center"
-            />
-            <div className="absolute inset-0 bg-black/35" />
-          </>
-        )}
+        {/* Same photograph, transforms and srcSet as the home hero
+            (lib/hero-image), on every Explore page — state and district.
+            Preloaded by hand like the home page: it is the LCP element and a
+            plain `img` gets no preload of its own. */}
+        <link
+          rel="preload"
+          as="image"
+          imageSrcSet={HERO_IMAGE_SRCSET}
+          imageSizes="100vw"
+          fetchPriority="high"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={HERO_IMAGE_SRC}
+          srcSet={HERO_IMAGE_SRCSET}
+          sizes="100vw"
+          alt={HERO_IMAGE_ALT}
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 size-full object-cover object-top"
+        />
+        <div className="absolute inset-0 bg-black/35" />
 
         <nav className="relative z-10">
           <ol className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto whitespace-nowrap px-4 py-3 text-sm text-white/70">
@@ -762,35 +769,11 @@ export default async function StatePage({
         </section>
       )}
 
-      {faq.length > 0 && (
-        <section
-          id="faq"
-          className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5"
-        >
-          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-            <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
-              Frequently Asked Questions
-            </h2>
-            <div className="divide-y divide-border rounded-xl border border-border bg-card/70 px-4 md:px-5">
-              {faq.map((item) => (
-                <details key={item.question} className="group py-3">
-                  <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
-                    <span className="text-sm font-medium text-foreground">
-                      {item.question}
-                    </span>
-                    <span className="mt-0.5 shrink-0 text-primary transition-transform group-open:rotate-45">
-                      +
-                    </span>
-                  </summary>
-                  <p className="mt-2 max-w-5xl text-sm leading-relaxed text-muted-foreground">
-                    {item.answer}
-                  </p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      <FaqSection
+        items={faq.flatMap((item) =>
+          item.question && item.answer ? [{ question: item.question, answer: item.answer }] : [],
+        )}
+      />
 
       <Footer
         locationTitle={`Popular searches in ${displayName}`}

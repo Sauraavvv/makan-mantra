@@ -8,6 +8,7 @@ import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { PostPropertyWizard } from "@/components/site/post-property-wizard";
 import { getPropertyStats } from "@/lib/property-stats";
+import { FaqSection } from "@/components/site/faq-section";
 
 export const metadata: Metadata = {
   title: "Post Your Property Free — Makan Mantraa",
@@ -203,29 +204,7 @@ export default async function PostPropertyPage({
           </div>
         </section>
 
-        {/* FAQ */}
-        <section id="faq" className="scroll-mt-32 bg-secondary px-4 pb-12 md:px-8 md:pb-16">
-          <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-            <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
-              Frequently Asked Questions
-            </h2>
-            <div className="divide-y divide-border rounded-xl border border-border bg-card/70 px-4 md:px-5">
-              {FAQS.map((item) => (
-                <details key={item.question} className="group py-3">
-                  <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
-                    <span className="text-sm font-medium text-foreground">{item.question}</span>
-                    <span className="mt-0.5 shrink-0 text-primary transition-transform group-open:rotate-45">
-                      +
-                    </span>
-                  </summary>
-                  <p className="mt-2 max-w-5xl text-sm leading-relaxed text-muted-foreground">
-                    {item.answer}
-                  </p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
+        <FaqSection items={FAQS} className="px-4 pt-0 pb-12 md:px-8 md:pt-0 md:pb-16" />
       </main>
 
       <Footer />

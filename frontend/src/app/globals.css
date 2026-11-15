@@ -212,3 +212,29 @@
     animation: none;
   }
 }
+
+/*
+ * FAQ accordion (components/site/faq-section.tsx): animate the native
+ * <details> open/close. `::details-content` + `interpolate-size` is newer than
+ * the rest of the CSS here, so it sits behind @supports — browsers without it
+ * simply snap open, which is what <details> did before.
+ */
+@supports selector(::details-content) {
+  @media (prefers-reduced-motion: no-preference) {
+    .faq-item {
+      interpolate-size: allow-keywords;
+    }
+
+    .faq-item::details-content {
+      block-size: 0;
+      overflow-y: clip;
+      transition:
+        block-size 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        content-visibility 0.35s allow-discrete;
+    }
+
+    .faq-item[open]::details-content {
+      block-size: auto;
+    }
+  }
+}

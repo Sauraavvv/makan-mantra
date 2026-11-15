@@ -49,7 +49,6 @@ const TOP_LOCATION_STATES = [
   "Gujarat",
   "Uttar Pradesh",
   "Rajasthan",
-  "Kerala",
 ];
 
 const HELPFUL_LINKS: Array<[string, string]> = [

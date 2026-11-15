@@ -14,7 +14,8 @@ import { MarketSnapshot } from "@/components/site/market-snapshot";
 import { TopBuildersShowcase } from "@/components/site/top-builders-showcase";
 import { DEFAULT_SNAPSHOT_SLUG, fetchMarketSnapshot } from "@/lib/market-snapshot";
 import { BUILDERS_BY_STATE_SLUG } from "@/lib/builders-directory";
-import { cldUrl } from "@/lib/cloudinary-url";
+import { HERO_IMAGE_ALT, HERO_IMAGE_SRC, HERO_IMAGE_SRCSET } from "@/lib/hero-image";
+import { FaqSection } from "@/components/site/faq-section";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -65,12 +66,6 @@ const FAQS = [
   },
 ];
 
-const HERO_IMAGE = "site/hero-home";
-const HERO_WIDTHS = [1280, 1920, 2560, 3548];
-
-const heroSrcSet = HERO_WIDTHS.map(
-  (width) => `${cldUrl(HERO_IMAGE, `f_auto,q_auto:best,w_${width},c_limit`)} ${width}w`,
-).join(", ");
 
 /** State-level pages only — the district and city blocks live on state pages. */
 async function getStateQuickLinks(): Promise<QuickLinkGroup[]> {
@@ -133,16 +128,16 @@ export default async function Home() {
           <link
             rel="preload"
             as="image"
-            imageSrcSet={heroSrcSet}
+            imageSrcSet={HERO_IMAGE_SRCSET}
             imageSizes="100vw"
             fetchPriority="high"
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={cldUrl(HERO_IMAGE, "f_auto,q_auto:best,w_1920,c_limit")}
-            srcSet={heroSrcSet}
+            src={HERO_IMAGE_SRC}
+            srcSet={HERO_IMAGE_SRCSET}
             sizes="100vw"
-            alt="A city skyline at dusk, seen from the terrace of a high-rise home"
+            alt={HERO_IMAGE_ALT}
             fetchPriority="high"
             decoding="async"
             /* Held to its top edge: the frame is wider than the photograph's
@@ -242,29 +237,7 @@ export default async function Home() {
         </section>
       )}
 
-      {/* FAQ */}
-      <section id="faq" className="scroll-mt-32 bg-secondary px-4 py-4 md:py-5">
-        <div className="mx-auto max-w-[1250px] rounded-[20px] border border-border bg-background px-5 py-5">
-          <h2 className="mb-5 text-3xl font-bold leading-tight md:text-4xl">
-            Frequently Asked Questions
-          </h2>
-          <div className="divide-y divide-border rounded-xl border border-border bg-card/70 px-4 md:px-5">
-            {FAQS.map((item) => (
-              <details key={item.question} className="group py-3">
-                <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
-                  <span className="text-sm font-medium text-foreground">{item.question}</span>
-                  <span className="mt-0.5 shrink-0 text-primary transition-transform group-open:rotate-45">
-                    +
-                  </span>
-                </summary>
-                <p className="mt-2 max-w-5xl text-sm leading-relaxed text-muted-foreground">
-                  {item.answer}
-                </p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
+      <FaqSection items={FAQS} />
 
       <Footer />
     </div>
