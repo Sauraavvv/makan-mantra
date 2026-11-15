@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { AskAssistantLink } from "@/components/site/ask-assistant-link";
+import { FaqContactCard } from "@/components/site/faq-contact-card";
 import { cn } from "@/lib/utils";
 
 export type FaqEntry = { question: string; answer: string };
@@ -30,7 +30,12 @@ export function FaqSection({
     <section id={id} className={cn("scroll-mt-32 bg-secondary px-4 py-4 md:py-5", className)}>
       {/* Same bordered card every other home/state section sits in. */}
       <div className="mx-auto grid max-w-[1250px] gap-6 rounded-[20px] border border-border bg-background px-5 py-5 md:px-6 md:py-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-10">
-        <div className="flex flex-col items-start">
+        {/* On desktop the column is size-contained, so it never makes the row
+            taller: the questions on the right set the height, and the contact
+            card's form opens into the space under the heading instead of
+            pushing the section down. min-h guarantees that space exists even
+            when there are only a few questions. */}
+        <div className="flex flex-col items-start lg:min-h-[19rem] lg:[contain:size]">
           <p className="inline-flex items-center gap-1.5 rounded-md border border-saffron/20 bg-saffron/10 px-2.5 py-1 text-xs font-medium text-foreground">
             <span aria-hidden="true" className="size-1.5 rounded-full bg-saffron" />
             Frequently Asked Questions
@@ -41,15 +46,9 @@ export function FaqSection({
           </h2>
 
           {/* `lg:mt-auto` pins the card to the bottom of the (grid-stretched)
-              column, so its bottom edge lines up with the last question's. */}
-          <div className="mt-5 w-full rounded-2xl border border-border bg-foreground/[0.04] p-4 md:p-5 lg:mt-auto">
-            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-              Have more questions for us? Our team can help you out. Get in touch with us!
-            </p>
-            <AskAssistantLink className="mt-3 rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-saffron shadow-sm hover:border-saffron/40 hover:text-saffron">
-              Contact Us
-            </AskAssistantLink>
-          </div>
+              column, so its bottom edge lines up with the last question's.
+              Open, the card grows upward to fill the column. */}
+          <FaqContactCard className="mt-5 lg:mt-auto" />
         </div>
 
         <div className="flex flex-col gap-2.5">

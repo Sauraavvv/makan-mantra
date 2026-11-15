@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
@@ -42,7 +42,6 @@ import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import Link from "next/link";
 import { PROPERTY_IMAGES } from "@/lib/properties";
 import { uploadToCloudinary, type CloudinaryAsset } from "@/lib/cloudinary-upload";
-import { OPEN_ASSISTANT_EVENT } from "@/components/site/ask-assistant-link";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -570,17 +569,6 @@ function ChatbotWidget() {
     setError(null);
     void refreshSessions();
   }
-
-  // Lets the rest of the page open the assistant — e.g. the FAQ's "Contact us"
-  // (AskAssistantLink) — without prop-drilling into this widget.
-  const onOpenRequest = useEffectEvent(() => {
-    if (!open) handleOpen();
-  });
-  useEffect(() => {
-    const listener = () => onOpenRequest();
-    window.addEventListener(OPEN_ASSISTANT_EVENT, listener);
-    return () => window.removeEventListener(OPEN_ASSISTANT_EVENT, listener);
-  }, []);
 
   async function handleSignOut() {
     setProfileOpen(false);

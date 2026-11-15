@@ -84,6 +84,12 @@ export async function getNewsletterCollection() {
   return c.db("makan_mantraa").collection("newsletter_subscribers");
 }
 
+/** Questions visitors send from the FAQ section's "Contact Us" card. */
+export async function getContactQuestionsCollection() {
+  const c = await getClient();
+  return c.db("makan_mantraa").collection("contact_questions");
+}
+
 export async function getPropertySubmissionsCollection() {
   const c = await getClient();
   return c.db("makan_mantraa").collection("property_submissions");
