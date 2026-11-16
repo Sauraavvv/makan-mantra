@@ -9,12 +9,15 @@ import {
   Building,
   CalendarCheck,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Compass,
   Heart,
   Info,
   MapPin,
   Maximize2,
+  Phone,
   Search,
   Share2,
   Sofa,
@@ -144,8 +147,8 @@ function Agent({ reel }: { reel: RankedReel }) {
     .join("");
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border p-3">
-      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#0A2036] text-sm font-bold text-white">
+    <div className="-mt-2 flex items-center gap-3 rounded-xl border border-border px-3 py-2">
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#0A2036] text-sm font-bold text-white">
         {initials}
       </span>
       <div className="min-w-0">
@@ -234,127 +237,155 @@ export function ReelCard({
   reel,
   active,
   eager,
+  nav,
 }: {
   reel: RankedReel;
   active: boolean;
   eager: boolean;
+  /** Desktop previous/next-property buttons, beside the details panel. */
+  nav: { onPrev: () => void; onNext: () => void; canPrev: boolean; canNext: boolean };
 }) {
   const { saved, toggleSave, share, copied } = useReelActions(reel);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
-    <article
-      aria-label={`${reel.title}, ${reel.priceLabel}`}
-      className="relative size-full overflow-hidden bg-neutral-900 lg:mx-auto lg:grid lg:max-h-[680px] lg:w-fit lg:grid-cols-[400px_400px] lg:rounded-2xl xl:grid-cols-[440px_440px]"
-    >
-      <ReelPhotos
-        photos={reel.photos}
-        alt={reel.title}
-        active={active}
-        eager={eager}
-        className="absolute inset-0 lg:static"
-      />
-
-      {/* ── Desktop details panel ── */}
-      <aside className="hidden min-h-0 flex-col bg-background lg:flex">
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-6">
-          <Badges reel={reel} />
-          {reel.because && <Because label={reel.because} className="text-muted-foreground" />}
-          <Heading reel={reel} tone="light" />
-          <Details reel={reel} />
-        </div>
-
-        <div className="flex items-center gap-2 border-t border-border p-4">
-          <button
-            type="button"
-            onClick={toggleSave}
-            aria-pressed={saved}
-            className={cn(
-              "flex h-10 items-center gap-2 rounded-lg border px-3.5 text-sm font-semibold transition-colors",
-              saved
-                ? "border-saffron/40 bg-saffron/10 text-saffron"
-                : "border-border hover:bg-secondary",
-            )}
-          >
-            <Heart className={cn("size-4", saved && "fill-current")} />
-            {saved ? "Saved" : "Save"}
-          </button>
-          <button
-            type="button"
-            onClick={share}
-            className="flex h-10 items-center gap-2 rounded-lg border border-border px-3.5 text-sm font-semibold transition-colors hover:bg-secondary"
-          >
-            {copied ? <Check className="size-4 text-emerald-600" /> : <Share2 className="size-4" />}
-            {copied ? "Link copied" : "Share"}
-          </button>
-          <Link
-            href={reel.href}
-            className="ml-auto flex h-10 items-center gap-1.5 rounded-lg bg-saffron px-4 text-sm font-semibold text-saffron-foreground transition-opacity hover:opacity-90"
-          >
-            Full details
-            <ArrowUpRight className="size-4" />
-          </Link>
-        </div>
-      </aside>
-
-      {/* ── Mobile overlay ── */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/50 to-transparent lg:hidden" />
-
-      <div className="absolute inset-x-0 bottom-0 space-y-2.5 p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pr-20 lg:hidden">
-        <Badges reel={reel} />
-        {reel.because && <Because label={reel.because} className="text-white/80" />}
-        <Heading reel={reel} tone="dark" />
-      </div>
-
-      <div className="absolute bottom-6 right-3 flex flex-col items-center gap-4 pb-[env(safe-area-inset-bottom)] lg:hidden">
-        <RailButton label={saved ? "Saved" : "Save"} onClick={toggleSave} pressed={saved}>
-          <Heart className={cn("size-6", saved && "fill-saffron text-saffron")} />
+    // The wrapper is the card's box; the desktop Save/Share column hangs off
+    // its left edge (`right-full`), outside the card, so the card itself stays
+    // centred and its `overflow-hidden` doesn't clip the buttons.
+    <div className="relative size-full lg:mx-auto lg:max-h-[680px] lg:w-fit">
+      <div className="absolute bottom-0 right-full mr-4 hidden flex-col items-center gap-4 lg:flex">
+        <RailButton label={saved ? "Saved" : "Save"} onClick={toggleSave} pressed={saved} boxed>
+          <Heart className={cn("size-5", saved && "fill-saffron text-saffron")} />
         </RailButton>
-        <RailButton label={copied ? "Copied" : "Share"} onClick={share}>
-          {copied ? <Check className="size-6" /> : <Share2 className="size-6" />}
-        </RailButton>
-        <RailButton label="Details" onClick={() => setSheetOpen(true)}>
-          <Info className="size-6" />
+        <RailButton label={copied ? "Copied" : "Share"} onClick={share} boxed>
+          {copied ? <Check className="size-5" /> : <Share2 className="size-5" />}
         </RailButton>
       </div>
 
-      {/* ── Mobile details sheet ── */}
-      {sheetOpen && (
-        <div className="absolute inset-0 z-10 flex flex-col justify-end lg:hidden">
-          <button
-            type="button"
-            aria-label="Close details"
-            onClick={() => setSheetOpen(false)}
-            className="absolute inset-0 bg-black/50"
-          />
-          <div
-            role="dialog"
-            aria-label="Property details"
-            className="relative max-h-[78%] overflow-y-auto overscroll-contain rounded-t-2xl bg-background p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <Heading reel={reel} tone="light" />
-              <button
-                type="button"
-                onClick={() => setSheetOpen(false)}
-                aria-label="Close details"
-                className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+      {/* Desktop up/down, outside the card on the details side, centred. */}
+      <div className="absolute left-full top-1/2 ml-4 hidden -translate-y-1/2 flex-col gap-3 lg:flex">
+        <button
+          type="button"
+          onClick={nav.onPrev}
+          disabled={!nav.canPrev}
+          aria-label="Previous property"
+          className="grid size-11 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30"
+        >
+          <ChevronUp className="size-5" />
+        </button>
+        <button
+          type="button"
+          onClick={nav.onNext}
+          disabled={!nav.canNext}
+          aria-label="Next property"
+          className="grid size-11 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-30"
+        >
+          <ChevronDown className="size-5" />
+        </button>
+      </div>
+
+      <article
+        aria-label={`${reel.title}, ${reel.priceLabel}`}
+        className="relative size-full overflow-hidden bg-neutral-900 lg:grid lg:w-fit lg:grid-cols-[400px_400px] lg:rounded-2xl xl:grid-cols-[440px_440px]"
+      >
+        <ReelPhotos
+          photos={reel.photos}
+          alt={reel.title}
+          active={active}
+          eager={eager}
+          // `lg:relative`, not `lg:static`: the arrows, dots and counter inside
+          // must position against the photo panel, not the whole card.
+          className="absolute inset-0 lg:relative"
+        />
+
+        {/* ── Desktop details panel ── */}
+        {/* `text-foreground`: the reels window sets white text, which would
+            vanish on this light panel wherever a child sets no colour. */}
+        <aside className="hidden min-h-0 flex-col bg-background text-foreground lg:flex">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-6">
+            <Badges reel={reel} />
+            {reel.because && <Because label={reel.because} className="text-muted-foreground" />}
+            <Heading reel={reel} tone="light" />
             <Details reel={reel} />
+          </div>
+
+          <div className="flex gap-2 border-t border-border p-4">
+            <button
+              type="button"
+              className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Phone className="size-4" />
+              Contact Agent
+            </button>
             <Link
               href={reel.href}
-              className="mt-4 flex h-11 items-center justify-center gap-1.5 rounded-lg bg-saffron text-sm font-semibold text-saffron-foreground"
+              className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-saffron px-4 text-sm font-semibold text-saffron-foreground transition-opacity hover:opacity-90"
             >
-              View full details
+              Full details
               <ArrowUpRight className="size-4" />
             </Link>
           </div>
+        </aside>
+
+        {/* ── Mobile overlay ── */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/50 to-transparent lg:hidden" />
+
+        <div className="absolute inset-x-0 bottom-0 space-y-2.5 p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pr-20 lg:hidden">
+          <Badges reel={reel} />
+          {reel.because && <Because label={reel.because} className="text-white/80" />}
+          <Heading reel={reel} tone="dark" />
         </div>
-      )}
-    </article>
+
+        <div className="absolute bottom-6 right-3 flex flex-col items-center gap-4 pb-[env(safe-area-inset-bottom)] lg:hidden">
+          <RailButton label={saved ? "Saved" : "Save"} onClick={toggleSave} pressed={saved}>
+            <Heart className={cn("size-6", saved && "fill-saffron text-saffron")} />
+          </RailButton>
+          <RailButton label={copied ? "Copied" : "Share"} onClick={share}>
+            {copied ? <Check className="size-6" /> : <Share2 className="size-6" />}
+          </RailButton>
+          <RailButton label="Details" onClick={() => setSheetOpen(true)}>
+            <Info className="size-6" />
+          </RailButton>
+        </div>
+
+        {/* ── Mobile details sheet ── */}
+        {sheetOpen && (
+          <div className="absolute inset-0 z-10 flex flex-col justify-end lg:hidden">
+            <button
+              type="button"
+              aria-label="Close details"
+              onClick={() => setSheetOpen(false)}
+              className="absolute inset-0 bg-black/50"
+            />
+            <div
+              role="dialog"
+              aria-label="Property details"
+              className="relative max-h-[78%] overflow-y-auto overscroll-contain rounded-t-2xl bg-background p-5 text-foreground pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+            >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <Heading reel={reel} tone="light" />
+                <button
+                  type="button"
+                  onClick={() => setSheetOpen(false)}
+                  aria-label="Close details"
+                  className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              <Details reel={reel} />
+              <Link
+                href={reel.href}
+                className="mt-4 flex h-11 items-center justify-center gap-1.5 rounded-lg bg-saffron text-sm font-semibold text-saffron-foreground"
+              >
+                View full details
+                <ArrowUpRight className="size-4" />
+              </Link>
+            </div>
+          </div>
+        )}
+      </article>
+    </div>
   );
 }
 
@@ -362,11 +393,14 @@ function RailButton({
   label,
   onClick,
   pressed,
+  boxed,
   children,
 }: {
   label: string;
   onClick: () => void;
   pressed?: boolean;
+  /** Icon in a translucent circle — the desktop rail beside the card. */
+  boxed?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -374,9 +408,15 @@ function RailButton({
       type="button"
       onClick={onClick}
       aria-pressed={pressed}
-      className="flex flex-col items-center gap-1 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+      className="group/rail flex flex-col items-center gap-1 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
     >
-      {children}
+      {boxed ? (
+        <span className="grid size-11 place-items-center rounded-full bg-white/10 transition-colors group-hover/rail:bg-white/20">
+          {children}
+        </span>
+      ) : (
+        children
+      )}
       <span className="text-[11px] font-semibold">{label}</span>
     </button>
   );

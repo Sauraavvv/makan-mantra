@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const WIDTHS = [640, 960, 1280, 1920];
+/** How long each photo stays before the strip moves on by itself. */
+const AUTO_ADVANCE_MS = 2500;
 
 /** Listing photos are Unsplash URLs today; ask for the width the screen needs. */
 export function sized(url: string, width: number) {
@@ -62,6 +64,19 @@ export function ReelPhotos({
     return () => window.removeEventListener("keydown", onKey);
   }, [active, photos.length]);
 
+  // Auto-advance the reel on screen, looping back to the first photo. Keyed on
+  // `index`, so a swipe, arrow or dot restarts the countdown instead of the
+  // strip jumping right after the visitor moved it.
+  useEffect(() => {
+    if (!active || photos.length < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const timer = setTimeout(() => {
+      scrollStrip(stripRef.current, index + 1 < photos.length ? index + 1 : 0, photos.length);
+    }, AUTO_ADVANCE_MS);
+    return () => clearTimeout(timer);
+  }, [active, index, photos.length]);
+
   return (
     <div className={cn("group/photos relative overflow-hidden bg-neutral-900", className)}>
       <div
@@ -90,43 +105,48 @@ export function ReelPhotos({
 
       {photos.length > 1 && (
         <>
-          <button
-            type="button"
-            onClick={() => goTo(index - 1)}
-            disabled={index === 0}
-            aria-label="Previous photo"
-            className="absolute left-3 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/65 disabled:pointer-events-none disabled:opacity-0! group-hover/photos:opacity-100 lg:grid"
-          >
-            <ChevronLeft className="size-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => goTo(index + 1)}
-            disabled={index === photos.length - 1}
-            aria-label="Next photo"
-            className="absolute right-3 top-1/2 hidden size-9 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/65 disabled:pointer-events-none disabled:opacity-0! group-hover/photos:opacity-100 lg:grid"
-          >
-            <ChevronRight className="size-5" />
-          </button>
-
           <span className="absolute right-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white tabular-nums backdrop-blur-sm max-lg:top-16">
             {index + 1}/{photos.length}
           </span>
 
-          <div className="absolute inset-x-0 bottom-3 hidden justify-center gap-1.5 lg:flex">
-            {photos.map((photo, i) => (
-              <button
-                key={`dot-${photo}-${i}`}
-                type="button"
-                onClick={() => goTo(i)}
-                aria-label={`Photo ${i + 1}`}
-                aria-current={i === index}
-                className={cn(
-                  "h-1.5 rounded-full bg-white/50 transition-all",
-                  i === index ? "w-5 bg-white" : "w-1.5 hover:bg-white/80",
-                )}
-              />
-            ))}
+          {/* Desktop: ‹ dots › in one row along the bottom of the photo, so the
+              arrows sit over the photo rather than against the details panel. */}
+          <div className="absolute inset-x-0 bottom-3 hidden items-center justify-center gap-3 lg:flex">
+            <button
+              type="button"
+              onClick={() => goTo(index - 1)}
+              disabled={index === 0}
+              aria-label="Previous photo"
+              className="grid size-8 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/65 disabled:pointer-events-none disabled:opacity-30"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+
+            <div className="flex items-center gap-1.5">
+              {photos.map((photo, i) => (
+                <button
+                  key={`dot-${photo}-${i}`}
+                  type="button"
+                  onClick={() => goTo(i)}
+                  aria-label={`Photo ${i + 1}`}
+                  aria-current={i === index}
+                  className={cn(
+                    "h-1.5 rounded-full bg-white/50 transition-all",
+                    i === index ? "w-5 bg-white" : "w-1.5 hover:bg-white/80",
+                  )}
+                />
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => goTo(index + 1)}
+              disabled={index === photos.length - 1}
+              aria-label="Next photo"
+              className="grid size-8 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/65 disabled:pointer-events-none disabled:opacity-30"
+            >
+              <ChevronRight className="size-4" />
+            </button>
           </div>
         </>
       )}

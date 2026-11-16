@@ -49,8 +49,10 @@ export default function TopBuildersInIndiaPage() {
           decoding="async"
           /* The banner is much wider than the photo's 16:9, so the crop is
              held low: the lit towers and cranes stay in frame and the empty
-             upper sky is what gets cut. */
-          className="absolute inset-0 size-full object-cover object-[60%_85%]"
+             upper sky is what gets cut. Horizontally it is pinned to the left
+             edge, so the photo's left side lines up with the screen's left
+             side and any horizontal crop comes off the right. */
+          className="absolute inset-0 size-full object-cover object-[0%_85%]"
         />
         {/* Navy wash from the left keeps the heading and stats readable over
             the sky; it thins out so the towers on the right stay bright. */}

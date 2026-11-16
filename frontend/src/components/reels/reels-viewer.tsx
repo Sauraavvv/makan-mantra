@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Clapperboard, Loader2, RotateCcw, X } from "lucide-react";
+import { Loader2, RotateCcw, X } from "lucide-react";
 import { useRecentProperties } from "@/context/recent-properties-context";
 import { useSearchHistory } from "@/context/search-history-context";
 import type { RankedReel, ReelSearch } from "@/lib/reels";
@@ -189,7 +189,7 @@ export function ReelsViewer({
     <div
       className={
         overlay
-          ? "fixed inset-0 z-50 bg-black/40 text-white backdrop-blur-xl animate-in fade-in duration-300"
+          ? "fixed inset-0 z-50 bg-black/70 text-white backdrop-blur-xl animate-in fade-in duration-300"
           : "fixed inset-0 z-50 bg-neutral-950 text-white"
       }
     >
@@ -211,21 +211,17 @@ export function ReelsViewer({
         </picture>
       )}
       {!overlay && (
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden bg-black/35 lg:block" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden bg-black/70 lg:block" />
       )}
 
       {/* Top bar: over the photo on phones, above the card on desktop. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-4 lg:h-16 lg:bg-none lg:px-6">
         <Link
           href="/"
-          className="pointer-events-auto flex items-center gap-2 text-lg font-bold tracking-tight"
+          className="pointer-events-auto flex items-center gap-2.5 text-xl font-bold tracking-tight lg:text-2xl"
         >
-          <Clapperboard className="size-5 text-saffron" />
           <span>
             Makan <span className="text-saffron">Mantraa</span>
-          </span>
-          <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-            Reels
           </span>
         </Link>
         <button
@@ -254,6 +250,12 @@ export function ReelsViewer({
                   reel={reel}
                   active={index === active}
                   eager={index === active || index === active + 1}
+                  nav={{
+                    onPrev: () => goTo(Math.max(0, index - 1)),
+                    onNext: () => goTo(index + 1),
+                    canPrev: index > 0,
+                    canNext: !(finished && index >= reels.length - 1),
+                  }}
                 />
               </div>
             ) : null}
@@ -295,30 +297,6 @@ export function ReelsViewer({
           </section>
         )}
       </div>
-
-      {/* Desktop up/down, in the margin beside the card. */}
-      {reels.length > 0 && (
-        <div className="absolute right-6 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-3 lg:flex">
-          <button
-            type="button"
-            onClick={() => goTo(Math.max(0, active - 1))}
-            disabled={active === 0}
-            aria-label="Previous property"
-            className="grid size-11 place-items-center rounded-full bg-white/10 transition-colors hover:bg-white/20 disabled:opacity-30"
-          >
-            <ChevronUp className="size-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => goTo(active + 1)}
-            disabled={finished && active >= reels.length - 1}
-            aria-label="Next property"
-            className="grid size-11 place-items-center rounded-full bg-white/10 transition-colors hover:bg-white/20 disabled:opacity-30"
-          >
-            <ChevronDown className="size-5" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }
